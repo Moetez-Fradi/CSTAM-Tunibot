@@ -1,0 +1,8 @@
+imu_filter_madgwick_node:
+  ros__parameters:
+    use_mag: false          # set true if you have magnetometer
+    world_frame: "nwu"      # "enu" (ROS default), "nwu", or "ned"
+    publish_tf: false       # usually false when using robot_localization
+    stateless: false
+    gain: 0.1               # Madgwick beta parameter (0.01–0.5 typical)
+    zeta: 0.0               # Bias drift (set >0 if gyro bias is bad)

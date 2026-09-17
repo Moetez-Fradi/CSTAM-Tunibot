@@ -1,0 +1,17 @@
+<resources>
+    <!-- Main Screen Colors -->
+    <color name="blue">#2196F3</color>
+    <color name="cyan">#00BCD4</color>
+    <color name="red">#F44336</color>
+    <color name="orange">#FF9800</color>
+
+    <!-- Theme Colors (Light Mode) -->
+
+    <color name="bg_dark">#FFFFFF</color>    <!-- Modern Light Background -->
+    <color name="card_bg">#F5F5F7</color>    <!-- Light Grey for Cards -->
+    <color name="field_bg">#F0F0F0</color>
+    <color name="text_primary">#121212</color>
+    <color name="text_secondary">#666666</color>
+    <color name="divider">#E0E0E0</color>
+    <color name="btn_gray">#E0E0E0</color>
+</resources>

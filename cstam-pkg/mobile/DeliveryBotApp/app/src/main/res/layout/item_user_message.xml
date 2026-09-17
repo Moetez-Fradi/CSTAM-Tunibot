@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="end"
+    android:padding="8dp">
+
+    <!-- User Message Bubble -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="48dp"
+        android:background="@drawable/bg_neon_user"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:elevation="2dp"
+        android:layout_marginEnd="8dp">
+
+        <!-- User Message Text -->
+        <TextView
+            android:id="@+id/textUserMessage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="User message here"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:lineSpacingExtra="2dp"
+            android:maxWidth="280dp" />
+
+        <!-- Timestamp -->
+        <TextView
+            android:id="@+id/textUserTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="12:30 PM"
+            android:textColor="#00FFFF"
+            android:textSize="10sp"
+            android:layout_marginTop="4dp"
+            android:gravity="end" />
+
+    </LinearLayout>
+
+    <!-- User Icon -->
+    <TextView
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:text="👤"
+        android:textSize="24sp"
+        android:gravity="center"
+        android:background="@drawable/bg_circle_dark"
+        android:elevation="1dp" />
+
+</LinearLayout>

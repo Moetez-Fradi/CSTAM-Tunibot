@@ -1,0 +1,22 @@
+<resources>
+    <!-- Main Screen Colors -->
+    <color name="blue">#2196F3</color>
+    <color name="cyan">#00BCD4</color>
+    <color name="red">#F44336</color>
+    <color name="orange">#FF9800</color>
+
+    <!-- Dark palette -->
+    <color name="pb_bg">#121212</color>
+    <color name="pb_text_primary">#FFFFFF</color>
+    <color name="pb_text_secondary">#CCCCCC</color>
+
+    <!-- App Colors -->
+
+    <color name="bg_dark">#16141A</color>
+    <color name="card_bg">#1E1E2E</color>    <!-- Dark Card Color -->
+    <color name="field_bg">#2A2730</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B6B3BD</color>
+    <color name="divider">#424242</color>
+    <color name="btn_gray">#33303A</color>
+</resources>

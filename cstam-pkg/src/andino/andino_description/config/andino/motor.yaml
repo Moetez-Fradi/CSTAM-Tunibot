@@ -1,0 +1,8 @@
+mass: 0.1          # Motor mass in Kg
+radius: 0.0125   # Motor dimension in z axis
+length: 0.045
+mesh: ''  # Leave it empty ('') to have a box as motor
+scale: ''
+x_offset: 0.09
+y_offset: -0.073
+z_offset: -0.013

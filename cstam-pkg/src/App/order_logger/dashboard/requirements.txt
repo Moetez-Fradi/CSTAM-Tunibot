@@ -1,0 +1,6 @@
+streamlit
+pandas
+jinja2
+plotly
+fpdf
+matplotlib

@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>deliverybot_bringup</name>
+  <version>0.1.0</version>
+  <description>Bringup for DeliveryBot app</description>
+  <maintainer email="mo@example.com">mo</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+
+  <exec_depend>rosbridge_server</exec_depend>
+  <exec_depend>web_video_server</exec_depend>
+  <exec_depend>slam_toolbox</exec_depend>
+  <!-- لو عندك نود map_http_bridge -->
+  <exec_depend>map_http_bridge</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

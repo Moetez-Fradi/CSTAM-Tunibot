@@ -1,0 +1,156 @@
+Date_Full,Year,Month,Day_Name,Time_Arrival,Order_ID,Target_Location,QR_Scan_Status,Client_Gesture_Status,Handover_Time_Sec,Trip_Duration_Min,Distance_Traveled_M,Order_Final_Status
+11-18-25,2025.0,November,Tuesday,19:18:00,7c5b19fa,Lab,Verified,Thumb Up,33,1.6,7.3,Delivered
+11-20-25,2025.0,November,Thursday,13:19:00,e8a1fa19,Lab,Verified,Thumb Up,69,1.7,6.9,Delivered
+11-20-25,2025.0,November,Thursday,13:48:00,485f544e,Lab,Verified,Thumb Up,41,1.9,5.4,Delivered
+11-20-25,2025.0,November,Thursday,13:57:00,2c7cd42e,Cafeteria,Verified,Thumb Up,74,1.4,5.1,Delivered
+11-20-25,2025.0,November,Thursday,14:00:00,04c2ea6b,Lab,Verified,Thumb Up,68,1.5,8.7,Delivered
+11-20-25,2025.0,November,Thursday,14:24:00,6aaadd5b,Lab,Verified,Thumb Up,25,2.7,9.0,Delivered
+11-20-25,2025.0,November,Thursday,15:35:00,23a8d471,Lab,Verified,Thumb Up,18,1.4,8.1,Delivered
+11-22-25,2025.0,November,Saturday,13:00:00,f89e77a6,Lab,Verified,Thumb Up,65,1.5,8.1,Delivered
+11-28-25,2025.0,November,Friday,14:32:00,4c24fe70,Lab,Verified,Thumb Up,33,1.3,6.2,Delivered
+11-29-25,2025.0,November,Saturday,12:25:00,fabbf557,Lab,Verified,Thumb Up,63,2.1,7.6,Delivered
+11-29-25,2025.0,November,Saturday,13:00:00,53ef9588,Lab,Verified,Thumb Up,66,2.3,9.9,Delivered
+12-06-25,2025.0,December,Saturday,12:00:00,1f34b6dd,Lab,Verified,Thumb Up,51,1.7,7.5,Delivered
+12-06-25,2025.0,December,Saturday,14:51:00,b9b7cb93,Lab,Verified,Thumb Up,44,2.1,6.3,Delivered
+12-06-25,2025.0,December,Saturday,15:27:00,b0fdc6aa,Lab,Verified,Thumb Up,73,1.8,8.0,Delivered
+12-06-25,2025.0,December,Saturday,15:32:00,db2abd25,Lab,Verified,Thumb Up,72,2.0,6.9,Delivered
+12-08-25,2025.0,December,Monday,13:47:00,57fcb8ad,Lab,Verified,Thumb Up,40,2.3,9.4,Delivered
+12-16-25,2025.0,December,Tuesday,15:00:00,8e734388,R 414,Verified,Thumb Up,18,2.7,5.6,Delivered
+12-16-25,2025.0,December,Tuesday,15:00:00,d4d2db40,R_414,Verified,Thumb Up,60,2.5,8.6,Delivered
+12-16-25,2025.0,December,Tuesday,15:00:00,1cdecd2e,R_414,Verified,Thumb Up,30,1.5,7.6,Delivered
+12-24-25,2025.0,December,Wednesday,21:00:00,09ac330d,Lobby,Verified,Thumb Up,82,2.5,5.0,Delivered
+12-25-25,2025.0,December,Thursday,07:39:00,ef46cbdb,Lab,Verified,Thumb Up,40,1.5,6.2,Delivered
+12-28-25,2025.0,December,Sunday,09:14:00,454ef3b2,Lobby,Verified,Thumb Up,76,2.7,8.3,Delivered
+12-28-25,2025.0,December,Sunday,18:51:00,de343c2d,Lobby,Verified,Thumb Up,61,1.1,6.0,Delivered
+12-28-25,2025.0,December,Sunday,19:00:00,1e354476,Lobby,Verified,Thumb Up,63,2.6,6.7,Delivered
+12-28-25,2025.0,December,Sunday,19:17:00,3f094fc3,Lobby,Verified,Thumb Up,45,2.8,7.1,Delivered
+12-28-25,2025.0,December,Sunday,19:19:00,81fb4d7f,Lab,Verified,Thumb Up,33,2.3,8.9,Delivered
+12-28-25,2025.0,December,Sunday,19:24:00,73d72016,Lab,Verified,Thumb Up,70,2.8,5.4,Delivered
+12-28-25,2025.0,December,Sunday,19:53:00,9bbb3acc,Lobby,Verified,Thumb Up,85,2.8,9.8,Delivered
+12-28-25,2025.0,December,Sunday,19:54:00,3e7fd8b1,Lab,Verified,Thumb Up,57,2.4,8.6,Delivered
+12-28-25,2025.0,December,Sunday,20:00:00,4791.0b15,Lab,Verified,Thumb Up,28,1.7,7.9,Delivered
+12-28-25,2025.0,December,Sunday,20:11:00,7d75a4ba,Lab,Verified,Thumb Up,33,1.8,5.5,Delivered
+12-28-25,2025.0,December,Sunday,20:16:00,4b3cc93b,Lab,Verified,Thumb Up,53,2.2,7.0,Delivered
+12-28-25,2025.0,December,Sunday,20:27:00,b618f066,Lab,Verified,Thumb Up,45,2.8,7.6,Delivered
+01-01-26,2026.0,January,Thursday,12:39:00,ff46fd1a,Lobby,Verified,Thumb Up,19,2.0,6.8,Delivered
+01-03-26,2026.0,January,Saturday,10:21:00,3b143195,A,Verified,Thumb Up,36,1.7,6.8,Delivered
+01-03-26,2026.0,January,Saturday,10:00:00,90eea5c9,A,Verified,Thumb Up,21,1.1,6.9,Delivered
+01-03-26,2026.0,January,Saturday,11:00:00,ad1c74c5,A,Verified,Thumb Up,70,2.3,8.3,Delivered
+01-03-26,2026.0,January,Saturday,11:00:00,a0005586,A,Verified,Thumb Up,73,1.9,7.7,Delivered
+01-03-26,2026.0,January,Saturday,11:23:00,4f9180fe,A,Verified,Thumb Up,84,2.0,7.4,Delivered
+01-03-26,2026.0,January,Saturday,11:32:00,800fab4d,A,Verified,Thumb Up,83,2.1,5.4,Delivered
+01-03-26,2026.0,January,Saturday,12:36:00,ba30255a,A,Verified,Thumb Up,31,2.9,5.5,Delivered
+01-03-26,2026.0,January,Saturday,12:53:00,78e76701,A,Verified,Thumb Up,45,1.7,6.2,Delivered
+01-03-26,2026.0,January,Saturday,13:00:00,773003.0ce,A,Verified,Thumb Up,31,2.6,9.2,Delivered
+01-03-26,2026.0,January,Saturday,13:11:00,e4829eec,A,Verified,Thumb Up,19,1.8,7.4,Delivered
+01-03-26,2026.0,January,Saturday,13:19:00,2efd6296,A,Verified,Thumb Up,75,1.5,8.5,Delivered
+01-03-26,2026.0,January,Saturday,13:34:00,ca6fbe8f,A,Verified,Thumb Up,85,1.4,7.7,Delivered
+01-03-26,2026.0,January,Saturday,13:43:00,503420.0ee,A,Verified,Thumb Up,82,2.9,5.9,Delivered
+01-03-26,2026.0,January,Saturday,13:52:00,530000000000000009201282075158642688.0ab,A,Verified,Thumb Up,67,1.2,6.4,Delivered
+01-03-26,2026.0,January,Saturday,13:58:00,b3f232da,A,Verified,Thumb Up,27,2.6,8.6,Delivered
+01-03-26,2026.0,January,Saturday,14:00:00,841351.0ac,A,Verified,Thumb Up,20,1.6,8.9,Delivered
+01-03-26,2026.0,January,Saturday,14:11:00,b024e881,A,Verified,Thumb Up,63,2.2,7.9,Delivered
+01-03-26,2026.0,January,Saturday,14:28:00,abab712b,A,Verified,Thumb Up,18,1.1,7.2,Delivered
+01-03-26,2026.0,January,Saturday,19:55:00,ddb951f2,A,Verified,Thumb Up,34,2.2,7.5,Delivered
+01-03-26,2026.0,January,Saturday,20:48:00,cfada5d3,A,Verified,Thumb Up,57,1.3,10.0,Delivered
+01-03-26,2026.0,January,Saturday,21:00:00,968f0021,A,Verified,Thumb Up,30,2.3,6.7,Delivered
+01-03-26,2026.0,January,Saturday,21:11:00,ed05903d,A,Verified,Thumb Up,43,1.2,9.5,Delivered
+01-03-26,2026.0,January,Saturday,21:16:00,d771bae7,A,Verified,Thumb Up,17,1.1,8.6,Delivered
+01-03-26,2026.0,January,Saturday,21:31:00,5ca794c5,A,Verified,Thumb Up,28,2.6,7.1,Delivered
+01-03-26,2026.0,January,Saturday,21:42:00,18de3bfb,A,Verified,Thumb Up,69,2.7,7.4,Delivered
+01-03-26,2026.0,January,Saturday,21:47:00,f28ed8e3,A,Verified,Thumb Up,49,1.7,7.7,Delivered
+01-03-26,2026.0,January,Saturday,21:52:00,8ce7de8e,A,Verified,Thumb Up,81,3.0,8.4,Delivered
+01-03-26,2026.0,January,Saturday,21:58:00,1519.0d3b2,A,Verified,Thumb Up,23,2.8,8.7,Delivered
+01-03-26,2026.0,January,Saturday,22:00:00,4d22966e,A,Verified,Thumb Up,20,1.8,7.9,Delivered
+01-03-26,2026.0,January,Saturday,22:15:00,4d002e36,A,Verified,Thumb Up,45,2.1,5.2,Delivered
+01-03-26,2026.0,January,Saturday,22:17:00,058b5891,A,Verified,Thumb Up,65,1.1,9.7,Delivered
+01-03-26,2026.0,January,Saturday,22:21:00,edb1f41e,A,Verified,Thumb Up,34,1.6,8.0,Delivered
+01-05-26,2026.0,January,Monday,18:32:00,bae2211a,A,Verified,Thumb Up,78,1.0,9.7,Delivered
+01-05-26,2026.0,January,Monday,19:00:00,45b0eb35,A,Verified,Thumb Up,86,2.0,8.3,Delivered
+01-05-26,2026.0,January,Monday,19:15:00,d6558843,A,Verified,Thumb Up,31,1.1,5.6,Delivered
+01-05-26,2026.0,January,Monday,19:00:00,e60b2fd7,A,Verified,Thumb Up,36,2.7,6.1,Delivered
+01-05-26,2026.0,January,Monday,19:25:00,df3bbaf7,A,Verified,Thumb Up,33,1.4,6.0,Delivered
+2026-01-06,2026.0,January,Tuesday,17:10:57,TEST_VERIFY_999,TEST_LOC,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,UNKNOWN,,Failed,,45,2.5,120.5,Failed
+2026-01-10,2026.0,January,Saturday,15:34:17,6F07A57E,Lab,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-10,2026.0,January,Saturday,15:34:55,TEST_MANUAL,Manual Test,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-10,2026.0,January,Saturday,15:50:46,4D72A96A,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-13,2026.0,January,Tuesday,19:13:29,B729DE9A,Lobby,Failed,,45,2.5,120.5,Failed
+2026-01-13,2026.0,January,Tuesday,19:15:35,7F73618B,PKG,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-17,2026.0,January,Saturday,07:58:33,TEST_1768629513,TEST_LAB,Verified,Thumb Up,10,1.5,50.0,Delivered
+2026-01-17,2026.0,January,Saturday,08:00:44,TEST_1768629644,TEST_LAB,Verified,Thumb Up,10,1.5,50.0,Delivered
+2026-01-17,2026.0,January,Saturday,08:02:44,TEST_1768629764,TEST_LAB,Verified,Thumb Up,10,1.5,50.0,Delivered
+2026-01-17,2026.0,January,Saturday,08:02:54,TEST_1768629774,TEST_LAB,Verified,Thumb Up,10,1.5,50.0,Delivered
+2026-01-17,2026.0,January,Saturday,08:24:39,MOBILE_TEST_003,LAB,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-17,2026.0,January,Saturday,08:45:06,F9B7D79F,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-17,2026.0,January,Saturday,08:55:38,7CE7297C,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-17,2026.0,January,Saturday,09:25:32,DAF9A4D6,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-17,2026.0,January,Saturday,09:43:47,BBDC16A9,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,79d273c2,,Verified,,45,2.5,120.5,Delivered (No Gesture)
+2026-01-17,2026.0,January,Saturday,09:46:03,1AD57EF7,PKG,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-17,2026.0,January,Saturday,09:57:47,FCEE6B75,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-17,2026.0,January,Saturday,10:42:38,2CBD3998,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,3a064103,,Verified,Thumb Up,45,2.5,120.5,Delivered
+2026-01-17,2026.0,January,Saturday,10:43:11,EFD45064,PKG,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-17,2026.0,January,Saturday,10:46:10,36C338BB,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,4e045f5d,,Verified,Thumb Up,45,2.5,120.5,Delivered
+2026-01-17,2026.0,January,Saturday,10:46:45,FC51B595,PKG,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-17,2026.0,January,Saturday,11:22:33,C79B6D46,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,583c4ab8,,Verified,Thumb Up,45,2.5,120.5,Delivered
+2026-01-17,2026.0,January,Saturday,11:23:34,867FD7D1,PKG,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-17,2026.0,January,Saturday,11:33:07,4F728535,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,cc43b267,,Verified,Thumb Up,45,2.5,120.5,Delivered
+2026-01-17,2026.0,January,Saturday,11:33:50,EC4386C3,PKG,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-17,2026.0,January,Saturday,12:04:03,D74DFD1A,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,0e1f1f1c,,Verified,Thumb Up,45,2.5,120.5,Delivered
+2026-01-17,2026.0,January,Saturday,12:04:31,121B89DE,PKG,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-17,2026.0,January,Saturday,12:25:42,044B034D,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,5000b703,,Verified,Thumb Up,45,2.5,120.5,Delivered
+2026-01-17,2026.0,January,Saturday,12:26:13,80C6B444,PKG,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-17,2026.0,January,Saturday,12:33:56,B483FC98,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,4d06b969,,Verified,Thumb Up,45,2.5,120.5,Delivered
+2026-01-17,2026.0,January,Saturday,12:34:31,81046339,PKG,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-17,2026.0,January,Saturday,12:49:29,23FFE4A5,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,d9964704,,Verified,Thumb Up,45,2.5,120.5,Delivered
+2026-01-17,2026.0,January,Saturday,12:59:06,1847D28B,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,59b920be,,Verified,Thumb Up,45,2.5,120.5,Delivered
+2026-01-17,2026.0,January,Saturday,13:10:07,0298CA5B,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,1ba6785d,,Verified,Thumb Up,45,2.5,120.5,Delivered
+2026-01-17,2026.0,January,Saturday,13:13:32,7DF4FEB1,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-17,2026.0,January,Saturday,13:13:33,D9A2E21B,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,685e8c8b,,Verified,Thumb Up,45,2.5,120.5,Delivered
+2026-01-17,2026.0,January,Saturday,14:54:08,3C30825F,A,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-17,2026.0,January,Saturday,14:54:09,2EFFFDBF,A,Failed,,45,2.5,120.5,Failed
+2026-01-17,2026.0,January,Saturday,15:58:16,A61F81B8,A,Failed,,45,2.5,120.5,Failed
+2026-01-17,2026.0,January,Saturday,16:12:52,CF7E65C8,A,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,322cdff9,,Verified,Thumb Up,45,2.5,120.5,Delivered
+2026-01-19,2026.0,January,Monday,08:44:16,98869188,A,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,fa75bc1e,,Verified,Thumb Up,45,2.5,120.5,Delivered
+<<<<<<< HEAD
+2026-01-19,2026.0,January,Monday,15:22:04,F63360F9,test,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-19,2026.0,January,Monday,15:22:33,09DCAE58,Lobby,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-19,2026.0,January,Monday,15:28:48,4EA69C6C,test,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-19,2026.0,January,Monday,15:29:40,B8B16EE6,test,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,ce8aeaad,,Verified,Thumb Up,45,2.5,120.5,Delivered
+2026-01-19,2026.0,January,Monday,15:37:58,2EDEBDB2,test,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,1c7ee2d8,,Verified,Thumb Up,45,2.5,120.5,Delivered
+2026-01-19,2026.0,January,Monday,15:43:49,0317C1EE,test,Pending,Pending,0,0.0,0.0,In Progress
+N/A,N/A,N/A,N/A,N/A,9160a40b,N/A,Verified,Thumb Up,45,2.5,120.5,Delivered
+=======
+2026-01-19,2026.0,January,Monday,13:14:34,33A91D86,T1,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-19,2026.0,January,Monday,13:15:06,AB67C5F0,T1,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-19,2026.0,January,Monday,14:54:08,44D834A9,A,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-19,2026.0,January,Monday,14:54:09,71A32B0F,A,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,a2b1be2d,,Verified,,45,2.5,120.5,Delivered (No Gesture)
+2026-01-19,2026.0,January,Monday,15:09:19,B7869984,A,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,4af4174c,,Verified,,45,2.5,120.5,Delivered (No Gesture)
+2026-01-19,2026.0,January,Monday,17:00:05,5A313541,A,Failed,,45,2.5,120.5,Failed
+2026-01-19,2026.0,January,Monday,17:07:51,F01002CF,A,Failed,,45,2.5,120.5,Failed
+2026-01-19,2026.0,January,Monday,19:01:12,D3191AA4,A,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-19,2026.0,January,Monday,19:01:34,79CDD317,A,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-19,2026.0,January,Monday,19:01:35,5F372782,A,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-19,2026.0,January,Monday,19:24:06,B9484EDC,A,Pending,Pending,0,0.0,0.0,In Progress
+2026-01-21,2026.0,January,Wednesday,06:34:18,C087C108,Lab,Pending,Pending,0,0.0,0.0,In Progress
+,,,,,30a65ed3,,Verified,Thumb Up,45,2.5,120.5,Delivered
+2026-01-21,2026.0,January,Wednesday,07:16:44,A09FB3E6,Lobby,Failed,None,45,2.5,120.5,Failed
+>>>>>>> ffaf51738 (Refactor: Update MPU6050 and I2Cdevlib dependencies across platforms and remove obsolete test files.)

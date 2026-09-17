@@ -1,0 +1,9 @@
+package com.example.deliverybot
+
+data class ChatMessage(
+    val type: Type,
+    val text: String? = null,
+    val base64Image: String? = null
+) {
+    enum class Type { USER, BOT, IMAGE }
+}

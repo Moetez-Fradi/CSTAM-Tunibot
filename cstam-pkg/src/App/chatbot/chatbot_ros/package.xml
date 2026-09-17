@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+    <name>chatbot_ros</name>
+    <version>1.3.8</version>
+    <description>ROS 2 chatbot package</description>
+    <maintainer email="mgons@unileon.es">Miguel Ángel González Santamarta</maintainer>
+    <license>GPL-3.0</license>
+    <test_depend>ament_copyright</test_depend>
+    <test_depend>ament_flake8</test_depend>
+    <test_depend>ament_pep257</test_depend>
+    <test_depend>python3-pytest</test_depend>
+    <depend>yasmin</depend>
+    <depend>yasmin_ros</depend>
+    <depend>audio_common</depend>
+    <depend>llama_ros</depend>
+    <depend>whisper_ros</depend>
+    <depend>piper_ros</depend>
+    <exec_depend>llama_bringup</exec_depend>
+    <exec_depend>whisper_bringup</exec_depend>
+    <exec_depend>piper_bringup</exec_depend>
+    <export>
+        <build_type>ament_python</build_type>
+    </export>
+</package>

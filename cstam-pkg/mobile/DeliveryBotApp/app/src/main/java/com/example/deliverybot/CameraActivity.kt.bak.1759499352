@@ -1,0 +1,55 @@
+package com.example.deliverybot
+
+import android.os.Bundle
+import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.ImageView
+import androidx.appcompat.app.AppCompatActivity
+import com.example.deliverybot.video.MjpegInput
+
+class CameraActivity : AppCompatActivity() {
+    private var mjpeg: MjpegInput? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        try { setContentView(R.layout.activity_camera) } catch (_: Exception) {
+            val root = FrameLayout(this).apply { id = View.generateViewId() }
+            setContentView(root)
+        }
+    }
+
+    private fun pickImageView(): ImageView {
+        val byId = resources.getIdentifier("cameraPreview", "id", packageName)
+        findViewById<ImageView?>(byId)?.let { return it }
+        fun dfs(v: View?): ImageView? {
+            if (v is ImageView) return v
+            if (v is ViewGroup) for (i in 0 until v.childCount) dfs(v.getChildAt(i))?.let { return it }
+            return null
+        }
+        dfs(window?.decorView?.rootView)?.let { return it }
+        val root = (window?.decorView?.rootView as? ViewGroup) ?: throw IllegalStateException("No root view")
+        val iv = ImageView(this).apply {
+            id = View.generateViewId()
+            adjustViewBounds = true
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        }
+        if (root is FrameLayout) root.addView(iv) else {
+            val wrap = FrameLayout(this); wrap.addView(iv); setContentView(wrap)
+        }
+        return iv
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val url = ConnectionConfig.cameraUrl(this) // http://<ip>:8080/stream.mjpg
+        val iv = pickImageView()
+        mjpeg = MjpegInput(url, iv).also { it.start() }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        mjpeg?.stop(); mjpeg = null
+    }
+}

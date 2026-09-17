@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp"
+    android:height="40dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Dashboard 4 squares grid - Cyan -->
+    <path
+        android:fillColor="#00BCD4"
+        android:pathData="M4,4h7v7H4V4z"/>
+    <path
+        android:fillColor="#00BCD4"
+        android:pathData="M13,4h7v7h-7V4z"/>
+    <path
+        android:fillColor="#00BCD4"
+        android:pathData="M4,13h7v7H4v-7z"/>
+    <path
+        android:fillColor="#00BCD4"
+        android:pathData="M13,13h7v7h-7v-7z"/>
+</vector>

@@ -1,0 +1,36 @@
+ekf_filter_node:
+  ros__parameters:
+    frequency: 10.0
+    sensor_timeout: 0.5
+    two_d_mode: true
+    publish_tf: true
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom
+
+    # Wheel odometry (should provide x-velocity and yaw rate)
+    odom0: /odom
+    odom0_config: [false, false, false,  # x, y, z (Position - FALSE)
+                   false, false, false,  # roll, pitch, yaw (Orientation - FALSE)
+                   true,  false, false,  # vx, vy, vz (Linear Velocity - TRUE for Vx)
+                   false, false, false,   # wx, wy, wz (Angular Velocity - TRUE for Wz)
+                   false, false, false]
+    odom0_queue_size: 2
+    odom0_nodelay: false
+    odom0_differential: false # Treat Odom as absolute (which is relative to the odom frame)
+    odom0_relative: false
+
+    # IMU (Filtered by Madgwick)
+    imu0: /imu/data # This is the output of the Madgwick filter
+    imu0_config: [false, false, false, # x, y, z
+                  false, false, true,  # roll (f), pitch (f), yaw (t) (Trust Madgwick Yaw)
+                  false, false, false, # vx, vy, vz
+                  false, false, true, # wx, wy, wz (Rates - FALSE: don't double-fuse rates)
+                  true, false, false]
+    imu0_differential: false # CRITICAL: Treat Madgwick output as absolute
+    imu0_remove_gravitational_acceleration: false # Madgwick should handle this
+    imu0_queue_size: 7
+    imu0_relative: false
+    imu0_nodelay: false
+  

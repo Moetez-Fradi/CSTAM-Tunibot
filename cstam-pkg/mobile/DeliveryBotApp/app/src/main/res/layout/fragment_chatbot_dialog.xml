@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_card_dark"
+    android:padding="24dp">
+
+    <!-- Header: Status Icon -->
+    <ImageView
+        android:id="@+id/ivStatusIcon"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_gravity="center_horizontal"
+        android:src="@android:drawable/ic_btn_speak_now"
+        app:tint="#00D9FF"
+        android:contentDescription="Status Icon" />
+
+    <!-- Status Text -->
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:text="Listening..."
+        android:textColor="#00D9FF"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <!-- Conversation Area -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="24dp"
+        android:background="#1E1E1E"
+        android:padding="16dp"
+        android:elevation="4dp">
+
+        <!-- User Text -->
+        <TextView
+            android:id="@+id/tvUserText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="You: ..."
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:layout_marginBottom="12dp"/>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#333333"
+            android:layout_marginBottom="12dp"/>
+
+        <!-- Robot Text -->
+        <TextView
+            android:id="@+id/tvRobotText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Robot: ..."
+            android:textColor="#00D9FF"
+            android:textSize="16sp"
+            android:textStyle="italic"/>
+    </LinearLayout>
+
+    <!-- Controls -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="24dp">
+
+        <Button
+            android:id="@+id/btnClose"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Close"
+            android:backgroundTint="#333333"
+            android:textColor="#FFFFFF" />
+            
+        <Space
+            android:layout_width="16dp"
+            android:layout_height="wrap_content" />
+
+        <Button
+            android:id="@+id/btnMicToggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Stop Listening"
+            android:backgroundTint="#FF3B3B"
+            android:textColor="#FFFFFF" />
+    </LinearLayout>
+
+</LinearLayout>

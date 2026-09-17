@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Power Plug icon - Red -->
+    <!-- Plug body -->
+    <path
+        android:fillColor="#F44336"
+        android:pathData="M16,9V6a1,1 0,0 0,-2 0v3h-4V6a1,1 0,0 0,-2 0v3a4,4 0,0 0,4 4v4h-3v2h8v-2h-3v-4a4,4 0,0 0,4 -4z"/>
+    <!-- Top prongs -->
+    <path
+        android:fillColor="#F44336"
+        android:pathData="M10,4h0.5v3H10V4zM13.5,4H14v3h-0.5V4z"/>
+</vector>

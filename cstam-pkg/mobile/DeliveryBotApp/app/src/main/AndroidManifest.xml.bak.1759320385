@@ -1,0 +1,31 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- صلاحيات: RTSP يحتاج إنترنت -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <application
+        android:allowBackup="true"
+        android:label="DeliveryBot"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.App">
+
+        <!-- شاشة التشغيل -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+
+        <!-- باقي الشاشات بدون intent-filter => exported=false -->
+        <activity android:name=".CameraActivity" android:exported="false"/>
+        <activity android:name=".MapActivity" android:exported="false"/>
+        <activity android:name=".ChatActivity" android:exported="false"/>
+        <activity android:name=".OrdersActivity" android:exported="false"/>
+
+    </application>
+</manifest>

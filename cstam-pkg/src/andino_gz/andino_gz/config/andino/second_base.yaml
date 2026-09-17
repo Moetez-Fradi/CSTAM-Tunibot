@@ -1,0 +1,6 @@
+base:
+  mass: 0.8               # Base mass in Kg
+  x_size: 0.45           # Dimension in x axis
+  y_size: 0.364            # Dimension in y axis
+  z_size: 0.003          # Dimension in z axis
+  mesh: '' # Name of the mesh files. Leave it empty ('') to have a white base.

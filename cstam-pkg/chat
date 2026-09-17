@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# ---------------------------------------------------------
+# ./chat - Standalone Chatbot Launcher
+# Launches ONLY the chatbot components (Llama, Piper, Bridge)
+# ---------------------------------------------------------
+
+set -e
+
+# ---------- Paths ----------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WS_ROOT="${SCRIPT_DIR}"
+LOG_DIR="${HOME}/.ros"
+mkdir -p "${LOG_DIR}"
+
+echo "🤖 Starting Chatbot Stack..."
+
+# ---------- Source ROS 2 (Humble) ----------
+if [[ -f /opt/ros/humble/setup.bash ]]; then
+  source /opt/ros/humble/setup.bash
+  echo "Sourced /opt/ros/humble/setup.bash"
+else
+  echo "❌ ROS 2 Humble not found"
+  exit 1
+fi
+
+# ---------- Source Workspace ----------
+pushd "${WS_ROOT}" >/dev/null
+if [[ -f "install/setup.bash" ]]; then
+  source install/setup.bash || true
+  echo "Sourced install/setup.bash"
+else
+  echo "❌ Workspace not built. Run: colcon build --symlink-install"
+  popd >/dev/null
+  exit 1
+fi
+
+# ---------- DDS / Domain ----------
+: "${ROS_DOMAIN_ID:=0}"
+: "${ROS_LOCALHOST_ONLY:=0}"
+export ROS_DOMAIN_ID ROS_LOCALHOST_ONLY
+export CYCLONEDDS_URI="file://${WS_ROOT}/src/andino/andino_bringup/config/cyclonedds.xml"
+echo "Using ROS_DOMAIN_ID=${ROS_DOMAIN_ID}"
+
+# ---------- Launch Chatbot ----------
+echo "==> Launching chatbot_ros/chatbot.launch.py"
+ros2 launch chatbot_ros chatbot.launch.py &
+CHATBOT_PID=$!
+
+# Wait for Llama to initialize (check /llama action server)
+echo "Waiting for Llama AI to initialize..."
+sleep 10
+
+# ---------- Launch Chat Bridge ----------
+if pgrep -f "chat_bridge.py" > /dev/null; then
+    echo "⚠️  Chat Bridge (chat_bridge.py) is already running. Skipping launch."
+    BRIDGE_PID=$(pgrep -f "chat_bridge.py" | head -n 1)
+else
+    echo "==> Starting Chat Bridge (chat_bridge.py)"
+    ros2 run deliverybot_bringup chat_bridge.py &
+    BRIDGE_PID=$!
+fi
+
+echo ""
+echo "✅ Chatbot Stack Running!"
+echo "   - Chatbot (Llama/Piper): PID ${CHATBOT_PID}"
+echo "   - Chat Bridge:          PID ${BRIDGE_PID}"
+echo ""
+echo "Press Ctrl+C to stop."
+
+# Wait for any process to exit
+wait
+
+popd >/dev/null

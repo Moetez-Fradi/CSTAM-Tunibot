@@ -1,0 +1,49 @@
+# Core & Utilities
+empy==3.3.4
+expiringdict
+lxml
+numpy>=1.22.4,<2.0.0
+pandas
+pybind11
+PyYAML
+requests
+tqdm
+watchdog
+
+# Web, Dashboard & Networking
+beautifulsoup4
+Flask
+Flask-SocketIO
+plotly
+streamlit
+waitress
+websockets
+
+# AI, ML & LLMs
+huggingface_hub
+langchain
+langchain-chroma
+langchain-community
+langchain-core
+langchain-openai
+langchain-text-splitters
+langgraph
+onnxruntime
+openai
+pydantic
+torch
+
+# Computer Vision, Media & Audio
+fpdf==1.7.2
+matplotlib==3.10.7
+opencv-python==4.10.0.84
+Pillow==10.4.0
+pygame
+pyzbar==0.1.9
+qrcode==8.2
+TTS
+edge_tts==7.2.7
+
+# GUI & Testing
+PyQt5
+pytest==8.4.1

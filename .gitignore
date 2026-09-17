@@ -1,0 +1,13 @@
+.vscode
+*.obj
+
+# JavaScript dependencies/build caches
+node_modules/
+.cache/
+
+# Android/Gradle local state and build output
+.gradle/
+*.apk
+
+# Generated mission evidence / QR captures (if not intended as fixtures)
+mission_proof/

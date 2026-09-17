@@ -1,0 +1,71 @@
+waypoints:
+  Cafeteria:
+    orientation:
+      w: 1.0
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    position:
+      x: 9.715147972106934
+      y: 6.994909286499023
+      z: 0.0
+  Lab:
+    orientation:
+      w: 1.0
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    position:
+      x: -11.689620018005371
+      y: -2.520418405532837
+      z: 0.0
+  Library:
+    orientation:
+      w: 1.0
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    position:
+      x: 12.962554931640625
+      y: -3.131279468536377
+      z: 0.0
+  Lobby:
+    orientation:
+      w: 1.0
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    position:
+      x: 0.1009753867983818
+      y: 2.973092555999756
+      z: 0.0
+  MO:
+    orientation:
+      w: 1.0
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    position:
+      x: 0.09018775820732117
+      y: 0.5478948354721069
+      z: 0.0
+  PKG:
+    orientation:
+      w: 1.0
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    position:
+      x: 0.15473118424415588
+      y: 5.731552600860596
+      z: 0.0
+  test:
+    orientation:
+      w: 1.0
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    position:
+      x: 0.037921953946352005
+      y: 0.07767985016107559
+      z: 0.0

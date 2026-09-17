@@ -1,0 +1,656 @@
+<?xml version="1.0"?>
+
+<robot
+  name="Delivery Robot_urdf" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:property name="package_name" value="andino_description"/>
+  <xacro:property name="robot_name" value="andino"/>
+
+  <!-- ========================================================= -->
+  <!-- Includes -->
+  <!-- ========================================================= -->
+  <xacro:include filename="$(find ${package_name})/urdf/include/common_macros.urdf.xacro" />
+  <xacro:include filename="$(find ${package_name})/urdf/include/common_sensors.urdf.xacro" />
+  <xacro:include filename="$(find ${package_name})/urdf/include/andino_caster_macro.urdf.xacro" />
+
+  <xacro:arg name="yaml_config_dir" default="$(find ${package_name})/config/${robot_name}" />
+
+  <!-- ========================================================= -->
+  <!-- Properties -->
+  <!-- ========================================================= -->
+  <xacro:property name="caster_wheel_yaml" value="$(arg yaml_config_dir)/caster_wheel.yaml" />
+  <xacro:property name="caster_wheel_props" value="${xacro.load_yaml(caster_wheel_yaml)}"/>
+  <xacro:arg name="use_fixed_caster" default="True"/>
+  <xacro:arg name="use_real_ros_control" default="True"/>
+
+  <xacro:property name="wheel_yaml" value="$(arg yaml_config_dir)/wheel.yaml" />
+  <xacro:property name="wheel_props" value="${xacro.load_yaml(wheel_yaml)}"/>
+
+  <xacro:property name="motor_yaml" value="$(arg yaml_config_dir)/motor.yaml" />
+  <xacro:property name="motor_props" value="${xacro.load_yaml(motor_yaml)}"/>
+
+  <xacro:property name="base_yaml" value="$(arg yaml_config_dir)/base.yaml" />
+  <xacro:property name="base_props" value="${xacro.load_yaml(base_yaml)}"/>
+
+  <xacro:property name="second_base_yaml" value="$(arg yaml_config_dir)/second_base.yaml" />
+  <xacro:property name="second_base_props" value="${xacro.load_yaml(second_base_yaml)}"/>
+
+  <xacro:property name="sensor_yaml" value="$(arg yaml_config_dir)/sensors.yaml" />
+  <xacro:property name="sensor_prop" value="${xacro.load_yaml(sensor_yaml)}"/>
+
+  <xacro:property name="hardware_yaml" value="$(arg yaml_config_dir)/hardware.yaml" />
+  <xacro:property name="hardware_props" value="${xacro.load_yaml(hardware_yaml)}"/>
+  
+  <xacro:macro name="footprint"
+               params="wheel_props">
+    <!-- Base-Footprint -->
+    <!-- base_footprint is a fictitious link(frame) that is on the ground right below base_link origin -->
+    <link name="base_footprint" />
+
+    <!-- Joint to connect base_footprint with base_link -->
+    <joint name="base_footprint_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="base_footprint" />
+      <origin xyz="0 0 ${-(wheel_props['radius'] - wheel_props['z_offset'])}" rpy="0 0 0" />
+    </joint>
+  </xacro:macro>
+
+  <xacro:footprint wheel_props="${wheel_props}" />
+
+  <!-- ========================================================= -->
+  <!-- Base Link -->
+  <!-- ========================================================= -->
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="0.0197110608215278 -0.0027804176800969 0.0969148643167121"
+        rpy="0 0 0" />
+      <mass
+        value="1.71386249919413" />
+      <inertia
+        ixx="0.0231569461000395"
+        ixy="2.50777808928108E-05"
+        ixz="0.000439253426777476"
+        iyy="0.038907074274843"
+        iyz="9.52977406661948E-06"
+        izz="0.0503099220851436" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0 0 0 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ========================================================= -->
+  <!-- Wheels -->
+  <!-- ========================================================= -->
+  <link
+    name="left_wheel">
+    <inertial>
+      <origin
+        xyz="-1.43304923483356E-10 0.00578827480780619 2.09625126285085E-10"
+        rpy="0 0 0" />
+      <mass
+        value="0.468152044139992" />
+      <inertia
+        ixx="0.000602353929382081"
+        ixy="-7.18444193596074E-12"
+        ixz="-1.00167587643128E-11"
+        iyy="0.000954241002904411"
+        iyz="1.15813680205067E-12"
+        izz="0.000602353904161843" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/left_wheel.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/left_wheel.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_wheel_joint"
+    type="continuous">
+    <origin
+      xyz="0.14695 0.20151 -0.0138"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="left_wheel" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="right_wheel">
+    <inertial>
+      <origin
+        xyz="-1.16706644348596E-11 -0.00578827480780653 -2.53660450283411E-10"
+        rpy="0 0 0" />
+      <mass
+        value="0.468152044139995" />
+      <inertia
+        ixx="0.000602353913448942"
+        ixy="5.50210245429957E-12"
+        ixz="1.57577941586563E-11"
+        iyy="0.000954241002904415"
+        iyz="4.76280775920882E-12"
+        izz="0.000602353920094988" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/right_wheel.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/right_wheel.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_wheel_joint"
+    type="continuous">
+    <origin
+      xyz="0.14695 -0.20149 -0.0138"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="right_wheel" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="left_back_wheel">
+    <inertial>
+      <origin
+        xyz="5.29933874560129E-11 0.00578827480780614 -2.48335936883781E-10"
+        rpy="0 0 0" />
+      <mass
+        value="0.468152044139996" />
+      <inertia
+        ixx="0.00060235391871097"
+        ixy="6.20688903130094E-12"
+        ixz="-1.59872080469483E-11"
+        iyy="0.000954241002904416"
+        iyz="-3.79895060057837E-12"
+        izz="0.000602353914832962" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/left_back_wheel.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/left_back_wheel.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_back_wheel_joint"
+    type="continuous">
+    <origin
+      xyz="-0.14305 0.20001 -0.0138"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="left_back_wheel" />
+    <axis
+      xyz="0 1 0" />
+            <mimic joint="left_wheel_joint" multiplier="1"/>
+  </joint>
+  <link
+    name="right_back_wheel">
+    <inertial>
+      <origin
+        xyz="1.05106146008893E-10 -0.00578827480780619 -2.3115340544444E-10"
+        rpy="0 0 0" />
+      <mass
+        value="0.468152044139994" />
+      <inertia
+        ixx="0.000602353902050807"
+        ixy="2.73004690151346E-12"
+        ixz="6.52978696203657E-12"
+        iyy="0.000954241002904414"
+        iyz="6.74568812925498E-12"
+        izz="0.000602353931493122" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/right_back_wheel.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/right_back_wheel.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_back_wheel_joint"
+    type="continuous">
+    <origin
+      xyz="-0.14305 -0.20149 -0.0138"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="right_back_wheel" />
+    <axis
+      xyz="0 -1 0" />
+            <mimic joint="right_wheel_joint" multiplier="1"/>
+  </joint>
+
+  <!-- ========================================================= -->
+  <!-- Motors -->
+  <!-- ========================================================= -->
+  <link
+    name="front_left_motor_Link">
+    <inertial>
+      <origin
+        xyz="-2.93427859787698E-09 -0.0282987057433313 1.98829454782501E-07"
+        rpy="0 0 0" />
+      <mass
+        value="0.0243780634374845" />
+      <inertia
+        ixx="6.5049636783815E-06"
+        ixy="-1.28022090855895E-11"
+        ixz="-2.83914080677337E-10"
+        iyy="1.79658931765907E-06"
+        iyz="-1.60846366473882E-10"
+        izz="6.49720687653235E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/front_left_motor_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/front_left_motor_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="front_left_motor_joint"
+    type="fixed">
+    <origin
+      xyz="0.14695 0.18351 -0.0138"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="front_left_motor_Link" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="front_right_motor_Link">
+    <inertial>
+      <origin
+        xyz="-3.90875860567519E-08 0.0282987057433313 1.94971594275756E-07"
+        rpy="0 0 0" />
+      <mass
+        value="0.0243780634374845" />
+      <inertia
+        ixx="6.50450117035748E-06"
+        ixy="-4.64547734604659E-11"
+        ixz="1.85856843533978E-09"
+        iyy="1.79658931765907E-06"
+        iyz="1.54523151022933E-10"
+        izz="6.49766938455636E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/front_right_motor_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/front_right_motor_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="front_right_motor_joint"
+    type="fixed">
+    <origin
+      xyz="0.14695 -0.18349 -0.0138"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="front_right_motor_Link" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="rear_left_motor_Link">
+    <inertial>
+      <origin
+        xyz="-2.93427060427121E-09 -0.0257987057433852 1.98829458026434E-07"
+        rpy="0 0 0" />
+      <mass
+        value="0.0243780634374845" />
+      <inertia
+        ixx="6.5049636783815E-06"
+        ixy="-1.28022090855905E-11"
+        ixz="-2.83914080677331E-10"
+        iyy="1.79658931765907E-06"
+        iyz="-1.60846366473941E-10"
+        izz="6.49720687653235E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/rear_left_motor_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/rear_left_motor_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="rear_left_motor_joint"
+    type="fixed">
+    <origin
+      xyz="-0.14305 0.18101 -0.0138"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="rear_left_motor_Link" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="rear_right_motor_joint_Link">
+    <inertial>
+      <origin
+        xyz="9.00014895943713E-08 0.0282987057433313 1.77317494423623E-07"
+        rpy="0 0 0" />
+      <mass
+        value="0.0243780634374844" />
+      <inertia
+        ixx="6.50369018171631E-06"
+        ixy="5.91757692779439E-11"
+        ixz="-2.88739930323651E-09"
+        iyy="1.79658931765907E-06"
+        iyz="1.50112219710858E-10"
+        izz="6.49848037319751E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/rear_right_motor_joint_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/rear_right_motor_joint_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="rear_right_motor_joint"
+    type="fixed">
+    <origin
+      xyz="-0.14305 -0.18349 -0.0138"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="rear_right_motor_joint_Link" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  
+  
+  <xacro:laser prefix="rplidar" parent_link="base_link"
+                   sensor_prop="${sensor_prop}">
+  </xacro:laser>
+  
+  
+  
+  <link
+    name="camera_Link">
+    <inertial>
+      <origin
+        xyz="0.000117233948187856 1.11022302462516E-16 -0.00287446531611046"
+        rpy="0 0 0" />
+      <mass
+        value="0.000713241583007372" />
+      <inertia
+        ixx="5.98763196395108E-08"
+        ixy="3.79970669441156E-23"
+        ixz="1.74410053694481E-09"
+        iyy="3.02779460629598E-08"
+        iyz="-1.24049223182452E-22"
+        izz="3.09233696784637E-08" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/camera_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 0 0 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/camera_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="camera_joint"
+    type="fixed">
+    <origin
+      xyz="0.14177 -0.088493 0.28082"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="camera_Link" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="imu_Link">
+    <inertial>
+      <origin
+        xyz="9.14669704326077E-05 7.43113497559955E-05 -0.000730279767243657"
+        rpy="0 0 0" />
+      <mass
+        value="0.000641277078130652" />
+      <inertia
+        ixx="1.18623588033942E-08"
+        ixy="-1.25747803912043E-13"
+        ixz="1.37266547980991E-14"
+        iyy="3.31177640674267E-08"
+        iyz="-7.98714410293282E-13"
+        izz="4.4714140581948E-08" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/imu_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://andino_description/meshes/imu_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="imu_joint"
+    type="fixed">
+    <origin
+      xyz="0.0019454 0.0099438 0.0016"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="imu_Link" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  
+    <!-- ====== ROS 2 Control (hardware interfaces) ====== -->
+  <xacro:if value="$(arg use_real_ros_control)">
+    <xacro:include filename="$(find ${package_name})/urdf/include/andino_control.urdf.xacro" />
+    <xacro:control hardware_props="${hardware_props}" />
+  </xacro:if>
+</robot>

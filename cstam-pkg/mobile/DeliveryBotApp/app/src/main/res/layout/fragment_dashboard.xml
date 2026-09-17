@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_video_container">
+
+    <WebView
+        android:id="@+id/dashboardWebView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+    <!-- Transparent overlay for tap to fullscreen -->
+    <View
+        android:id="@+id/dashboardClickOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent"
+        android:clickable="true"
+        android:focusable="true"/>
+
+    <ProgressBar
+        android:id="@+id/dashboardProgress"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center"
+        android:visibility="visible"/>
+
+    <TextView
+        android:id="@+id/txtOfflineNotice"
+        android:text="📊 Showing cached data"
+        android:textColor="#FFC107"
+        android:textSize="12sp"
+        android:background="#33000000"
+        android:padding="4dp"
+        android:layout_gravity="top|center_horizontal"
+        android:visibility="gone"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+</FrameLayout>
