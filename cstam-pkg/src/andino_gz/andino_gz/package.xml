@@ -14,6 +14,7 @@
 
   <exec_depend>andino_description</exec_depend>
   <exec_depend>andino_slam</exec_depend>
+  <exec_depend>cstam_robot</exec_depend>
 
   <exec_depend>ignition-gazebo6</exec_depend>
   <exec_depend>nav2_bringup</exec_depend>

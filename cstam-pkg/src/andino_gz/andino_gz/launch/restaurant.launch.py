@@ -1,4 +1,4 @@
-"""Launch the Sweet Home 3D restaurant scene with the existing Andino stack."""
+"""Launch the Sweet Home 3D restaurant scene with the CSTAM robot."""
 
 import os
 
@@ -26,7 +26,8 @@ def generate_launch_description():
                 'world_name': 'restaurant.sdf',
                 # The centre of the imported building is at the Gazebo origin.
                 # Start in the clear area south-west of the dining tables.
-                'robots': 'andino={x: -8.0, y: -12.0, z: 0.10, yaw: 0.0};',
+                'robots': 'cstam={x: -8.0, y: -12.0, z: 0.02, yaw: 0.0};',
+                'robot_type': 'cstam',
                 'nav2': 'False',
                 'rviz': 'False',
                 'autostart': 'True',

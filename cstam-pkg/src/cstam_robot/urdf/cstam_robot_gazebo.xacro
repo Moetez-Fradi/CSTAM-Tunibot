@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="cstam_gazebo" params="wheel_radius wheel_separation max_linear_speed">
+    <gazebo reference="base_link">
+      <material>Gazebo/Blue</material>
+    </gazebo>
+
+    <gazebo reference="left_front_wheel_link"><mu1>1.1</mu1><mu2>0.8</mu2><material>Gazebo/Black</material></gazebo>
+    <gazebo reference="left_rear_wheel_link"><mu1>1.1</mu1><mu2>0.8</mu2><material>Gazebo/Black</material></gazebo>
+    <gazebo reference="right_front_wheel_link"><mu1>1.1</mu1><mu2>0.8</mu2><material>Gazebo/Black</material></gazebo>
+    <gazebo reference="right_rear_wheel_link"><mu1>1.1</mu1><mu2>0.8</mu2><material>Gazebo/Black</material></gazebo>
+
+    <gazebo reference="lidar_link">
+      <sensor name="cstam_lidar" type="gpu_lidar">
+        <always_on>true</always_on>
+        <visualize>true</visualize>
+        <update_rate>15</update_rate>
+        <topic>/scan</topic>
+        <gz_frame_id>lidar_link</gz_frame_id>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>720</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.14159265</min_angle>
+              <max_angle>3.14159265</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.10</min>
+            <max>15.0</max>
+            <resolution>0.01</resolution>
+          </range>
+        </lidar>
+      </sensor>
+    </gazebo>
+
+    <!-- Gazebo Harmonic RGB-D sensor. ROS bridges are started by the test launch. -->
+    <gazebo reference="camera_link">
+      <sensor name="cstam_rgbd_camera" type="rgbd_camera">
+        <always_on>true</always_on>
+        <visualize>true</visualize>
+        <update_rate>15</update_rate>
+        <topic>/camera/rgbd</topic>
+        <gz_frame_id>camera_optical_frame</gz_frame_id>
+        <camera>
+          <horizontal_fov>1.047</horizontal_fov>
+          <image><width>640</width><height>480</height><format>R8G8B8</format></image>
+          <clip><near>0.10</near><far>12.0</far></clip>
+        </camera>
+      </sensor>
+    </gazebo>
+
+    <gazebo>
+      <plugin filename="gz-sim-diff-drive-system" name="gz::sim::systems::DiffDrive">
+        <left_joint>left_front_wheel_joint</left_joint>
+        <left_joint>left_rear_wheel_joint</left_joint>
+        <right_joint>right_front_wheel_joint</right_joint>
+        <right_joint>right_rear_wheel_joint</right_joint>
+        <wheel_separation>${wheel_separation}</wheel_separation>
+        <wheel_radius>${wheel_radius}</wheel_radius>
+        <max_velocity>${max_linear_speed}</max_velocity>
+        <odom_publish_frequency>30</odom_publish_frequency>
+        <topic>/cmd_vel</topic>
+        <odom_topic>/odom</odom_topic>
+        <tf_topic>/tf</tf_topic>
+        <frame_id>odom</frame_id>
+        <child_frame_id>base_footprint</child_frame_id>
+      </plugin>
+    </gazebo>
+  </xacro:macro>
+</robot>

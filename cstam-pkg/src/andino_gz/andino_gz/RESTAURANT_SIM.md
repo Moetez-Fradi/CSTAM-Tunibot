@@ -5,6 +5,10 @@ This scene packages the Sweet Home 3D export at
 model.  Sweet Home 3D uses centimetres and a Y-up coordinate frame, while
 Gazebo uses metres and Z-up; the transform is documented in `model.sdf`.
 
+The integration branch starts the four-wheel CSTAM robot in this scene at
+`x=-8.0`, `y=-12.0`, `z=0.02`, `yaw=0.0`.  This is the clear area
+south-west of the dining tables based on the scene's existing coordinates.
+
 From the workspace containing this package, build and source it once:
 
 ```bash
@@ -68,6 +72,18 @@ world's stable 60 m floor plane. Regenerate it after replacing the OBJ:
 ```bash
 python3 src/andino_gz/andino_gz/tools/generate_restaurant_collisions.py
 ```
+
+If this clone does not contain `models/restaurant/meshes/restaurant.obj`,
+Gazebo cannot load the restaurant visual model.  The local `office.sdf`
+environment is complete and can be used to verify the CSTAM integration:
+
+```bash
+ros2 launch andino_gz cstam_office.launch.py
+```
+
+The CSTAM package is also available independently as `cstam_robot`; its
+verified interfaces are `/cmd_vel`, `/odom`, `/scan`, `/tf`, and RGB-D topics
+under `/camera/rgbd/`.
 
 ## Moving the elevator
 

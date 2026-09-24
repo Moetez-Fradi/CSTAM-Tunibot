@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="cstam_sensors" params="chassis_height lidar_height camera_height imu_height mast_x mast_z">
+    <!-- A visible pedestal connects the front LiDAR to the chassis. -->
+    <link name="lidar_mount_link">
+      <visual>
+        <geometry><box size="0.06 0.09 0.05"/></geometry>
+        <material name="cstam_blue"/>
+      </visual>
+      <collision><geometry><box size="0.06 0.09 0.05"/></geometry></collision>
+      <xacro:box_inertia mass="0.08" x="0.06" y="0.09" z="0.05"/>
+    </link>
+    <joint name="lidar_mount_joint" type="fixed">
+      <parent link="base_link"/><child link="lidar_mount_link"/>
+      <origin xyz="0.27 0 ${lidar_height - chassis_height / 2.0 - 0.0475}" rpy="0 0 0"/>
+    </joint>
+
+    <!-- The LiDAR sits directly on the pedestal. -->
+    <link name="lidar_link">
+      <visual><geometry><cylinder radius="0.055" length="0.045"/></geometry><material name="sensor_dark"/></visual>
+      <collision><geometry><cylinder radius="0.055" length="0.045"/></geometry></collision>
+      <xacro:cylinder_inertia_y_axis mass="0.12" radius="0.055" length="0.045"/>
+    </link>
+    <joint name="lidar_joint" type="fixed">
+      <parent link="lidar_mount_link"/><child link="lidar_link"/>
+      <origin xyz="0 0 0.0475" rpy="0 0 0"/>
+    </joint>
+
+    <link name="camera_link">
+      <visual><geometry><box size="0.075 0.055 0.055"/></geometry><material name="sensor_dark"/></visual>
+      <collision><geometry><box size="0.075 0.055 0.055"/></geometry></collision>
+      <xacro:box_inertia mass="0.10" x="0.075" y="0.055" z="0.055"/>
+    </link>
+    <joint name="camera_joint" type="fixed">
+      <parent link="sensor_mast_link"/><child link="camera_link"/>
+      <origin xyz="${0.235 - mast_x} 0 ${camera_height - chassis_height / 2.0 - mast_z}" rpy="0 0 0"/>
+    </joint>
+    <link name="camera_optical_frame"/>
+    <joint name="camera_optical_joint" type="fixed">
+      <parent link="camera_link"/><child link="camera_optical_frame"/>
+      <origin xyz="0.04 0 0" rpy="${-pi / 2.0} 0 ${-pi / 2.0}"/>
+    </joint>
+
+    <link name="imu_link">
+      <visual><geometry><box size="0.035 0.035 0.018"/></geometry><material name="sensor_dark"/></visual>
+      <xacro:box_inertia mass="0.04" x="0.035" y="0.035" z="0.018"/>
+    </link>
+    <joint name="imu_joint" type="fixed">
+      <parent link="base_link"/><child link="imu_link"/>
+      <origin xyz="-0.10 0 ${imu_height - chassis_height / 2.0}" rpy="0 0 0"/>
+    </joint>
+
+    <!-- Mounting points only. No synthetic ultrasonic sensor data is generated. -->
+    <xacro:ultrasonic_mount name="front_left_ultrasonic" x="0.245" y="0.145" yaw="0.35"/>
+    <xacro:ultrasonic_mount name="front_center_ultrasonic" x="0.255" y="0.0" yaw="0.0"/>
+    <xacro:ultrasonic_mount name="front_right_ultrasonic" x="0.245" y="-0.145" yaw="-0.35"/>
+    <xacro:ultrasonic_mount name="rear_left_ultrasonic" x="-0.245" y="0.145" yaw="${pi - 0.35}"/>
+    <xacro:ultrasonic_mount name="rear_center_ultrasonic" x="-0.255" y="0.0" yaw="${pi}"/>
+    <xacro:ultrasonic_mount name="rear_right_ultrasonic" x="-0.245" y="-0.145" yaw="${-pi + 0.35}"/>
+  </xacro:macro>
+
+  <xacro:macro name="ultrasonic_mount" params="name x y yaw">
+    <link name="${name}_link">
+      <visual><geometry><cylinder radius="0.016" length="0.018"/></geometry><material name="ultrasonic_blue"/></visual>
+      <collision><geometry><cylinder radius="0.016" length="0.018"/></geometry></collision>
+      <xacro:cylinder_inertia_y_axis mass="0.015" radius="0.016" length="0.018"/>
+    </link>
+    <joint name="${name}_joint" type="fixed">
+      <parent link="base_link"/><child link="${name}_link"/>
+      <origin xyz="${x} ${y} 0.12" rpy="0 0 ${yaw}"/>
+    </joint>
+  </xacro:macro>
+</robot>
