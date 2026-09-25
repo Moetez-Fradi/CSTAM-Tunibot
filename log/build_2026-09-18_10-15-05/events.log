@@ -1,0 +1,49 @@
+[0.000000] (-) TimerEvent: {}
+[0.000117] (-) JobUnselected: {'identifier': 'andino_base'}
+[0.000139] (-) JobUnselected: {'identifier': 'andino_bringup'}
+[0.000153] (-) JobUnselected: {'identifier': 'andino_control'}
+[0.000163] (-) JobUnselected: {'identifier': 'andino_description'}
+[0.000174] (-) JobUnselected: {'identifier': 'andino_firmware'}
+[0.000184] (-) JobUnselected: {'identifier': 'andino_mobile_bridge'}
+[0.000192] (-) JobUnselected: {'identifier': 'andino_navigation'}
+[0.000201] (-) JobUnselected: {'identifier': 'andino_slam'}
+[0.000209] (-) JobUnselected: {'identifier': 'audio_common'}
+[0.000217] (-) JobUnselected: {'identifier': 'audio_common_msgs'}
+[0.000225] (-) JobUnselected: {'identifier': 'camera_ros'}
+[0.000234] (-) JobUnselected: {'identifier': 'chatbot_ros'}
+[0.000242] (-) JobUnselected: {'identifier': 'deliverybot_bringup'}
+[0.000250] (-) JobUnselected: {'identifier': 'edge_tts_ros'}
+[0.000258] (-) JobUnselected: {'identifier': 'llama_bringup'}
+[0.000266] (-) JobUnselected: {'identifier': 'llama_bt'}
+[0.000274] (-) JobUnselected: {'identifier': 'llama_cli'}
+[0.000282] (-) JobUnselected: {'identifier': 'llama_cpp_vendor'}
+[0.000290] (-) JobUnselected: {'identifier': 'llama_demos'}
+[0.000304] (-) JobUnselected: {'identifier': 'llama_hfhub_vendor'}
+[0.000312] (-) JobUnselected: {'identifier': 'llama_msgs'}
+[0.000320] (-) JobUnselected: {'identifier': 'llama_ros'}
+[0.000328] (-) JobUnselected: {'identifier': 'map_info'}
+[0.000336] (-) JobUnselected: {'identifier': 'order_logger'}
+[0.000343] (-) JobUnselected: {'identifier': 'piper_bringup'}
+[0.000351] (-) JobUnselected: {'identifier': 'piper_hfhub_vendor'}
+[0.000360] (-) JobUnselected: {'identifier': 'piper_ros'}
+[0.000367] (-) JobUnselected: {'identifier': 'piper_vendor'}
+[0.000376] (-) JobUnselected: {'identifier': 'qr_verification'}
+[0.000384] (-) JobUnselected: {'identifier': 'whisper_bringup'}
+[0.000392] (-) JobUnselected: {'identifier': 'whisper_cpp_vendor'}
+[0.000400] (-) JobUnselected: {'identifier': 'whisper_demos'}
+[0.000408] (-) JobUnselected: {'identifier': 'whisper_hfhub_vendor'}
+[0.000416] (-) JobUnselected: {'identifier': 'whisper_msgs'}
+[0.000423] (-) JobUnselected: {'identifier': 'whisper_onnxruntime_vendor'}
+[0.000432] (-) JobUnselected: {'identifier': 'whisper_ros'}
+[0.000440] (-) JobUnselected: {'identifier': 'yasmin'}
+[0.000448] (-) JobUnselected: {'identifier': 'yasmin_demos'}
+[0.000456] (-) JobUnselected: {'identifier': 'yasmin_editor'}
+[0.000464] (-) JobUnselected: {'identifier': 'yasmin_factory'}
+[0.000471] (-) JobUnselected: {'identifier': 'yasmin_msgs'}
+[0.000479] (-) JobUnselected: {'identifier': 'yasmin_ros'}
+[0.000487] (-) JobUnselected: {'identifier': 'yasmin_viewer'}
+[0.000495] (-) JobUnselected: {'identifier': 'yolo_like_detector'}
+[0.000505] (andino_gz) JobQueued: {'identifier': 'andino_gz', 'dependencies': OrderedDict({'andino_description': '/home/golden5ragon/Desktop/Robotics/cstam/install/andino_description', 'andino_slam': '/home/golden5ragon/Desktop/Robotics/cstam/install/andino_slam'})}
+[0.000521] (andino_gz) JobStarted: {'identifier': 'andino_gz'}
+[0.031646] (andino_gz) JobEnded: {'identifier': 'andino_gz', 'rc': 1}
+[0.032217] (-) EventReactorShutdown: {}

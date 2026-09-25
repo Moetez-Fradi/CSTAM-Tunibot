@@ -1,5 +1,4 @@
 .vscode
-*.obj
 
 # JavaScript dependencies/build caches
 node_modules/
