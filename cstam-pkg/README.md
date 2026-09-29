@@ -461,6 +461,21 @@ We are constantly working to enhance the capabilities of the Autonomous Delivery
 
 ## Acknowledgments
 
+## Phase 1 robotics bringup
+
+The first-floor CSTAM SLAM/Nav2/task-manager workflow is documented in the
+repository-level files:
+
+- `../PHASE1_REPORT.md` — beginner-friendly architecture, commands, tests,
+  and troubleshooting
+- `../PHASE1_ARCHITECTURE.md` — Mermaid system diagram
+- `../PHASE1_DEMO_GUIDE.md` — concise demonstration script
+
+The normal entry point is `ros2 launch cstam_phase1 phase1.launch.py` after
+building the workspace. The current map is a real SLAM candidate and must be
+validated after the documented collision-geometry correction before claiming
+full first-floor navigation acceptance.
+
 We would like to express our sincere gratitude to our project supervisors for their invaluable guidance and support throughout this journey.
 
 <table align="center">

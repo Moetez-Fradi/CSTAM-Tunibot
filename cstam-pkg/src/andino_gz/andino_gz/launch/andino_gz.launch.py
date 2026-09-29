@@ -312,7 +312,8 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([FindPackageShare('deliverybot_bringup'), 'launch', 'app.launch.py'])
         ),
-        condition=IfCondition(start_app),
+        condition=IfCondition(
+            PythonExpression(["'", start_app, "'.lower() == 'true'"])),
     )
     ld.add_action(app_launch)
     return ld

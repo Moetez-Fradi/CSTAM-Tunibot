@@ -1,0 +1,33 @@
+# All coordinates are in the saved first-floor map frame.
+# These are deliberately semantic names: task requests never contain x/y.
+supported_floors: [1]
+
+dock:
+  floor: 1
+  x: -3.63
+  y: 1.08
+  yaw: -0.522
+
+kitchen:
+  floor: 1
+  x: 0.02
+  y: 9.27
+  yaw: 1.049
+
+table_1:
+  floor: 1
+  x: -6.36
+  y: 1.32
+  yaw: -0.522
+
+table_2:
+  floor: 1
+  x: -3.96
+  y: 1.96
+  yaw: -0.522
+
+table_3:
+  floor: 1
+  x: -3.55
+  y: 1.02
+  yaw: 2.619

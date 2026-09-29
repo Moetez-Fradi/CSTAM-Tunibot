@@ -1,9 +1,10 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
-  <xacro:macro name="cstam_sensors" params="chassis_height lidar_height camera_height imu_height mast_x mast_z">
+  <xacro:macro name="cstam_sensors" params="chassis_height base_clearance lidar_height upper_lidar_height lidar_3d_height lidar_3d_x camera_height imu_height mast_x mast_z">
     <!-- A visible pedestal connects the front LiDAR to the chassis. -->
     <link name="lidar_mount_link">
       <visual>
+        <visibility_flags>2</visibility_flags>
         <geometry><box size="0.06 0.09 0.05"/></geometry>
         <material name="cstam_blue"/>
       </visual>
@@ -17,7 +18,7 @@
 
     <!-- The LiDAR sits directly on the pedestal. -->
     <link name="lidar_link">
-      <visual><geometry><cylinder radius="0.055" length="0.045"/></geometry><material name="sensor_dark"/></visual>
+      <visual><visibility_flags>2</visibility_flags><geometry><cylinder radius="0.055" length="0.045"/></geometry><material name="sensor_dark"/></visual>
       <collision><geometry><cylinder radius="0.055" length="0.045"/></geometry></collision>
       <xacro:cylinder_inertia_y_axis mass="0.12" radius="0.055" length="0.045"/>
     </link>
@@ -26,8 +27,31 @@
       <origin xyz="0 0 0.0475" rpy="0 0 0"/>
     </joint>
 
+    <!-- A second scan plane sees chair backs and table edges above the low
+         mapping LiDAR. Nav2 uses it locally; AMCL keeps the original scan. -->
+    <link name="lidar_upper_link"/>
+    <joint name="lidar_upper_joint" type="fixed">
+      <parent link="base_link"/><child link="lidar_upper_link"/>
+      <origin xyz="0.27 0 ${upper_lidar_height - chassis_height / 2.0 - base_clearance}" rpy="0 0 0"/>
+    </joint>
+
+    <!-- Primary Phase 1 multi-channel LiDAR mount. -->
+    <link name="lidar_3d_link">
+      <visual>
+        <visibility_flags>2</visibility_flags>
+        <geometry><cylinder radius="0.055" length="0.05"/></geometry>
+        <material name="sensor_dark"/>
+      </visual>
+      <collision><geometry><cylinder radius="0.055" length="0.05"/></geometry></collision>
+      <xacro:cylinder_inertia_y_axis mass="0.14" radius="0.055" length="0.05"/>
+    </link>
+    <joint name="lidar_3d_joint" type="fixed">
+      <parent link="base_link"/><child link="lidar_3d_link"/>
+      <origin xyz="${lidar_3d_x} 0 ${lidar_3d_height - chassis_height / 2.0 - base_clearance}" rpy="0 0 0"/>
+    </joint>
+
     <link name="camera_link">
-      <visual><geometry><box size="0.075 0.055 0.055"/></geometry><material name="sensor_dark"/></visual>
+      <visual><visibility_flags>2</visibility_flags><geometry><box size="0.075 0.055 0.055"/></geometry><material name="sensor_dark"/></visual>
       <collision><geometry><box size="0.075 0.055 0.055"/></geometry></collision>
       <xacro:box_inertia mass="0.10" x="0.075" y="0.055" z="0.055"/>
     </link>
@@ -42,7 +66,7 @@
     </joint>
 
     <link name="imu_link">
-      <visual><geometry><box size="0.035 0.035 0.018"/></geometry><material name="sensor_dark"/></visual>
+      <visual><visibility_flags>2</visibility_flags><geometry><box size="0.035 0.035 0.018"/></geometry><material name="sensor_dark"/></visual>
       <xacro:box_inertia mass="0.04" x="0.035" y="0.035" z="0.018"/>
     </link>
     <joint name="imu_joint" type="fixed">
@@ -61,7 +85,7 @@
 
   <xacro:macro name="ultrasonic_mount" params="name x y yaw">
     <link name="${name}_link">
-      <visual><geometry><cylinder radius="0.016" length="0.018"/></geometry><material name="ultrasonic_blue"/></visual>
+      <visual><visibility_flags>2</visibility_flags><geometry><cylinder radius="0.016" length="0.018"/></geometry><material name="ultrasonic_blue"/></visual>
       <collision><geometry><cylinder radius="0.016" length="0.018"/></geometry></collision>
       <xacro:cylinder_inertia_y_axis mass="0.015" radius="0.016" length="0.018"/>
     </link>

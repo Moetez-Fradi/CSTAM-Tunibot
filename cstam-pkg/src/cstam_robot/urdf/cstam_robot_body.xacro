@@ -3,7 +3,7 @@
   <xacro:macro name="cstam_body"
                params="shelf_length shelf_width shelf_thickness shelf_1_z shelf_2_z shelf_3_z shelf_mass mast_z mast_height display_z">
     <link name="rear_panel_link">
-      <visual><geometry><box size="0.045 ${shelf_width} 0.83"/></geometry><material name="cstam_light_blue"/></visual>
+      <visual><visibility_flags>2</visibility_flags><geometry><box size="0.045 ${shelf_width} 0.83"/></geometry><material name="cstam_light_blue"/></visual>
       <collision><geometry><box size="0.045 ${shelf_width} 0.83"/></geometry></collision>
       <xacro:box_inertia mass="1.1" x="0.045" y="${shelf_width}" z="0.83"/>
     </link>
@@ -14,7 +14,7 @@
 
     <!-- Full-height side supports keep all three delivery shelves attached. -->
     <link name="left_shelf_support_link">
-      <visual><geometry><box size="${shelf_length} 0.025 0.83"/></geometry><material name="cstam_light_blue"/></visual>
+      <visual><visibility_flags>2</visibility_flags><geometry><box size="${shelf_length} 0.025 0.83"/></geometry><material name="cstam_light_blue"/></visual>
       <collision><geometry><box size="${shelf_length} 0.025 0.83"/></geometry></collision>
       <xacro:box_inertia mass="0.35" x="${shelf_length}" y="0.025" z="0.83"/>
     </link>
@@ -24,7 +24,7 @@
     </joint>
 
     <link name="right_shelf_support_link">
-      <visual><geometry><box size="${shelf_length} 0.025 0.83"/></geometry><material name="cstam_light_blue"/></visual>
+      <visual><visibility_flags>2</visibility_flags><geometry><box size="${shelf_length} 0.025 0.83"/></geometry><material name="cstam_light_blue"/></visual>
       <collision><geometry><box size="${shelf_length} 0.025 0.83"/></geometry></collision>
       <xacro:box_inertia mass="0.35" x="${shelf_length}" y="0.025" z="0.83"/>
     </link>
@@ -35,7 +35,7 @@
 
     <!-- Each shelf is fixed to the rear panel, which is fixed to the chassis. -->
     <link name="shelf_1_link">
-      <visual><geometry><box size="${shelf_length} ${shelf_width} ${shelf_thickness}"/></geometry><material name="shelf_white"/></visual>
+      <visual><visibility_flags>2</visibility_flags><geometry><box size="${shelf_length} ${shelf_width} ${shelf_thickness}"/></geometry><material name="shelf_white"/></visual>
       <collision><geometry><box size="${shelf_length} ${shelf_width} ${shelf_thickness}"/></geometry></collision>
       <xacro:box_inertia mass="${shelf_mass}" x="${shelf_length}" y="${shelf_width}" z="${shelf_thickness}"/>
     </link>
@@ -45,7 +45,7 @@
     </joint>
 
     <link name="shelf_2_link">
-      <visual><geometry><box size="${shelf_length} ${shelf_width} ${shelf_thickness}"/></geometry><material name="shelf_white"/></visual>
+      <visual><visibility_flags>2</visibility_flags><geometry><box size="${shelf_length} ${shelf_width} ${shelf_thickness}"/></geometry><material name="shelf_white"/></visual>
       <collision><geometry><box size="${shelf_length} ${shelf_width} ${shelf_thickness}"/></geometry></collision>
       <xacro:box_inertia mass="${shelf_mass}" x="${shelf_length}" y="${shelf_width}" z="${shelf_thickness}"/>
     </link>
@@ -55,7 +55,7 @@
     </joint>
 
     <link name="shelf_3_link">
-      <visual><geometry><box size="${shelf_length} ${shelf_width} ${shelf_thickness}"/></geometry><material name="shelf_white"/></visual>
+      <visual><visibility_flags>2</visibility_flags><geometry><box size="${shelf_length} ${shelf_width} ${shelf_thickness}"/></geometry><material name="shelf_white"/></visual>
       <collision><geometry><box size="${shelf_length} ${shelf_width} ${shelf_thickness}"/></geometry></collision>
       <xacro:box_inertia mass="${shelf_mass}" x="${shelf_length}" y="${shelf_width}" z="${shelf_thickness}"/>
     </link>
@@ -65,7 +65,7 @@
     </joint>
 
     <link name="sensor_mast_link">
-      <visual><geometry><box size="0.055 0.055 ${mast_height}"/></geometry><material name="cstam_blue"/></visual>
+      <visual><visibility_flags>2</visibility_flags><geometry><box size="0.055 0.055 ${mast_height}"/></geometry><material name="cstam_blue"/></visual>
       <collision><geometry><box size="0.055 0.055 ${mast_height}"/></geometry></collision>
       <xacro:box_inertia mass="0.45" x="0.055" y="0.055" z="${mast_height}"/>
     </link>
@@ -75,7 +75,7 @@
     </joint>
 
     <link name="display_link">
-      <visual><geometry><box size="0.045 0.28 0.16"/></geometry><material name="display_green"/></visual>
+      <visual><visibility_flags>2</visibility_flags><geometry><box size="0.045 0.28 0.16"/></geometry><material name="display_green"/></visual>
       <collision><geometry><box size="0.045 0.28 0.16"/></geometry></collision>
       <xacro:box_inertia mass="0.35" x="0.045" y="0.28" z="0.16"/>
     </link>
