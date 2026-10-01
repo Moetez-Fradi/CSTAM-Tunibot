@@ -6,9 +6,9 @@ FIFO queue, and autonomous return to a defined dock pose.
 
 **Measured acceptance:** kitchen 3/3, raw Nav2 4/4, two fresh complete deliveries,
 queued table 1 then table 2, invalid/duplicate rejection, and manual dock return
-passed. Details and physical arrival errors are in [PHASE1_REPORT.md](PHASE1_REPORT.md).
+passed. Physical arrival errors and recorded results are in the
+[application acceptance data](docs/phase1_application_acceptance.json).
 Docking here means autonomous station-pose arrival, not charger alignment.
-Current local engineering changes await review; they have not been committed or pushed.
 
 ## Prerequisites and focused build
 
@@ -18,7 +18,7 @@ rosdep once (`sudo rosdep init`, then `rosdep update`). Install dependencies
 for the five-package Phase 1 closure, excluding unrelated legacy applications:
 
 ```bash
-git clone --branch Youssef https://github.com/Moetez-Fradi/CSTAM-Tunibot.git
+git clone --branch main https://github.com/Moetez-Fradi/CSTAM-Tunibot.git
 cd CSTAM-Tunibot/cstam-pkg
 source /opt/ros/jazzy/setup.bash
 rosdep install --from-paths \
@@ -119,12 +119,10 @@ Before changing modes or starting acceptance tests, check that no mapping
 helper or old launch remains and inspect `ros2 topic info /cmd_vel -v`.
 Normal mode has one physical command publisher, `velocity_smoother`.
 
-- [Architecture and diagram](PHASE1_ARCHITECTURE.md)
-- [Measured engineering report](PHASE1_REPORT.md)
-- [Reproducible test cases](docs/PHASE1_TESTS.md)
-- [Exact demo sequence](PHASE1_DEMO_GUIDE.md)
-- [Three-minute video plan](PHASE1_VIDEO_SCRIPT.md)
-- [Submission checklist](PHASE1_SUBMISSION_CHECKLIST.md)
+- [Architecture diagram](docs/phase1_architecture.svg)
+- [Final validation summary](docs/phase1_final_validation.json)
+- [Application acceptance data](docs/phase1_application_acceptance.json)
+- [Mapping acceptance data](docs/phase1_mapping_acceptance.json)
 
 ## Repository structure
 
@@ -145,4 +143,4 @@ friction limit real-hardware conclusions. Dock and table 3 are safe at their
 configured headings, not at every possible rotation. Physical dock error in
 accepted application runs was 0.176–0.292 m. Controller recovery maneuvers still
 occur; these trials establish repeatability for the tested routes, not universal
-collision avoidance. See the report for quantitative caveats.
+collision avoidance. Consult the acceptance data for quantitative details.
