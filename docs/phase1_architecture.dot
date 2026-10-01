@@ -1,0 +1,11 @@
+digraph phase1 {
+  graph [rankdir=TB, bgcolor="white", pad="0.3", nodesep="0.3", ranksep="0.5", fontname="DejaVu Sans"];
+  node [shape=box, style="rounded,filled", fillcolor="#eef4fa", fontname="DejaVu Sans", fontsize=11];
+  edge [fontname="DejaVu Sans", fontsize=9, color="#486477"];
+  subgraph cluster_sim {label="SIMULATION"; color="#ccd8e5"; g [label="Gazebo Harmonic\nCSTAM + first-floor restaurant"]; b [label="ros_gz_bridge\nclock · cloud · odom · TF · joints"]; g -> b;}
+  subgraph cluster_perception {label="PERCEPTION"; color="#ccd8e5"; f [label="Body self-filter + height projection\n/lidar/points: 16 × 360"]; s [label="/scan_navigation\nreal nearest-return projection"]; m [label="/lidar/points_filtered\nobstacle marking"]; c [label="/lidar/points_clearing\nfree-ray clearing only"]; f -> s; f -> m; f -> c;}
+  subgraph cluster_pose {label="MAPPING OR LOCALIZATION"; color="#ccd8e5"; sl [label="SLAM Toolbox\nlive map + map saving"]; a [label="Saved map + AMCL\nautomatic initial pose"]; tf [label="TF / pose\nmap → odom → base_drive\n→ base_footprint → sensor"]; s -> sl; s -> a; sl -> tf [label="mapping mode"]; a -> tf [label="normal mode"];}
+  subgraph cluster_nav {label="NAVIGATION"; color="#ccd8e5"; gc [label="GLOBAL\nstatic map + inflation"]; lc [label="LOCAL\nrolling VoxelLayer + inflation"]; bt [label="Nav2 NavigateToPose\naction + replanning / recovery"]; p [label="NavFn Dijkstra\nglobal path"]; co [label="Rotation Shim + DWB\nfull footprint + pose progress"]; v [label="Velocity smoother\n/cmd_vel_nav → /cmd_vel"]; bt -> p; gc -> p; p -> co; lc -> co; co -> v;}
+  subgraph cluster_app {label="APPLICATION"; color="#ccd8e5"; u [label="Delivery request\nmanual return service"]; loc [label="Semantic locations\nkitchen · tables · dock"]; t [label="Delivery task manager\nFIFO queue · actual action results"]; flow [label="Kitchen → table → dock → IDLE", fillcolor="#d8eedf"]; u -> t; loc -> t; t -> flow;}
+  b -> f; b -> tf [label="wheel odom / robot TF"]; a -> gc [label="accepted map"]; m -> lc; c -> lc; tf -> p; tf -> co; t -> bt [label="NavigateToPose"]; bt -> t [label="real result", constraint=false]; v -> g [label="physical motion", constraint=false];
+}

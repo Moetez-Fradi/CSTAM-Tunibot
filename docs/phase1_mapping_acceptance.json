@@ -1,0 +1,165 @@
+{
+  "final": true,
+  "first_map": {
+    "elapsed": 7.206,
+    "width": 198,
+    "height": 422,
+    "resolution": 0.05000000074505806,
+    "known": 813,
+    "occupied": 3,
+    "free": 810
+  },
+  "last_map": {
+    "elapsed": 179.211,
+    "width": 322,
+    "height": 422,
+    "resolution": 0.05000000074505806,
+    "known": 19076,
+    "occupied": 440,
+    "free": 18636
+  },
+  "map_messages": 87,
+  "odom_distance": 1.046800004295318,
+  "counts": {
+    "/lidar/points": 255,
+    "/lidar/points_filtered": 255,
+    "/lidar/points_clearing": 255,
+    "/scan_navigation": 255
+  },
+  "last": {
+    "/lidar/points": {
+      "width": 360,
+      "height": 16,
+      "frame": "lidar_3d_link"
+    },
+    "odom": [
+      0.027003310061410702,
+      1.046451648692158,
+      1.5449999522060596
+    ],
+    "/lidar/points_filtered": {
+      "width": 468,
+      "height": 1,
+      "frame": "lidar_3d_link"
+    },
+    "/lidar/points_clearing": {
+      "width": 3614,
+      "height": 1,
+      "frame": "lidar_3d_link"
+    },
+    "/scan_navigation": {
+      "samples": 360,
+      "finite": 194,
+      "frame": "lidar_3d_link"
+    }
+  },
+  "status": "VERIFIED",
+  "map_saved": {
+    "width": 322,
+    "height": 444,
+    "resolution": 0.05,
+    "saved_successfully": true,
+    "accepted_navigation_map_unchanged": true
+  },
+  "physical_start_world": [
+    11.4,
+    6.95,
+    0
+  ],
+  "physical_end_world": [
+    11.5678,
+    8.28029,
+    1.50292
+  ],
+  "contacts": {
+    "final": true,
+    "messages": 13740,
+    "ground": 13740,
+    "non_ground": 0,
+    "pairs": []
+  },
+  "final_bounded_gui_demo": {
+    "status": "VERIFIED",
+    "route": "mapping_route: 0.08 m/s, 0.15 rad/s, one 1.0m leg, 0.55m safety; production helper completed and stopped",
+    "measurements": {
+      "final": true,
+      "first_map": {
+        "elapsed": 0.75,
+        "width": 198,
+        "height": 422,
+        "resolution": 0.05000000074505806,
+        "known": 813,
+        "occupied": 3,
+        "free": 810
+      },
+      "last_map": {
+        "elapsed": 140.752,
+        "width": 323,
+        "height": 423,
+        "resolution": 0.05000000074505806,
+        "known": 18851,
+        "occupied": 458,
+        "free": 18393
+      },
+      "map_messages": 71,
+      "odom_distance": 1.0072000044368692,
+      "counts": {
+        "/lidar/points": 196,
+        "/lidar/points_filtered": 195,
+        "/lidar/points_clearing": 195,
+        "/scan_navigation": 195
+      },
+      "last": {
+        "odom": [
+          0.027492154312484324,
+          1.0068247184079315,
+          1.5434999522563415
+        ],
+        "/lidar/points": {
+          "width": 360,
+          "height": 16,
+          "frame": "lidar_3d_link"
+        },
+        "/lidar/points_filtered": {
+          "width": 456,
+          "height": 1,
+          "frame": "lidar_3d_link"
+        },
+        "/lidar/points_clearing": {
+          "width": 3614,
+          "height": 1,
+          "frame": "lidar_3d_link"
+        },
+        "/scan_navigation": {
+          "samples": 360,
+          "finite": 194,
+          "frame": "lidar_3d_link"
+        }
+      }
+    },
+    "physical_start_world": [
+      11.4,
+      6.95,
+      -0.0
+    ],
+    "physical_end_world": [
+      11.5419,
+      7.8759,
+      1.50105
+    ],
+    "map_saved": {
+      "width": 323,
+      "height": 423,
+      "resolution": 0.05,
+      "saved_successfully": true
+    },
+    "contacts": {
+      "final": true,
+      "messages": 10400,
+      "ground": 10400,
+      "non_ground": 0,
+      "pairs": []
+    },
+    "observer_note": "Temporary observer emitted final JSON then reported redundant rclpy shutdown on SIGINT; production helper and map saver completed normally."
+  }
+}

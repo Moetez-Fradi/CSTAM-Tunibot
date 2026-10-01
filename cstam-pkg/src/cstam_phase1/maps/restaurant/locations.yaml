@@ -1,0 +1,37 @@
+# All coordinates are in the saved first-floor map frame.
+# These are deliberately semantic names: task requests never contain x/y.
+supported_floors: [1]
+
+dock:
+  floor: 1
+  x: -3.63
+  # Shift 0.23 m south within the same docking/staging area. With the full
+  # padded footprint, the old pose enclosed one lethal static-map cell.
+  y: 0.85
+  yaw: -0.522
+
+kitchen:
+  floor: 1
+  x: 0.02
+  y: 9.27
+  yaw: 1.049
+
+table_1:
+  floor: 1
+  x: -6.36
+  y: 1.32
+  yaw: -0.522
+
+table_2:
+  floor: 1
+  # West service approach to the same table. The previous pose was inside
+  # its real tabletop collision despite being a free occupancy-map cell.
+  x: -5.60
+  y: 1.96
+  yaw: 0.0
+
+table_3:
+  floor: 1
+  x: -3.55
+  y: 1.02
+  yaw: 2.619

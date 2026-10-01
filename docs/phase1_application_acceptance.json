@@ -1,0 +1,1086 @@
+{
+  "date": "2026-10-01",
+  "branch": "Youssef",
+  "status": "VERIFIED",
+  "notes": [
+    "Real Gazebo motion, ROS sensor data and actual Nav2 goal results.",
+    "Cached action statuses excluded from new_goal_results.",
+    "Docking means station-pose arrival, not charger contact alignment.",
+    "Final physical pose measured at rest after a two-second settling interval."
+  ],
+  "completed_delivery1": {
+    "acceptance_status": "VERIFIED",
+    "summary": {
+      "elapsed": 349.943,
+      "result": "SUCCEEDED",
+      "max_active_goals": 1,
+      "goals": {
+        "31da85747c574fabaf19d4481b9561db": 4,
+        "2e9fdf36aa2441bab4e23278d10d75db": 4,
+        "506f405af8764d0795263d08202311d0": 4
+      },
+      "status": {
+        "state": "IDLE",
+        "current_location": null,
+        "current_stage": null,
+        "queue": [],
+        "last_result": 4,
+        "message": "IDLE at first-floor dock"
+      },
+      "odometry_distance": 27.830652303092773,
+      "final_map_pose": [
+        -3.6399505627625084,
+        0.6430184448610139,
+        -0.39957681781837234
+      ],
+      "final_world_pose": [
+        7.59217,
+        7.62396,
+        -0.428325
+      ],
+      "physical_dock_error_m": 0.17605337400913348,
+      "physical_dock_yaw_error": 0.093675
+    },
+    "status_transitions": [
+      {
+        "elapsed": 4.005,
+        "status": {
+          "state": "IDLE",
+          "current_location": null,
+          "current_stage": null,
+          "queue": [
+            "table_1"
+          ],
+          "last_result": null,
+          "message": "queued table_1"
+        }
+      },
+      {
+        "elapsed": 4.006,
+        "status": {
+          "state": "NAVIGATING_TO_PICKUP",
+          "current_location": "table_1",
+          "current_stage": "pickup",
+          "queue": [],
+          "last_result": null,
+          "message": "going to pickup for table_1"
+        }
+      },
+      {
+        "elapsed": 126.37,
+        "status": {
+          "state": "NAVIGATING_TO_CUSTOMER",
+          "current_location": "table_1",
+          "current_stage": "pickup",
+          "queue": [],
+          "last_result": 4,
+          "message": "pickup reached; going to table_1"
+        }
+      },
+      {
+        "elapsed": 284.335,
+        "status": {
+          "state": "DELIVERY_COMPLETE",
+          "current_location": "table_1",
+          "current_stage": "customer",
+          "queue": [],
+          "last_result": 4,
+          "message": "delivery complete at table_1"
+        }
+      },
+      {
+        "elapsed": 284.335,
+        "status": {
+          "state": "RETURNING_TO_DOCK",
+          "current_location": null,
+          "current_stage": "dock",
+          "queue": [],
+          "last_result": 4,
+          "message": "returning to first-floor dock"
+        }
+      },
+      {
+        "elapsed": 347.19,
+        "status": {
+          "state": "IDLE",
+          "current_location": null,
+          "current_stage": null,
+          "queue": [],
+          "last_result": 4,
+          "message": "IDLE at first-floor dock"
+        }
+      },
+      {
+        "elapsed": 349.943,
+        "result": "SUCCEEDED",
+        "max_active_goals": 1,
+        "goals": {
+          "31da85747c574fabaf19d4481b9561db": 4,
+          "2e9fdf36aa2441bab4e23278d10d75db": 4,
+          "506f405af8764d0795263d08202311d0": 4
+        },
+        "status": {
+          "state": "IDLE",
+          "current_location": null,
+          "current_stage": null,
+          "queue": [],
+          "last_result": 4,
+          "message": "IDLE at first-floor dock"
+        },
+        "odometry_distance": 27.830652303092773,
+        "final_map_pose": [
+          -3.6399505627625084,
+          0.6430184448610139,
+          -0.39957681781837234
+        ],
+        "final_world_pose": [
+          7.59217,
+          7.62396,
+          -0.428325
+        ],
+        "physical_dock_error_m": 0.17605337400913348,
+        "physical_dock_yaw_error": 0.093675
+      }
+    ],
+    "requests": [
+      {
+        "elapsed": 4.004,
+        "request": "table_1"
+      }
+    ],
+    "contacts": {
+      "final": true,
+      "messages": 115608,
+      "ground": 115608,
+      "non_ground": 0,
+      "pairs": []
+    }
+  },
+  "completed_delivery2": {
+    "acceptance_status": "VERIFIED",
+    "summary": {
+      "elapsed": 332.553,
+      "result": "SUCCEEDED",
+      "max_active_goals": 1,
+      "goals": {
+        "df946efee2124a90a2c810f0349b8561": 4,
+        "40cd63eee79640048ef22f207d584793": 4,
+        "13c9eb2360014f279644ddc869e8cdf1": 4
+      },
+      "new_goal_results": {
+        "df946efee2124a90a2c810f0349b8561": 4,
+        "40cd63eee79640048ef22f207d584793": 4,
+        "13c9eb2360014f279644ddc869e8cdf1": 4
+      },
+      "status": {
+        "state": "IDLE",
+        "current_location": null,
+        "current_stage": null,
+        "queue": [],
+        "last_result": 4,
+        "message": "IDLE at first-floor dock"
+      },
+      "odometry_distance": 27.73305173949829,
+      "final_map_pose": [
+        -3.6701978721028468,
+        0.6232060411397293,
+        -0.41803385858784925
+      ],
+      "final_world_pose": [
+        7.63054,
+        7.54672,
+        -0.440675
+      ],
+      "physical_dock_error_m": 0.2565038986058498,
+      "physical_dock_yaw_error": 0.08132500000000004
+    },
+    "status_transitions": [
+      {
+        "elapsed": 4.013,
+        "status": {
+          "state": "IDLE",
+          "current_location": null,
+          "current_stage": null,
+          "queue": [
+            "table_1"
+          ],
+          "last_result": null,
+          "message": "queued table_1"
+        }
+      },
+      {
+        "elapsed": 4.017,
+        "status": {
+          "state": "NAVIGATING_TO_PICKUP",
+          "current_location": "table_1",
+          "current_stage": "pickup",
+          "queue": [],
+          "last_result": null,
+          "message": "going to pickup for table_1"
+        }
+      },
+      {
+        "elapsed": 125.504,
+        "status": {
+          "state": "NAVIGATING_TO_CUSTOMER",
+          "current_location": "table_1",
+          "current_stage": "pickup",
+          "queue": [],
+          "last_result": 4,
+          "message": "pickup reached; going to table_1"
+        }
+      },
+      {
+        "elapsed": 273.062,
+        "status": {
+          "state": "DELIVERY_COMPLETE",
+          "current_location": "table_1",
+          "current_stage": "customer",
+          "queue": [],
+          "last_result": 4,
+          "message": "delivery complete at table_1"
+        }
+      },
+      {
+        "elapsed": 273.063,
+        "status": {
+          "state": "RETURNING_TO_DOCK",
+          "current_location": null,
+          "current_stage": "dock",
+          "queue": [],
+          "last_result": 4,
+          "message": "returning to first-floor dock"
+        }
+      },
+      {
+        "elapsed": 329.74,
+        "status": {
+          "state": "IDLE",
+          "current_location": null,
+          "current_stage": null,
+          "queue": [],
+          "last_result": 4,
+          "message": "IDLE at first-floor dock"
+        }
+      },
+      {
+        "elapsed": 332.553,
+        "result": "SUCCEEDED",
+        "max_active_goals": 1,
+        "goals": {
+          "df946efee2124a90a2c810f0349b8561": 4,
+          "40cd63eee79640048ef22f207d584793": 4,
+          "13c9eb2360014f279644ddc869e8cdf1": 4
+        },
+        "new_goal_results": {
+          "df946efee2124a90a2c810f0349b8561": 4,
+          "40cd63eee79640048ef22f207d584793": 4,
+          "13c9eb2360014f279644ddc869e8cdf1": 4
+        },
+        "status": {
+          "state": "IDLE",
+          "current_location": null,
+          "current_stage": null,
+          "queue": [],
+          "last_result": 4,
+          "message": "IDLE at first-floor dock"
+        },
+        "odometry_distance": 27.73305173949829,
+        "final_map_pose": [
+          -3.6701978721028468,
+          0.6232060411397293,
+          -0.41803385858784925
+        ],
+        "final_world_pose": [
+          7.63054,
+          7.54672,
+          -0.440675
+        ],
+        "physical_dock_error_m": 0.2565038986058498,
+        "physical_dock_yaw_error": 0.08132500000000004
+      }
+    ],
+    "requests": [
+      {
+        "elapsed": 4.011,
+        "request": "table_1"
+      }
+    ],
+    "contacts": {
+      "final": true,
+      "messages": 108628,
+      "ground": 108628,
+      "non_ground": 0,
+      "pairs": []
+    }
+  },
+  "completed_queue": {
+    "acceptance_status": "VERIFIED",
+    "summary": {
+      "elapsed": 587.653,
+      "result": "SUCCEEDED",
+      "max_active_goals": 1,
+      "goals": {
+        "df946efee2124a90a2c810f0349b8561": 4,
+        "40cd63eee79640048ef22f207d584793": 4,
+        "13c9eb2360014f279644ddc869e8cdf1": 4,
+        "e8671ef726b54b1a817fe1f789e92ff6": 4,
+        "5f4e979240964ada8a3b6b62866f5481": 4,
+        "ce4ded07efbd4d928bcab9cb99969e20": 4,
+        "f759b867f0554f80a6ec0245606c710b": 4,
+        "ed10e5bac01346c5bf2e684a61c2f457": 4
+      },
+      "new_goal_results": {
+        "e8671ef726b54b1a817fe1f789e92ff6": 4,
+        "5f4e979240964ada8a3b6b62866f5481": 4,
+        "ce4ded07efbd4d928bcab9cb99969e20": 4,
+        "f759b867f0554f80a6ec0245606c710b": 4,
+        "ed10e5bac01346c5bf2e684a61c2f457": 4
+      },
+      "status": {
+        "state": "IDLE",
+        "current_location": null,
+        "current_stage": null,
+        "queue": [],
+        "last_result": 4,
+        "message": "IDLE at first-floor dock"
+      },
+      "odometry_distance": 48.531143748449715,
+      "final_map_pose": [
+        -3.6973304278909076,
+        0.6433897013031243,
+        -0.4186052741906785
+      ],
+      "final_world_pose": [
+        7.54029,
+        7.61943,
+        -0.475134
+      ],
+      "physical_dock_error_m": 0.18728750358739854,
+      "physical_dock_yaw_error": 0.04686600000000002
+    },
+    "status_transitions": [
+      {
+        "elapsed": 3.019,
+        "status": {
+          "state": "IDLE",
+          "current_location": null,
+          "current_stage": null,
+          "queue": [],
+          "last_result": 4,
+          "message": "IDLE at first-floor dock"
+        }
+      },
+      {
+        "elapsed": 4.051,
+        "status": {
+          "state": "IDLE",
+          "current_location": null,
+          "current_stage": null,
+          "queue": [
+            "table_1"
+          ],
+          "last_result": 4,
+          "message": "queued table_1"
+        }
+      },
+      {
+        "elapsed": 4.055,
+        "status": {
+          "state": "NAVIGATING_TO_PICKUP",
+          "current_location": "table_1",
+          "current_stage": "pickup",
+          "queue": [],
+          "last_result": 4,
+          "message": "going to pickup for table_1"
+        }
+      },
+      {
+        "elapsed": 4.565,
+        "status": {
+          "state": "NAVIGATING_TO_PICKUP",
+          "current_location": "table_1",
+          "current_stage": "pickup",
+          "queue": [
+            "table_2"
+          ],
+          "last_result": 4,
+          "message": "queued table_2"
+        }
+      },
+      {
+        "elapsed": 5.557,
+        "status": {
+          "state": "NAVIGATING_TO_PICKUP",
+          "current_location": "table_1",
+          "current_stage": "pickup",
+          "queue": [
+            "table_2"
+          ],
+          "last_result": 4,
+          "message": "rejected: duplicate request for \"table_1\""
+        }
+      },
+      {
+        "elapsed": 6.558,
+        "status": {
+          "state": "NAVIGATING_TO_PICKUP",
+          "current_location": "table_1",
+          "current_stage": "pickup",
+          "queue": [
+            "table_2"
+          ],
+          "last_result": 4,
+          "message": "rejected: duplicate request for \"table_2\""
+        }
+      },
+      {
+        "elapsed": 7.557,
+        "status": {
+          "state": "NAVIGATING_TO_PICKUP",
+          "current_location": "table_1",
+          "current_stage": "pickup",
+          "queue": [
+            "table_2"
+          ],
+          "last_result": 4,
+          "message": "rejected: unknown location \"unknown_table\"; valid locations: dock, kitchen, table_1, table_2, table_3"
+        }
+      },
+      {
+        "elapsed": 8.56,
+        "status": {
+          "state": "NAVIGATING_TO_PICKUP",
+          "current_location": "table_1",
+          "current_stage": "pickup",
+          "queue": [
+            "table_2"
+          ],
+          "last_result": 4,
+          "message": "rejected: empty delivery location"
+        }
+      },
+      {
+        "elapsed": 132.283,
+        "status": {
+          "state": "NAVIGATING_TO_CUSTOMER",
+          "current_location": "table_1",
+          "current_stage": "pickup",
+          "queue": [
+            "table_2"
+          ],
+          "last_result": 4,
+          "message": "pickup reached; going to table_1"
+        }
+      },
+      {
+        "elapsed": 286.601,
+        "status": {
+          "state": "DELIVERY_COMPLETE",
+          "current_location": "table_1",
+          "current_stage": "customer",
+          "queue": [
+            "table_2"
+          ],
+          "last_result": 4,
+          "message": "delivery complete at table_1"
+        }
+      },
+      {
+        "elapsed": 286.602,
+        "status": {
+          "state": "NAVIGATING_TO_PICKUP",
+          "current_location": "table_2",
+          "current_stage": "pickup",
+          "queue": [],
+          "last_result": 4,
+          "message": "going to pickup for table_2"
+        }
+      },
+      {
+        "elapsed": 414.179,
+        "status": {
+          "state": "NAVIGATING_TO_CUSTOMER",
+          "current_location": "table_2",
+          "current_stage": "pickup",
+          "queue": [],
+          "last_result": 4,
+          "message": "pickup reached; going to table_2"
+        }
+      },
+      {
+        "elapsed": 541.905,
+        "status": {
+          "state": "DELIVERY_COMPLETE",
+          "current_location": "table_2",
+          "current_stage": "customer",
+          "queue": [],
+          "last_result": 4,
+          "message": "delivery complete at table_2"
+        }
+      },
+      {
+        "elapsed": 541.908,
+        "status": {
+          "state": "RETURNING_TO_DOCK",
+          "current_location": null,
+          "current_stage": "dock",
+          "queue": [],
+          "last_result": 4,
+          "message": "returning to first-floor dock"
+        }
+      },
+      {
+        "elapsed": 584.878,
+        "status": {
+          "state": "IDLE",
+          "current_location": null,
+          "current_stage": null,
+          "queue": [],
+          "last_result": 4,
+          "message": "IDLE at first-floor dock"
+        }
+      },
+      {
+        "elapsed": 587.653,
+        "result": "SUCCEEDED",
+        "max_active_goals": 1,
+        "goals": {
+          "df946efee2124a90a2c810f0349b8561": 4,
+          "40cd63eee79640048ef22f207d584793": 4,
+          "13c9eb2360014f279644ddc869e8cdf1": 4,
+          "e8671ef726b54b1a817fe1f789e92ff6": 4,
+          "5f4e979240964ada8a3b6b62866f5481": 4,
+          "ce4ded07efbd4d928bcab9cb99969e20": 4,
+          "f759b867f0554f80a6ec0245606c710b": 4,
+          "ed10e5bac01346c5bf2e684a61c2f457": 4
+        },
+        "new_goal_results": {
+          "e8671ef726b54b1a817fe1f789e92ff6": 4,
+          "5f4e979240964ada8a3b6b62866f5481": 4,
+          "ce4ded07efbd4d928bcab9cb99969e20": 4,
+          "f759b867f0554f80a6ec0245606c710b": 4,
+          "ed10e5bac01346c5bf2e684a61c2f457": 4
+        },
+        "status": {
+          "state": "IDLE",
+          "current_location": null,
+          "current_stage": null,
+          "queue": [],
+          "last_result": 4,
+          "message": "IDLE at first-floor dock"
+        },
+        "odometry_distance": 48.531143748449715,
+        "final_map_pose": [
+          -3.6973304278909076,
+          0.6433897013031243,
+          -0.4186052741906785
+        ],
+        "final_world_pose": [
+          7.54029,
+          7.61943,
+          -0.475134
+        ],
+        "physical_dock_error_m": 0.18728750358739854,
+        "physical_dock_yaw_error": 0.04686600000000002
+      }
+    ],
+    "requests": [
+      {
+        "elapsed": 4.049,
+        "request": "table_1"
+      },
+      {
+        "elapsed": 4.563,
+        "request": "table_2"
+      },
+      {
+        "elapsed": 5.556,
+        "request": "table_1"
+      },
+      {
+        "elapsed": 6.556,
+        "request": "table_2"
+      },
+      {
+        "elapsed": 7.556,
+        "request": "unknown_table"
+      },
+      {
+        "elapsed": 8.558,
+        "request": ""
+      }
+    ],
+    "contacts": {
+      "final": true,
+      "messages": 188412,
+      "ground": 188412,
+      "non_ground": 0,
+      "pairs": []
+    }
+  },
+  "completed_manual": {
+    "acceptance_status": "VERIFIED",
+    "summary": {
+      "elapsed": 55.908,
+      "result": "SUCCEEDED",
+      "max_active_goals": 1,
+      "goals": {
+        "df946efee2124a90a2c810f0349b8561": 4,
+        "40cd63eee79640048ef22f207d584793": 4,
+        "13c9eb2360014f279644ddc869e8cdf1": 4,
+        "e8671ef726b54b1a817fe1f789e92ff6": 4,
+        "5f4e979240964ada8a3b6b62866f5481": 4,
+        "ce4ded07efbd4d928bcab9cb99969e20": 4,
+        "f759b867f0554f80a6ec0245606c710b": 4,
+        "ed10e5bac01346c5bf2e684a61c2f457": 4,
+        "6e69fbf1b6b54c8e8f02c42e2d020e07": 4,
+        "53acf38c163244aca36c44b545e215aa": 4
+      },
+      "new_goal_results": {
+        "53acf38c163244aca36c44b545e215aa": 4
+      },
+      "status": {
+        "state": "IDLE",
+        "current_location": null,
+        "current_stage": null,
+        "queue": [],
+        "last_result": 4,
+        "message": "IDLE at first-floor dock"
+      },
+      "odometry_distance": 2.762147595185349,
+      "final_map_pose": [
+        -3.756375064116012,
+        0.6309781439139723,
+        -0.4056360041939316
+      ],
+      "final_world_pose": [
+        7.51126,
+        7.56125,
+        -0.446112
+      ],
+      "physical_dock_error_m": 0.251399184763992,
+      "physical_dock_yaw_error": 0.07588800000000001
+    },
+    "status_transitions": [
+      {
+        "elapsed": 3.051,
+        "status": {
+          "state": "IDLE",
+          "current_location": null,
+          "current_stage": null,
+          "queue": [],
+          "last_result": 4,
+          "message": "IDLE at first-floor dock"
+        }
+      },
+      {
+        "elapsed": 53.115,
+        "status": {
+          "state": "IDLE",
+          "current_location": null,
+          "current_stage": null,
+          "queue": [],
+          "last_result": 4,
+          "message": "IDLE at first-floor dock"
+        }
+      },
+      {
+        "elapsed": 55.908,
+        "result": "SUCCEEDED",
+        "max_active_goals": 1,
+        "goals": {
+          "df946efee2124a90a2c810f0349b8561": 4,
+          "40cd63eee79640048ef22f207d584793": 4,
+          "13c9eb2360014f279644ddc869e8cdf1": 4,
+          "e8671ef726b54b1a817fe1f789e92ff6": 4,
+          "5f4e979240964ada8a3b6b62866f5481": 4,
+          "ce4ded07efbd4d928bcab9cb99969e20": 4,
+          "f759b867f0554f80a6ec0245606c710b": 4,
+          "ed10e5bac01346c5bf2e684a61c2f457": 4,
+          "6e69fbf1b6b54c8e8f02c42e2d020e07": 4,
+          "53acf38c163244aca36c44b545e215aa": 4
+        },
+        "new_goal_results": {
+          "53acf38c163244aca36c44b545e215aa": 4
+        },
+        "status": {
+          "state": "IDLE",
+          "current_location": null,
+          "current_stage": null,
+          "queue": [],
+          "last_result": 4,
+          "message": "IDLE at first-floor dock"
+        },
+        "odometry_distance": 2.762147595185349,
+        "final_map_pose": [
+          -3.756375064116012,
+          0.6309781439139723,
+          -0.4056360041939316
+        ],
+        "final_world_pose": [
+          7.51126,
+          7.56125,
+          -0.446112
+        ],
+        "physical_dock_error_m": 0.251399184763992,
+        "physical_dock_yaw_error": 0.07588800000000001
+      }
+    ],
+    "requests": [],
+    "contacts": {
+      "final": true,
+      "messages": 18088,
+      "ground": 18088,
+      "non_ground": 0,
+      "pairs": []
+    }
+  },
+  "stage_physical_pose_samples": [
+    {
+      "wall_time": 1790879272.1425414,
+      "status": {
+        "state": "NAVIGATING_TO_CUSTOMER",
+        "current_location": "table_1",
+        "current_stage": "pickup",
+        "queue": [],
+        "last_result": 4,
+        "message": "pickup reached; going to table_1"
+      },
+      "physical_world_pose": [
+        11.2012,
+        16.0788,
+        0.850514
+      ]
+    },
+    {
+      "wall_time": 1790879419.7002735,
+      "status": {
+        "state": "DELIVERY_COMPLETE",
+        "current_location": "table_1",
+        "current_stage": "customer",
+        "queue": [],
+        "last_result": 4,
+        "message": "delivery complete at table_1"
+      },
+      "physical_world_pose": [
+        4.89608,
+        8.30719,
+        -0.676283
+      ]
+    },
+    {
+      "wall_time": 1790879476.3568046,
+      "status": {
+        "state": "IDLE",
+        "current_location": null,
+        "current_stage": null,
+        "queue": [],
+        "last_result": 4,
+        "message": "IDLE at first-floor dock"
+      },
+      "physical_world_pose": [
+        7.63054,
+        7.54522,
+        -0.426973
+      ]
+    },
+    {
+      "wall_time": 1790879640.5121775,
+      "status": {
+        "state": "NAVIGATING_TO_CUSTOMER",
+        "current_location": "table_1",
+        "current_stage": "pickup",
+        "queue": [
+          "table_2"
+        ],
+        "last_result": 4,
+        "message": "pickup reached; going to table_1"
+      },
+      "physical_world_pose": [
+        11.1454,
+        16.0883,
+        0.861934
+      ]
+    },
+    {
+      "wall_time": 1790879794.7659955,
+      "status": {
+        "state": "DELIVERY_COMPLETE",
+        "current_location": "table_1",
+        "current_stage": "customer",
+        "queue": [
+          "table_2"
+        ],
+        "last_result": 4,
+        "message": "delivery complete at table_1"
+      },
+      "physical_world_pose": [
+        4.89902,
+        8.42005,
+        -0.688766
+      ]
+    },
+    {
+      "wall_time": 1790879922.4708436,
+      "status": {
+        "state": "NAVIGATING_TO_CUSTOMER",
+        "current_location": "table_2",
+        "current_stage": "pickup",
+        "queue": [],
+        "last_result": 4,
+        "message": "pickup reached; going to table_2"
+      },
+      "physical_world_pose": [
+        11.1778,
+        16.0821,
+        0.863858
+      ]
+    },
+    {
+      "wall_time": 1790880050.0892506,
+      "status": {
+        "state": "DELIVERY_COMPLETE",
+        "current_location": "table_2",
+        "current_stage": "customer",
+        "queue": [],
+        "last_result": 4,
+        "message": "delivery complete at table_2"
+      },
+      "physical_world_pose": [
+        5.52107,
+        9.07337,
+        -0.191555
+      ]
+    },
+    {
+      "wall_time": 1790880093.094273,
+      "status": {
+        "state": "IDLE",
+        "current_location": null,
+        "current_stage": null,
+        "queue": [],
+        "last_result": 4,
+        "message": "IDLE at first-floor dock"
+      },
+      "physical_world_pose": [
+        7.54029,
+        7.61805,
+        -0.461194
+      ]
+    },
+    {
+      "wall_time": 1790880230.251205,
+      "status": {
+        "state": "IDLE",
+        "current_location": null,
+        "current_stage": null,
+        "queue": [],
+        "last_result": 4,
+        "message": "IDLE at first-floor dock"
+      },
+      "physical_world_pose": [
+        7.51126,
+        7.55978,
+        -0.432463
+      ]
+    }
+  ],
+  "source_sha256": {
+    "cstam-pkg/src/cstam_phase1/config/nav2_params.yaml": "1c95cccd4d7975218e60136880f8acff1e6e1654723ec8b632f287a72798674b",
+    "cstam-pkg/src/cstam_phase1/launch/phase1.launch.py": "f7f770e86506af903593897320cd19f478bf4b727d6d9267bc216147ab9af217",
+    "cstam-pkg/src/cstam_phase1/maps/restaurant/restaurant.pgm": "e092a8f500157f1a472e22cdfb719a5b4be8e8bf0cef3c28d46e7435de539274",
+    "cstam-pkg/src/cstam_phase1/maps/restaurant/restaurant.yaml": "4e1c1f4ae0d2459f47ce6f2d2c103580336214981e282e56f5295ff93858da60",
+    "cstam-pkg/src/cstam_phase1/maps/restaurant/locations.yaml": "53b5b28eec3b6f7e09264b3fa618803a4c270b92361d6aadebe4a9356d4724a4",
+    "cstam-pkg/src/cstam_robot/urdf/cstam_robot_gazebo.xacro": "cb95f6062d0e9a30dda20c24d726814bd5cccd1ee82b8b8da2d03e221f10045b",
+    "cstam-pkg/src/cstam_phase1/cstam_phase1/delivery_task_manager.py": "feb00edf9b2b487d971361f57fb9f51b678ed192bdf9e29159f9f8bce6c715eb",
+    "cstam-pkg/src/cstam_phase1/cstam_phase1/pointcloud_navigation_filter.py": "2ea1782f8de6cd00a4e6e9c03870173f5c7cf98b433b432a202b5723f7bb473c"
+  },
+  "completed_gui_delivery": {
+    "acceptance_status": "VERIFIED",
+    "display_note": "Fresh normal one-command rviz:=true launch; GUI windows minimized during long mission to reduce rendering load. Startup and visible short goal were checked separately.",
+    "summary": {
+      "elapsed": 766.719,
+      "result": "SUCCEEDED",
+      "max_active_goals": 1,
+      "goals": {
+        "241069ee932f47deaa3ad983ca8890f8": 4,
+        "d9afe1ddbb274b46aead4b0f15165876": 4,
+        "9a26f4ee137642938cdb90d1af11a90f": 4
+      },
+      "new_goal_results": {
+        "241069ee932f47deaa3ad983ca8890f8": 4,
+        "d9afe1ddbb274b46aead4b0f15165876": 4,
+        "9a26f4ee137642938cdb90d1af11a90f": 4
+      },
+      "status": {
+        "state": "IDLE",
+        "current_location": null,
+        "current_stage": null,
+        "queue": [],
+        "last_result": 4,
+        "message": "IDLE at first-floor dock"
+      },
+      "odometry_distance": 27.512717518450426,
+      "final_map_pose": [
+        -3.6870612044248228,
+        0.6165961440452385,
+        -0.37076775542559026
+      ],
+      "final_world_pose": [
+        7.60629,
+        7.50833,
+        -0.394848
+      ],
+      "physical_dock_error_m": 0.2921245504917379,
+      "physical_dock_yaw_error": 0.12715200000000004
+    },
+    "status_transitions": [
+      {
+        "elapsed": 4.018,
+        "status": {
+          "state": "IDLE",
+          "current_location": null,
+          "current_stage": null,
+          "queue": [
+            "table_1"
+          ],
+          "last_result": null,
+          "message": "queued table_1"
+        }
+      },
+      {
+        "elapsed": 4.021,
+        "status": {
+          "state": "NAVIGATING_TO_PICKUP",
+          "current_location": "table_1",
+          "current_stage": "pickup",
+          "queue": [],
+          "last_result": null,
+          "message": "going to pickup for table_1"
+        }
+      },
+      {
+        "elapsed": 391.988,
+        "status": {
+          "state": "NAVIGATING_TO_CUSTOMER",
+          "current_location": "table_1",
+          "current_stage": "pickup",
+          "queue": [],
+          "last_result": 4,
+          "message": "pickup reached; going to table_1"
+        }
+      },
+      {
+        "elapsed": 686.495,
+        "status": {
+          "state": "DELIVERY_COMPLETE",
+          "current_location": "table_1",
+          "current_stage": "customer",
+          "queue": [],
+          "last_result": 4,
+          "message": "delivery complete at table_1"
+        }
+      },
+      {
+        "elapsed": 686.497,
+        "status": {
+          "state": "RETURNING_TO_DOCK",
+          "current_location": null,
+          "current_stage": "dock",
+          "queue": [],
+          "last_result": 4,
+          "message": "returning to first-floor dock"
+        }
+      },
+      {
+        "elapsed": 763.045,
+        "status": {
+          "state": "IDLE",
+          "current_location": null,
+          "current_stage": null,
+          "queue": [],
+          "last_result": 4,
+          "message": "IDLE at first-floor dock"
+        }
+      },
+      {
+        "elapsed": 766.719,
+        "result": "SUCCEEDED",
+        "max_active_goals": 1,
+        "goals": {
+          "241069ee932f47deaa3ad983ca8890f8": 4,
+          "d9afe1ddbb274b46aead4b0f15165876": 4,
+          "9a26f4ee137642938cdb90d1af11a90f": 4
+        },
+        "new_goal_results": {
+          "241069ee932f47deaa3ad983ca8890f8": 4,
+          "d9afe1ddbb274b46aead4b0f15165876": 4,
+          "9a26f4ee137642938cdb90d1af11a90f": 4
+        },
+        "status": {
+          "state": "IDLE",
+          "current_location": null,
+          "current_stage": null,
+          "queue": [],
+          "last_result": 4,
+          "message": "IDLE at first-floor dock"
+        },
+        "odometry_distance": 27.512717518450426,
+        "final_map_pose": [
+          -3.6870612044248228,
+          0.6165961440452385,
+          -0.37076775542559026
+        ],
+        "final_world_pose": [
+          7.60629,
+          7.50833,
+          -0.394848
+        ],
+        "physical_dock_error_m": 0.2921245504917379,
+        "physical_dock_yaw_error": 0.12715200000000004
+      }
+    ],
+    "contacts": {
+      "final": true,
+      "messages": 111392,
+      "ground": 111392,
+      "non_ground": 0,
+      "pairs": []
+    },
+    "stage_physical_pose_samples": [
+      {
+        "wall_time": 1790882892.3775191,
+        "status": {
+          "state": "DELIVERY_COMPLETE",
+          "current_location": "table_1",
+          "current_stage": "customer",
+          "queue": [],
+          "last_result": 4,
+          "message": "delivery complete at table_1"
+        },
+        "physical_world_pose": [
+          4.91854,
+          8.32908,
+          -0.709657
+        ]
+      },
+      {
+        "wall_time": 1790882969.341263,
+        "status": {
+          "state": "IDLE",
+          "current_location": null,
+          "current_stage": null,
+          "queue": [],
+          "last_result": 4,
+          "message": "IDLE at first-floor dock"
+        },
+        "physical_world_pose": [
+          7.60629,
+          7.50804,
+          -0.392467
+        ]
+      }
+    ]
+  }
+}

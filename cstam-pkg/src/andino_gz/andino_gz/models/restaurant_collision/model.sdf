@@ -1,6 +1,10 @@
 <?xml version='1.0' encoding='utf-8'?>
 <sdf version="1.7">
   <model name="restaurant_collision">
+    <!-- Keep the exported collision model in the same world frame as the
+         visual mesh.  Its first-floor wall groups are at z=0; the furniture
+         and second-floor groups remain at their authored upper-floor height
+         and therefore do not create false first-floor LiDAR barriers. -->
     <pose>-14.115 17.000 0 1.57079632679 0 0</pose>
     <static>true</static>
     <link name="collision_link">

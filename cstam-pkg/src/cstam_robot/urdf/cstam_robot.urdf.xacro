@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="cstam_service_robot">
+  <xacro:arg name="robot_length" default="0.52"/>
+  <xacro:arg name="robot_width" default="0.46"/>
+  <xacro:arg name="chassis_height" default="0.20"/>
+  <xacro:arg name="base_clearance" default="0.025"/>
+  <xacro:arg name="wheel_radius" default="0.075"/>
+  <xacro:arg name="wheel_width" default="0.045"/>
+  <!-- Physical wheel-center spacing used to place the four wheels. -->
+  <xacro:arg name="wheel_separation" default="0.41"/>
+  <!-- Empirically calibrated skid-steer track for Gazebo DiffDrive odometry. -->
+  <!-- Pure-turn measurements at 0.15 rad/s: 1.5855/1.12921 and
+       3.1530/2.45609 rad (odom/physical). Least-squares correction of the
+       previous 0.455 m effective track gives approximately 0.60 m. -->
+  <xacro:arg name="diff_drive_wheel_separation" default="0.60"/>
+  <xacro:arg name="lidar_height" default="0.27"/>
+  <xacro:arg name="upper_lidar_height" default="0.82"/>
+  <xacro:arg name="lidar_3d_height" default="0.92"/>
+  <xacro:arg name="lidar_3d_x" default="0.24"/>
+  <xacro:arg name="camera_height" default="1.12"/>
+  <xacro:arg name="imu_height" default="0.72"/>
+
+  <xacro:include filename="$(find cstam_robot)/urdf/materials.xacro"/>
+  <xacro:include filename="$(find cstam_robot)/urdf/inertial_macros.xacro"/>
+  <xacro:include filename="$(find cstam_robot)/urdf/cstam_robot_drivetrain.xacro"/>
+  <xacro:include filename="$(find cstam_robot)/urdf/cstam_robot_core.xacro"/>
+  <xacro:include filename="$(find cstam_robot)/urdf/cstam_robot_body.xacro"/>
+  <xacro:include filename="$(find cstam_robot)/urdf/cstam_robot_sensors.xacro"/>
+  <xacro:include filename="$(find cstam_robot)/urdf/cstam_robot_gazebo.xacro"/>
+
+  <xacro:property name="robot_length" value="$(arg robot_length)"/>
+  <xacro:property name="robot_width" value="$(arg robot_width)"/>
+  <xacro:property name="chassis_height" value="$(arg chassis_height)"/>
+  <xacro:property name="base_clearance" value="$(arg base_clearance)"/>
+  <xacro:property name="wheel_radius" value="$(arg wheel_radius)"/>
+  <xacro:property name="wheel_width" value="$(arg wheel_width)"/>
+  <xacro:property name="wheel_separation" value="$(arg wheel_separation)"/>
+  <xacro:property name="diff_drive_wheel_separation" value="$(arg diff_drive_wheel_separation)"/>
+  <xacro:property name="wheel_y" value="${wheel_separation / 2.0}"/>
+
+  <xacro:cstam_base
+    chassis_length="${robot_length}"
+    chassis_width="${robot_width - wheel_width}"
+    chassis_height="${chassis_height}"
+    base_clearance="${base_clearance}"
+    chassis_mass="8.0"
+    wheel_radius="${wheel_radius}"
+    wheel_width="${wheel_width}"
+    wheel_y="${wheel_y}"
+    wheel_front_x="0.18"
+    wheel_rear_x="-0.18"
+    wheel_mass="0.45"/>
+
+  <xacro:cstam_body
+    shelf_length="0.44"
+    shelf_width="0.34"
+    shelf_thickness="0.035"
+    shelf_1_z="0.74"
+    shelf_2_z="0.54"
+    shelf_3_z="0.34"
+    shelf_mass="0.8"
+    mast_z="0.61"
+    mast_height="1.02"
+    display_z="0.86"/>
+
+  <xacro:cstam_sensors
+    chassis_height="${chassis_height}"
+    base_clearance="${base_clearance}"
+    lidar_height="$(arg lidar_height)"
+    upper_lidar_height="$(arg upper_lidar_height)"
+    lidar_3d_height="$(arg lidar_3d_height)"
+    lidar_3d_x="$(arg lidar_3d_x)"
+    camera_height="$(arg camera_height)"
+    imu_height="$(arg imu_height)"
+    mast_x="0.17"
+    mast_z="0.61"/>
+
+  <xacro:cstam_gazebo
+    wheel_radius="${wheel_radius}"
+    effective_wheel_separation="${diff_drive_wheel_separation}"
+    max_linear_speed="0.8"/>
+</robot>
