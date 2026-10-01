@@ -16,7 +16,7 @@
   <exec_depend>andino_slam</exec_depend>
   <exec_depend>cstam_robot</exec_depend>
 
-  <exec_depend>ignition-gazebo6</exec_depend>
+  <exec_depend>gz_sim_vendor</exec_depend>
   <exec_depend>nav2_bringup</exec_depend>
   <exec_depend>nav2_common</exec_depend>
   <exec_depend>ros_gz_bridge</exec_depend>

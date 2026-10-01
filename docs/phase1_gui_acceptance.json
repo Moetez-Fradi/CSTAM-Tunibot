@@ -1,0 +1,145 @@
+{
+  "status": "VERIFIED",
+  "normal_launch": "ros2 launch cstam_phase1 phase1.launch.py rviz:=true",
+  "health": "PASS=22 FAIL=0",
+  "physical_cmd_vel_publishers": [
+    "velocity_smoother"
+  ],
+  "short_navigation": {
+    "goal_map": [
+      -2.8,
+      0.85,
+      0
+    ],
+    "direct_plan": {
+      "plan_status": 4,
+      "error": 0,
+      "poses": 32,
+      "initial": {
+        "amcl": [
+          -3.615919028743959,
+          0.8522347076220773,
+          -0.5220343062249897
+        ],
+        "odom": [
+          1.8471216918512653e-17,
+          -4.8087617076022455e-35,
+          -6.041990900642753e-18
+        ],
+        "actual_vel": [
+          2.437306507648462e-19,
+          1.1038248695035183e-18
+        ]
+      }
+    },
+    "execution": {
+      "nav_status": 4,
+      "error": 0,
+      "elapsed": 10.552337504999741,
+      "amcl": [
+        -3.0675268631354977,
+        0.7869951507080167,
+        0.050547872469101425
+      ],
+      "odom": [
+        0.5300379827863649,
+        0.21604984027762764,
+        0.5650631388346908
+      ],
+      "actual_vel": [
+        0.1166666666390906,
+        -0.022947363286996793
+      ],
+      "local_center_cost": 0,
+      "local_nearest_lethal_m": 1.1101801821016994,
+      "local_footprint_lethal_cells": 0,
+      "local_footprint_unknown_cells": 0,
+      "remaining": 0.26276925206184387,
+      "recoveries": 0,
+      "cmd": [
+        0.11666666666666665,
+        -0.04736842105263163
+      ],
+      "map_pose": [
+        -3.038435523499693,
+        0.804262818652962,
+        0.03837824974975703
+      ],
+      "path_error": 0.0617007601661243,
+      "world_pose": [
+        8.16556,
+        7.65826,
+        0.096486
+      ],
+      "localization_translation_error": 0.0973277167992879,
+      "localization_yaw_error": 0.058107750250242965,
+      "global_center_cost": 0,
+      "global_nearest_lethal_m": 0.8902247040036245,
+      "global_footprint_lethal_cells": 0,
+      "global_footprint_unknown_cells": 0
+    },
+    "settled_world_pose": [
+      8.16689,
+      7.65839,
+      0.096486
+    ],
+    "physical_goal_error_m": 0.29003114350014164,
+    "physical_goal_yaw_error_rad": 0.096486,
+    "contacts": {
+      "final": true,
+      "messages": 3072,
+      "ground": 3072,
+      "non_ground": 0,
+      "pairs": []
+    }
+  },
+  "copied_workspace": "Fresh source-copy build, eleven tests, normal GUI runtime PASS=22 FAIL=0 on this host. A pristine second machine was not tested.",
+  "GUI_delivery": {
+    "status": "VERIFIED",
+    "summary": {
+      "elapsed": 766.719,
+      "result": "SUCCEEDED",
+      "max_active_goals": 1,
+      "goals": {
+        "241069ee932f47deaa3ad983ca8890f8": 4,
+        "d9afe1ddbb274b46aead4b0f15165876": 4,
+        "9a26f4ee137642938cdb90d1af11a90f": 4
+      },
+      "new_goal_results": {
+        "241069ee932f47deaa3ad983ca8890f8": 4,
+        "d9afe1ddbb274b46aead4b0f15165876": 4,
+        "9a26f4ee137642938cdb90d1af11a90f": 4
+      },
+      "status": {
+        "state": "IDLE",
+        "current_location": null,
+        "current_stage": null,
+        "queue": [],
+        "last_result": 4,
+        "message": "IDLE at first-floor dock"
+      },
+      "odometry_distance": 27.512717518450426,
+      "final_map_pose": [
+        -3.6870612044248228,
+        0.6165961440452385,
+        -0.37076775542559026
+      ],
+      "final_world_pose": [
+        7.60629,
+        7.50833,
+        -0.394848
+      ],
+      "physical_dock_error_m": 0.2921245504917379,
+      "physical_dock_yaw_error": 0.12715200000000004
+    },
+    "display_note": "Windows minimized during long mission for rendering performance; visible startup and separate short navigation verified.",
+    "contacts": {
+      "final": true,
+      "messages": 111392,
+      "ground": 111392,
+      "non_ground": 0,
+      "pairs": []
+    }
+  },
+  "dependency_audit": "Focused rosdep check: all system dependencies satisfied after buildtool key correction; temporary source list, no system configuration changes."
+}

@@ -1,0 +1,689 @@
+{
+  "checkpoint": "Historical 2026-10-01 navigation checkpoint recorded at the requested stop-before-delivery boundary; application NOT TESTED entries below are superseded by phase1_application_acceptance.json and the final report.",
+  "branch": "Youssef",
+  "phase1_fully_verified": false,
+  "raw_nav2_action_successes": "4/4",
+  "kitchen_clean_launch_successes": "3/3",
+  "measurement_notes": [
+    "Only actual Gazebo movement, sensors, odometry, TF and ROS actions were used.",
+    "World/map registration is diagnostic/spawn metadata; no ground-truth runtime TF.",
+    "Dynamic world/TF samples are approximate and may lag. Physical arrival uses fresh Gazebo state after two seconds at rest.",
+    "Raw Nav2 SUCCEEDED is verified; precise docking and application handoff are not yet accepted.",
+    "Dock physical position error was 0.284 m.",
+    "Kitchen run 1 had one sampled static-global lethal cell centre in its padded footprint while turning away from dock; local footprint intersections and non-ground contacts stayed zero.",
+    "Dock and table3 fit their configured headings, but fail the more conservative all-heading circle test."
+  ],
+  "source_sha256": {
+    "cstam-pkg/src/cstam_phase1/config/nav2_params.yaml": "1c95cccd4d7975218e60136880f8acff1e6e1654723ec8b632f287a72798674b",
+    "cstam-pkg/src/cstam_phase1/launch/phase1.launch.py": "f7f770e86506af903593897320cd19f478bf4b727d6d9267bc216147ab9af217",
+    "cstam-pkg/src/cstam_phase1/maps/restaurant/restaurant.pgm": "e092a8f500157f1a472e22cdfb719a5b4be8e8bf0cef3c28d46e7435de539274",
+    "cstam-pkg/src/cstam_phase1/maps/restaurant/restaurant.yaml": "4e1c1f4ae0d2459f47ce6f2d2c103580336214981e282e56f5295ff93858da60",
+    "cstam-pkg/src/cstam_phase1/maps/restaurant/locations.yaml": "53b5b28eec3b6f7e09264b3fa618803a4c270b92361d6aadebe4a9356d4724a4",
+    "cstam-pkg/src/cstam_robot/urdf/cstam_robot_gazebo.xacro": "cb95f6062d0e9a30dda20c24d726814bd5cccd1ee82b8b8da2d03e221f10045b"
+  },
+  "drive_reference_comparison": {
+    "negative": {
+      "offset_x_m": -0.18,
+      "turn_commands_rad_s": [
+        0.24,
+        -0.24,
+        0.24,
+        -0.24,
+        0.24,
+        -0.24
+      ],
+      "end_localization_errors_m": [
+        0.43519734122438397,
+        0.6469700245597697,
+        0.7417002349625785,
+        0.8057486661225148,
+        0.9724035371876787,
+        0.712565596404178
+      ],
+      "max_error_m": 0.9724035371876787
+    },
+    "zero": {
+      "offset_x_m": 0.0,
+      "turn_commands_rad_s": [
+        0.24,
+        -0.24,
+        0.24,
+        -0.24,
+        0.24,
+        -0.24
+      ],
+      "end_localization_errors_m": [
+        0.14343974172148197,
+        0.030413086402768928,
+        0.158047476521624,
+        0.028311923553922244,
+        0.1766452315522159,
+        0.03166818910220096
+      ],
+      "max_error_m": 0.1766452315522159
+    }
+  },
+  "controller_comparison": [
+    {
+      "tag": "zero_dwb_table1",
+      "status": 4,
+      "duration": 192.75801067899965,
+      "recoveries": 6,
+      "max_path_error": 0.2786364001013241,
+      "localization_error_approx_max": 0.22309911739364155,
+      "settled_world_pose": [
+        4.91454,
+        8.46435,
+        -0.703547
+      ],
+      "contacts": {
+        "final": true,
+        "messages": 63552,
+        "ground": 63552,
+        "non_ground": 0,
+        "pairs": []
+      }
+    },
+    {
+      "tag": "zero_shim_table1",
+      "status": 4,
+      "duration": 138.5327624710003,
+      "recoveries": 3,
+      "max_path_error": 0.2069186283054207,
+      "localization_error_approx_max": 0.19564207864058442,
+      "settled_world_pose": [
+        4.90758,
+        8.28875,
+        -0.679899
+      ],
+      "contacts": {
+        "final": true,
+        "messages": 46356,
+        "ground": 46356,
+        "non_ground": 0,
+        "pairs": []
+      }
+    },
+    {
+      "tag": "zero_rpp_table1",
+      "status": 4,
+      "duration": 165.7518644339998,
+      "recoveries": 4,
+      "max_path_error": 0.17983046592866775,
+      "localization_error_approx_max": 0.21796835577611567,
+      "settled_world_pose": [
+        4.9803,
+        8.2822,
+        -0.683579
+      ],
+      "contacts": {
+        "final": true,
+        "messages": 54160,
+        "ground": 54160,
+        "non_ground": 0,
+        "pairs": []
+      }
+    }
+  ],
+  "final_live_configuration": {
+    "controller": {
+      "controller_plugins": [
+        "FollowPath"
+      ],
+      "progress_checker": {
+        "movement_time_allowance": 15.0,
+        "plugin": "nav2_controller::PoseProgressChecker",
+        "required_movement_angle": 0.5,
+        "required_movement_radius": 0.2
+      },
+      "general_goal_checker": {
+        "plugin": "nav2_controller::SimpleGoalChecker",
+        "stateful": true,
+        "symmetric_yaw_tolerance": false,
+        "xy_goal_tolerance": 0.25,
+        "yaw_goal_tolerance": 0.2
+      }
+    },
+    "FollowPath": {
+      "plugin": "nav2_rotation_shim_controller::RotationShimController",
+      "primary_controller": "dwb_core::DWBLocalPlanner",
+      "angular_dist_threshold": 0.785,
+      "angular_disengage_threshold": 0.3925,
+      "rotate_to_heading_angular_vel": 0.25,
+      "max_angular_accel": 0.4,
+      "rotate_to_goal_heading": true,
+      "max_vel_x": 0.15,
+      "max_vel_theta": 0.3,
+      "critics": [
+        "RotateToGoal",
+        "Oscillation",
+        "ObstacleFootprint",
+        "BaseObstacle",
+        "GoalAlign",
+        "PathAlign",
+        "PathDist",
+        "GoalDist"
+      ]
+    },
+    "global": {
+      "plugins": [
+        "static_layer",
+        "inflation_layer"
+      ],
+      "footprint": "[[0.35, 0.27], [0.35, -0.27], [-0.31, -0.27], [-0.31, 0.27]]",
+      "footprint_padding": 0.01,
+      "inflation_layer": {
+        "cost_scaling_factor": 5.0,
+        "enabled": true,
+        "inflate_around_unknown": false,
+        "inflate_unknown": false,
+        "inflation_radius": 0.51,
+        "plugin": "nav2_costmap_2d::InflationLayer"
+      }
+    },
+    "local": {
+      "plugins": [
+        "voxel_layer",
+        "inflation_layer"
+      ],
+      "footprint": "[[0.35, 0.27], [0.35, -0.27], [-0.31, -0.27], [-0.31, 0.27]]",
+      "footprint_padding": 0.01,
+      "inflation_layer": {
+        "cost_scaling_factor": 5.0,
+        "enabled": true,
+        "inflate_around_unknown": false,
+        "inflate_unknown": false,
+        "inflation_radius": 0.51,
+        "plugin": "nav2_costmap_2d::InflationLayer"
+      },
+      "voxel_layer": {
+        "clearing_points": {
+          "clearing": true,
+          "data_type": "PointCloud2",
+          "expected_update_rate": 0.0,
+          "inf_is_valid": false,
+          "marking": false,
+          "max_obstacle_height": 15.0,
+          "min_obstacle_height": -15.0,
+          "observation_persistence": 0.0,
+          "obstacle_max_range": 2.5,
+          "obstacle_min_range": 0.0,
+          "raytrace_max_range": 10.0,
+          "raytrace_min_range": 0.1,
+          "sensor_frame": "",
+          "topic": "/lidar/points_clearing"
+        },
+        "combination_method": 1,
+        "enabled": true,
+        "footprint_clearing_enabled": true,
+        "mark_threshold": 0,
+        "max_obstacle_height": 1.27,
+        "min_obstacle_height": 0.0,
+        "observation_sources": "points clearing_points",
+        "origin_z": 0.0,
+        "plugin": "nav2_costmap_2d::VoxelLayer",
+        "points": {
+          "clearing": false,
+          "data_type": "PointCloud2",
+          "expected_update_rate": 0.0,
+          "inf_is_valid": false,
+          "marking": true,
+          "max_obstacle_height": 1.27,
+          "min_obstacle_height": 0.04,
+          "observation_persistence": 0.0,
+          "obstacle_max_range": 8.0,
+          "obstacle_min_range": 0.1,
+          "raytrace_max_range": 10.0,
+          "raytrace_min_range": 0.1,
+          "sensor_frame": "",
+          "topic": "/lidar/points_filtered"
+        },
+        "publish_voxel_map": true,
+        "unknown_threshold": 15,
+        "z_resolution": 0.2,
+        "z_voxels": 7
+      }
+    },
+    "amcl": {
+      "base_frame_id": "base_footprint",
+      "scan_topic": "/scan_navigation",
+      "alpha1": 0.005,
+      "alpha2": 0.1,
+      "alpha3": 0.1,
+      "alpha4": 0.1
+    }
+  },
+  "semantic_live_costmap_audit": {
+    "grid": {
+      "width": 345,
+      "height": 486,
+      "resolution": 0.05000000074505806,
+      "origin": [
+        -8.204,
+        -10.732
+      ]
+    },
+    "locations": {
+      "dock": {
+        "pose": [
+          -3.63,
+          0.85,
+          -0.522
+        ],
+        "cell": [
+          91,
+          231
+        ],
+        "occupancy_cost": 39,
+        "nearest_lethal_cell_centre_m": 0.4609772297337403,
+        "padded_footprint_lethal_cell_intersections": 0,
+        "padded_footprint_unknown_cell_intersections": 0,
+        "navfn_known_component": 1,
+        "all_heading_clearance_component": 0
+      },
+      "kitchen": {
+        "pose": [
+          0.02,
+          9.27,
+          1.049
+        ],
+        "cell": [
+          164,
+          400
+        ],
+        "occupancy_cost": 0,
+        "nearest_lethal_cell_centre_m": 1.0500000156462193,
+        "padded_footprint_lethal_cell_intersections": 0,
+        "padded_footprint_unknown_cell_intersections": 0,
+        "navfn_known_component": 1,
+        "all_heading_clearance_component": 1
+      },
+      "table_1": {
+        "pose": [
+          -6.36,
+          1.32,
+          -0.522
+        ],
+        "cell": [
+          36,
+          241
+        ],
+        "occupancy_cost": 0,
+        "nearest_lethal_cell_centre_m": 0.6324555414579978,
+        "padded_footprint_lethal_cell_intersections": 0,
+        "padded_footprint_unknown_cell_intersections": 0,
+        "navfn_known_component": 1,
+        "all_heading_clearance_component": 1
+      },
+      "table_2": {
+        "pose": [
+          -5.6,
+          1.96,
+          0.0
+        ],
+        "cell": [
+          52,
+          253
+        ],
+        "occupancy_cost": 0,
+        "nearest_lethal_cell_centre_m": 0.6000000089406967,
+        "padded_footprint_lethal_cell_intersections": 0,
+        "padded_footprint_unknown_cell_intersections": 0,
+        "navfn_known_component": 1,
+        "all_heading_clearance_component": 1
+      },
+      "table_3": {
+        "pose": [
+          -3.55,
+          1.02,
+          2.619
+        ],
+        "cell": [
+          93,
+          235
+        ],
+        "occupancy_cost": 46,
+        "nearest_lethal_cell_centre_m": 0.42720019363165534,
+        "padded_footprint_lethal_cell_intersections": 0,
+        "padded_footprint_unknown_cell_intersections": 0,
+        "navfn_known_component": 1,
+        "all_heading_clearance_component": 0
+      }
+    }
+  },
+  "navigation_tests": [
+    {
+      "tag": "final_kitchen1",
+      "status": 4,
+      "duration": 172.18187409999973,
+      "recoveries": 4,
+      "max_path_error": 0.2697103741962202,
+      "localization_error_approx_max": 0.22227949063690094,
+      "settled_world_pose": [
+        11.2014,
+        16.1083,
+        0.849647
+      ],
+      "contacts": {
+        "final": true,
+        "messages": 59876,
+        "ground": 59876,
+        "non_ground": 0,
+        "pairs": []
+      },
+      "acceptance_status": "VERIFIED",
+      "navigate_result": "SUCCEEDED",
+      "goal_map": [
+        0.02,
+        9.27,
+        1.049
+      ],
+      "goal_world": [
+        11.24,
+        16.22,
+        1.049
+      ],
+      "start_world": [
+        7.59,
+        7.8,
+        -0.522
+      ],
+      "start_amcl_pose": [
+        -3.615919028743959,
+        0.8522347076220773,
+        -0.5220343062249897
+      ],
+      "plan_status": 4,
+      "plan_error": 0,
+      "plan_poses": 535,
+      "plan_length_m": 13.418636876698404,
+      "initial_path_min_lethal_cell_centre_clearance_m": 0.4609772297337403,
+      "settled_physical_position_error_m": 0.11818142832103457,
+      "settled_physical_yaw_error_rad": 0.1993529999999999,
+      "sampled_odom_path_length_m": 13.585816630780583,
+      "max_sampled_global_footprint_lethal_cells": 1,
+      "max_sampled_local_footprint_lethal_cells": 0
+    },
+    {
+      "tag": "final_kitchen2",
+      "status": 4,
+      "duration": 118.01162226600081,
+      "recoveries": 0,
+      "max_path_error": 0.2562812315968636,
+      "localization_error_approx_max": 0.23443137033756908,
+      "settled_world_pose": [
+        11.2034,
+        16.1086,
+        0.86788
+      ],
+      "contacts": {
+        "final": true,
+        "messages": 41968,
+        "ground": 41968,
+        "non_ground": 0,
+        "pairs": []
+      },
+      "acceptance_status": "VERIFIED",
+      "navigate_result": "SUCCEEDED",
+      "goal_map": [
+        0.02,
+        9.27,
+        1.049
+      ],
+      "goal_world": [
+        11.24,
+        16.22,
+        1.049
+      ],
+      "start_world": [
+        7.59,
+        7.8,
+        -0.522
+      ],
+      "start_amcl_pose": [
+        -3.615919028743959,
+        0.8522347076220773,
+        -0.5220343062249897
+      ],
+      "plan_status": 4,
+      "plan_error": 0,
+      "plan_poses": 535,
+      "plan_length_m": 13.418636876698404,
+      "initial_path_min_lethal_cell_centre_clearance_m": 0.4609772297337403,
+      "settled_physical_position_error_m": 0.11725834725084579,
+      "settled_physical_yaw_error_rad": 0.18111999999999995,
+      "sampled_odom_path_length_m": 13.591004062552093,
+      "max_sampled_global_footprint_lethal_cells": 0,
+      "max_sampled_local_footprint_lethal_cells": 0
+    },
+    {
+      "tag": "final_kitchen3",
+      "status": 4,
+      "duration": 119.81145043800007,
+      "recoveries": 0,
+      "max_path_error": 0.23926712031642966,
+      "localization_error_approx_max": 0.2386827294766323,
+      "settled_world_pose": [
+        11.146,
+        16.0974,
+        0.856168
+      ],
+      "contacts": {
+        "final": true,
+        "messages": 42276,
+        "ground": 42276,
+        "non_ground": 0,
+        "pairs": []
+      },
+      "acceptance_status": "VERIFIED",
+      "navigate_result": "SUCCEEDED",
+      "goal_map": [
+        0.02,
+        9.27,
+        1.049
+      ],
+      "goal_world": [
+        11.24,
+        16.22,
+        1.049
+      ],
+      "start_world": [
+        7.59,
+        7.8,
+        -0.522
+      ],
+      "start_amcl_pose": [
+        -3.615919028743959,
+        0.8522347076220773,
+        -0.5220343062249897
+      ],
+      "plan_status": 4,
+      "plan_error": 0,
+      "plan_poses": 535,
+      "plan_length_m": 13.418636876698404,
+      "initial_path_min_lethal_cell_centre_clearance_m": 0.4609772297337403,
+      "settled_physical_position_error_m": 0.15448870508875243,
+      "settled_physical_yaw_error_rad": 0.1928319999999999,
+      "sampled_odom_path_length_m": 13.535028087719821,
+      "max_sampled_global_footprint_lethal_cells": 0,
+      "max_sampled_local_footprint_lethal_cells": 0
+    },
+    {
+      "tag": "final_short",
+      "status": 4,
+      "duration": 31.45154692899996,
+      "recoveries": 0,
+      "max_path_error": 0.07007677150599093,
+      "localization_error_approx_max": 0.21193579217984537,
+      "settled_world_pose": [
+        10.5196,
+        15.8773,
+        -0.20262
+      ],
+      "contacts": {
+        "final": true,
+        "messages": 11660,
+        "ground": 11660,
+        "non_ground": 0,
+        "pairs": []
+      },
+      "acceptance_status": "VERIFIED",
+      "navigate_result": "SUCCEEDED",
+      "goal_map": [
+        -0.8,
+        8.7,
+        0.0
+      ],
+      "goal_world": [
+        10.42,
+        15.649999999999999,
+        0.0
+      ],
+      "start_world": [
+        11.146,
+        16.0974,
+        0.856168
+      ],
+      "start_amcl_pose": [
+        -0.11741086437197423,
+        9.124061365437994,
+        0.8165886659731276
+      ],
+      "plan_status": 4,
+      "plan_error": 0,
+      "plan_poses": 32,
+      "plan_length_m": 0.8311822233535472,
+      "initial_path_min_lethal_cell_centre_clearance_m": 1.2000000178813934,
+      "settled_physical_position_error_m": 0.24816415937842584,
+      "settled_physical_yaw_error_rad": 0.20262,
+      "sampled_odom_path_length_m": 0.7129984577406285,
+      "max_sampled_global_footprint_lethal_cells": 0,
+      "max_sampled_local_footprint_lethal_cells": 0
+    },
+    {
+      "tag": "final_obstacle",
+      "status": 4,
+      "duration": 161.05834993000008,
+      "recoveries": 1,
+      "max_path_error": 0.10863158201645995,
+      "localization_error_approx_max": 0.2790088374482779,
+      "settled_world_pose": [
+        4.92592,
+        8.23916,
+        -0.676473
+      ],
+      "contacts": {
+        "final": true,
+        "messages": 55252,
+        "ground": 55252,
+        "non_ground": 0,
+        "pairs": []
+      },
+      "acceptance_status": "VERIFIED",
+      "navigate_result": "SUCCEEDED",
+      "goal_map": [
+        -6.36,
+        1.32,
+        -0.522
+      ],
+      "goal_world": [
+        4.86,
+        8.27,
+        -0.522
+      ],
+      "start_world": [
+        10.5196,
+        15.8773,
+        -0.20262
+      ],
+      "start_amcl_pose": [
+        -0.7085560026984423,
+        8.860044941628665,
+        -0.18656804140993097
+      ],
+      "plan_status": 4,
+      "plan_error": 0,
+      "plan_poses": 405,
+      "plan_length_m": 10.138608300941087,
+      "initial_path_min_lethal_cell_centre_clearance_m": 0.6082762620938444,
+      "settled_physical_position_error_m": 0.07277741407881899,
+      "settled_physical_yaw_error_rad": 0.15447299999999997,
+      "sampled_odom_path_length_m": 10.399689345843553,
+      "max_sampled_global_footprint_lethal_cells": 0,
+      "max_sampled_local_footprint_lethal_cells": 0
+    },
+    {
+      "tag": "final_passage",
+      "status": 4,
+      "duration": 66.60084618400015,
+      "recoveries": 1,
+      "max_path_error": 0.06733872946187279,
+      "localization_error_approx_max": 0.3013497897902219,
+      "settled_world_pose": [
+        7.60716,
+        7.51646,
+        -0.404157
+      ],
+      "contacts": {
+        "final": true,
+        "messages": 24736,
+        "ground": 24736,
+        "non_ground": 0,
+        "pairs": []
+      },
+      "acceptance_status": "VERIFIED",
+      "navigate_result": "SUCCEEDED",
+      "goal_map": [
+        -3.63,
+        0.85,
+        -0.522
+      ],
+      "goal_world": [
+        7.590000000000001,
+        7.8,
+        -0.522
+      ],
+      "start_world": [
+        4.92592,
+        8.23916,
+        -0.676473
+      ],
+      "start_amcl_pose": [
+        -6.320962839356514,
+        1.5650926795848719,
+        -0.6542111023429199
+      ],
+      "plan_status": 4,
+      "plan_error": 0,
+      "plan_poses": 128,
+      "plan_length_m": 3.2174241244980957,
+      "initial_path_min_lethal_cell_centre_clearance_m": 0.4609772297337403,
+      "settled_physical_position_error_m": 0.28405879180197835,
+      "settled_physical_yaw_error_rad": 0.11784300000000004,
+      "sampled_odom_path_length_m": 3.014599240210814,
+      "max_sampled_global_footprint_lethal_cells": 0,
+      "max_sampled_local_footprint_lethal_cells": 0
+    }
+  ],
+  "validation": {
+    "build": "VERIFIED: five packages passed",
+    "tests": "VERIFIED: ten tests, zero failures/errors/skips",
+    "smoke": "VERIFIED: PASS=22 FAIL=0 on all three clean kitchen launches",
+    "command_publishers": "VERIFIED: sole velocity_smoother publisher checked before each acceptance route",
+    "contacts": "VERIFIED: zero non-ground contacts in all recorded final routes"
+  },
+  "application_acceptance": {
+    "current_profile_delivery": "NOT TESTED",
+    "automatic_dock": "NOT TESTED",
+    "manual_dock": "NOT TESTED",
+    "queue": "NOT TESTED",
+    "older_negative_reference_delivery": "FAILED: pickup action SUCCEEDED, customer ABORTED; AMCL jumped about seven metres while physical robot remained near kitchen"
+  },
+  "remaining": [
+    "Two fresh end-to-end deliveries",
+    "Queue, duplicates and invalid requests",
+    "Automatic and manual dock acceptance",
+    "Final mapping/GUI/RViz and evaluator run",
+    "Final reports, architecture, demo/test documentation and submission preparation"
+  ]
+}

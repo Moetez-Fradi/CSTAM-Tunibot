@@ -8,7 +8,10 @@ Visualization Manager:
   Displays:
     - Class: rviz_default_plugins/Map
       Name: Saved restaurant map
-      Topic: /map
+      Topic:
+        Value: /map
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
       Alpha: 0.75
       Color Scheme: map
       Draw Behind: false
@@ -18,16 +21,22 @@ Visualization Manager:
       QoS Reliability Policy: Reliable
     - Class: rviz_default_plugins/RobotModel
       Name: CSTAM
-      Robot Description: robot_description
+      Description Source: Topic
+      Description Topic:
+        Value: /robot_description
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
       Enabled: true
     - Class: rviz_default_plugins/TF
       Name: TF
-      Enabled: true
+      Enabled: false
       Frame Timeout: 15
       Marker Scale: 0.5
     - Class: rviz_default_plugins/LaserScan
       Name: 3D-derived navigation scan
-      Topic: /scan_navigation
+      Topic:
+        Value: /scan_navigation
+        Reliability Policy: Reliable
       Enabled: true
       Style: Points
       Size (Pixels): 2
@@ -36,31 +45,45 @@ Visualization Manager:
       Use Fixed Frame: true
     - Class: rviz_default_plugins/PointCloud2
       Name: 3D LiDAR cloud
-      Topic: /lidar/points_filtered
+      Topic:
+        Value: /lidar/points_filtered
+        Reliability Policy: Reliable
       Enabled: true
       Style: Points
       Size (Pixels): 2
       Use Fixed Frame: true
-    - Class: nav2_rviz_plugins/Costmap
+    - Class: rviz_default_plugins/Map
       Name: Global costmap
-      Topic: /global_costmap/costmap
+      Topic:
+        Value: /global_costmap/costmap
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Color Scheme: costmap
+      Alpha: 0.35
       Enabled: true
       Unreliable: false
-    - Class: nav2_rviz_plugins/Costmap
+    - Class: rviz_default_plugins/Map
       Name: Local costmap
-      Topic: /local_costmap/costmap
+      Topic:
+        Value: /local_costmap/costmap
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Color Scheme: costmap
+      Alpha: 0.5
       Enabled: true
       Unreliable: false
-    - Class: nav2_rviz_plugins/Path
+    - Class: rviz_default_plugins/Path
       Name: Global plan
-      Topic: /plan
+      Topic:
+        Value: /plan
       Enabled: true
       Color: 0; 255; 0
       Line Style: Lines
       Line Width: 0.03
-    - Class: nav2_rviz_plugins/Path
+    - Class: rviz_default_plugins/Path
       Name: Local controller path
-      Topic: /local_plan
+      Topic:
+        Value: /local_plan
       Enabled: true
       Color: 255; 255; 0
       Line Style: Lines
@@ -73,13 +96,13 @@ Visualization Manager:
   Tools:
     - Class: rviz_default_plugins/Interact
     - Class: rviz_default_plugins/SetInitialPose
-    - Class: rviz_default_plugins/Goal
+    - Class: nav2_rviz_plugins/GoalTool
     - Class: rviz_default_plugins/PublishPoint
   Views:
     Current:
       Class: rviz_default_plugins/TopDownOrtho
       Name: Top-down
-      Scale: 75
+      Scale: 30
       X: 0
       Y: 0
 Window Geometry:

@@ -55,6 +55,9 @@ class StartupHealthCheck(Node):
             PointCloud2, '/lidar/points_filtered',
             self._store('points_filtered'), reliable_qos)
         self.create_subscription(
+            PointCloud2, '/lidar/points_clearing',
+            self._store('points_clearing'), reliable_qos)
+        self.create_subscription(
             LaserScan, '/scan_navigation', self._store('scan'), reliable_qos)
         self.create_subscription(
             Odometry, '/odom', self._store('odom'), reliable_qos)
@@ -94,8 +97,9 @@ class StartupHealthCheck(Node):
 
     def _spin_until_inputs(self):
         deadline = time.monotonic() + self.timeout_sec
+        lifecycle = {}
         required = {
-            'map', 'points', 'points_filtered', 'scan', 'odom', 'amcl_pose',
+            'map', 'points', 'points_filtered', 'points_clearing', 'scan', 'odom', 'amcl_pose',
             'global_costmap', 'local_costmap',
         }
         while time.monotonic() < deadline:
@@ -124,7 +128,14 @@ class StartupHealthCheck(Node):
                 and actions_ready
                 and clock_ready
             ):
-                return
+                # Action servers can be advertised while the lifecycle node
+                # is still activating. Wait within the same bounded startup
+                # window instead of reporting a transient false failure.
+                lifecycle = self._lifecycle_states()
+                if all(lifecycle.get(name) == 'active'
+                       for name in self.lifecycle_clients):
+                    return lifecycle
+        return lifecycle
 
     def _lifecycle_states(self):
         states = {}
@@ -145,8 +156,9 @@ class StartupHealthCheck(Node):
         return states
 
     def evaluate(self):
-        self._spin_until_inputs()
-        lifecycle = self._lifecycle_states()
+        lifecycle = self._spin_until_inputs()
+        if not lifecycle:
+            lifecycle = self._lifecycle_states()
         results = []
 
         def add(description, passed, detail=''):
@@ -179,6 +191,9 @@ class StartupHealthCheck(Node):
         add(
             '/lidar/points_filtered publishing',
             self.messages.get('points_filtered') is not None)
+        add(
+            '/lidar/points_clearing publishing',
+            self.messages.get('points_clearing') is not None)
 
         scan = self.messages.get('scan')
         finite_ranges = (

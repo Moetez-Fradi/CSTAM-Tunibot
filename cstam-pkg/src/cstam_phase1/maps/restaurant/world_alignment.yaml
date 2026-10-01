@@ -1,0 +1,7 @@
+# Saved-map registration measured from real stationary 3D-derived scans.
+# A Gazebo base pose (11.40, 6.95, 0) matches map (0.18, 0, 0).
+# This is world <- map; it is spawn metadata, never a runtime ground-truth TF.
+world_from_map:
+  x: 11.22
+  y: 6.95
+  yaw: 0.0

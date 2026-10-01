@@ -68,6 +68,7 @@ def generate_launch_description():
             ),
             launch_arguments={
                 'world_name': 'restaurant.sdf',
+                'gui_config': 'restaurant.config',
                 # The defaults start in the clear area south-west of the
                 # dining tables. Override robot_x/y/z/yaw at launch time.
                 'robots': TextJoin(substitutions=[

@@ -27,29 +27,39 @@ class PointCloudNavigationFilter(Node):
         super().__init__('cstam_pointcloud_navigation_filter')
         self.declare_parameter('input_topic', '/lidar/points')
         self.declare_parameter('cloud_topic', '/lidar/points_filtered')
+        self.declare_parameter('clearing_topic', '/lidar/points_clearing')
         self.declare_parameter('scan_topic', '/scan_navigation')
         self.declare_parameter('horizontal_samples', 360)
         self.declare_parameter('range_min', 0.10)
         self.declare_parameter('range_max', 15.0)
+        self.declare_parameter('vertical_angle_min', -1.04719755)
+        self.declare_parameter('vertical_angle_max', 0.34906585)
         # lidar_3d_link is at x=.24, z=.92 relative to base_footprint.  These
-        # bounds correspond to world z=.04..1.18: above floor noise and up to
-        # the top of the CSTAM mast/display collision geometry.
+        # bounds correspond to world z=.04..1.27: above floor noise and up to
+        # the 1.245 m mast collision, with 0.025 m vertical allowance.
         self.declare_parameter('min_height', -0.88)
-        self.declare_parameter('max_height', 0.26)
+        self.declare_parameter('max_height', 0.35)
+        # The saved SLAM map was built with a 1.18 m projection ceiling.
+        # Keep localization observations consistent with that map while the
+        # 3D obstacle cloud covers the complete 1.245 m mast collision.
+        self.declare_parameter('scan_max_height', 0.26)
         self.declare_parameter('sensor_x_in_base', 0.24)
         self.declare_parameter('sensor_z_in_base', 0.92)
         self.declare_parameter('self_x_min', -0.29)
-        self.declare_parameter('self_x_max', 0.31)
+        self.declare_parameter('self_x_max', 0.34)
         self.declare_parameter('self_y_min', -0.26)
         self.declare_parameter('self_y_max', 0.26)
         self.declare_parameter('self_z_min', 0.0)
-        self.declare_parameter('self_z_max', 1.18)
+        self.declare_parameter('self_z_max', 1.27)
 
         self.samples = int(self.get_parameter('horizontal_samples').value)
         self.range_min = float(self.get_parameter('range_min').value)
         self.range_max = float(self.get_parameter('range_max').value)
+        self.vertical_angle_min = float(self.get_parameter('vertical_angle_min').value)
+        self.vertical_angle_max = float(self.get_parameter('vertical_angle_max').value)
         self.min_height = float(self.get_parameter('min_height').value)
         self.max_height = float(self.get_parameter('max_height').value)
+        self.scan_max_height = float(self.get_parameter('scan_max_height').value)
         self.sensor_x = float(self.get_parameter('sensor_x_in_base').value)
         self.sensor_z = float(self.get_parameter('sensor_z_in_base').value)
         self.self_x_min = float(self.get_parameter('self_x_min').value)
@@ -63,6 +73,8 @@ class PointCloudNavigationFilter(Node):
         cloud_topic = str(self.get_parameter('cloud_topic').value)
         scan_topic = str(self.get_parameter('scan_topic').value)
         self.cloud_publisher = self.create_publisher(PointCloud2, cloud_topic, 5)
+        self.clearing_publisher = self.create_publisher(
+            PointCloud2, str(self.get_parameter('clearing_topic').value), 5)
         self.scan_publisher = self.create_publisher(LaserScan, scan_topic, 10)
         self.create_subscription(PointCloud2, input_topic, self._callback, 5)
         self.get_logger().info(
@@ -80,22 +92,45 @@ class PointCloudNavigationFilter(Node):
 
     def _callback(self, message):
         points = []
+        clearing_points = []
         bins = [float('inf')] * self.samples
         angle_increment = 2.0 * math.pi / self.samples
 
-        for point in point_cloud2.read_points(
-                message, field_names=('x', 'y', 'z'), skip_nans=False):
+        for index, point in enumerate(point_cloud2.read_points(
+                message, field_names=('x', 'y', 'z'), skip_nans=False)):
             x, y, z = (float(point[0]), float(point[1]), float(point[2]))
             if not all(math.isfinite(value) for value in (x, y, z)):
+                # Gazebo encodes a real no-return beam as Inf in its organized
+                # 16x360 cloud. Its measured angular layout agrees with these
+                # bounds within 7e-6 rad. Represent that observed free ray to
+                # range_max ONLY on the clearing cloud, never as an obstacle
+                # or a SLAM/AMCL measurement. NaN is not treated as free space.
+                if (any(math.isinf(value) for value in (x, y, z))
+                        and message.height > 1 and message.width > 1):
+                    horizontal = -math.pi + 2.0 * math.pi * (
+                        index % message.width) / (message.width - 1)
+                    vertical = self.vertical_angle_min + (
+                        self.vertical_angle_max - self.vertical_angle_min) * (
+                            index // message.width) / (message.height - 1)
+                    horizontal_range = self.range_max * math.cos(vertical)
+                    clearing_points.append((
+                        horizontal_range * math.cos(horizontal),
+                        horizontal_range * math.sin(horizontal),
+                        self.range_max * math.sin(vertical)))
                 continue
             distance = math.hypot(x, y)
             if distance < self.range_min or distance > self.range_max:
                 continue
-            if z < self.min_height or z > self.max_height:
-                continue
             if self._is_self_point(x, y, z):
                 continue
+            # Floor and elevated endpoints clear previously marked voxels.
+            # Obstacle marking retains the actual collision-height envelope.
+            clearing_points.append((x, y, z))
+            if z < self.min_height or z > self.max_height:
+                continue
             points.append((x, y, z))
+            if z > self.scan_max_height:
+                continue
             angle = math.atan2(y, x)
             index = int((angle + math.pi) / angle_increment)
             if index >= self.samples:
@@ -105,6 +140,8 @@ class PointCloudNavigationFilter(Node):
 
         filtered = point_cloud2.create_cloud_xyz32(message.header, points)
         self.cloud_publisher.publish(filtered)
+        self.clearing_publisher.publish(
+            point_cloud2.create_cloud_xyz32(message.header, clearing_points))
 
         scan = LaserScan()
         scan.header = message.header

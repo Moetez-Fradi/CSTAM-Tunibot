@@ -1,5 +1,21 @@
 .vscode
 
+# ROS / colcon output and local diagnostics (source maps stay versioned)
+build/
+install/
+log/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+*.swp
+*.swo
+*.log
+*.tmp
+*~
+demo_output/
+diagnostics_output/
+
 # JavaScript dependencies/build caches
 node_modules/
 .cache/

@@ -1,7 +1,10 @@
 amcl:
   ros__parameters:
     use_sim_time: true
-    alpha1: 0.10
+    # Measured calibrated pure-turn error is ~2%, rather than the 32%
+    # angular standard deviation implied by alpha1=0.10. Retain allowance
+    # for skid-steer variation without admitting large chair-pattern aliases.
+    alpha1: 0.005
     alpha2: 0.10
     alpha3: 0.10
     alpha4: 0.10
@@ -59,33 +62,49 @@ controller_server:
     min_y_velocity_threshold: 0.001
     min_theta_velocity_threshold: 0.001
     failure_tolerance: 0.30
-    progress_checker_plugin: progress_checker
+    progress_checker_plugins: [progress_checker]
     goal_checker_plugins: [general_goal_checker]
     controller_plugins: [FollowPath]
     progress_checker:
-      plugin: nav2_controller::SimpleProgressChecker
+      # Count actual angular progress during deliberate in-place alignment.
+      # A 0.25 rad/s service turn crosses 0.50 rad in about 2 seconds;
+      # small oscillations still expire after the unchanged 15-second limit.
+      plugin: nav2_controller::PoseProgressChecker
+      required_movement_angle: 0.50
       required_movement_radius: 0.20
       movement_time_allowance: 15.0
     general_goal_checker:
       plugin: nav2_controller::SimpleGoalChecker
       stateful: true
       xy_goal_tolerance: 0.25
-      yaw_goal_tolerance: 0.30
+      yaw_goal_tolerance: 0.20
     FollowPath:
-      plugin: dwb_core::DWBLocalPlanner
+      # Matched kitchen -> table1: DWB 192.8s/6 recoveries; shim+DWB
+      # 138.5s/3; RPP 165.8s/4. All used the centred drive TF and
+      # unchanged real map, footprint and costmaps, with zero contacts.
+      # NavFn may start 2.60 rad away from the robot's current heading.
+      plugin: nav2_rotation_shim_controller::RotationShimController
+      primary_controller: dwb_core::DWBLocalPlanner
+      angular_dist_threshold: 0.785
+      angular_disengage_threshold: 0.3925
+      forward_sampling_distance: 0.50
+      rotate_to_heading_angular_vel: 0.25
+      max_angular_accel: 0.40
+      simulate_ahead_time: 1.50
+      rotate_to_goal_heading: true
       debug_trajectory_details: false
       min_vel_x: 0.0
-      max_vel_x: 0.25
-      max_vel_theta: 0.80
+      max_vel_x: 0.15
+      max_vel_theta: 0.30
       min_speed_xy: 0.0
-      max_speed_xy: 0.25
+      max_speed_xy: 0.15
       min_speed_theta: 0.0
-      acc_lim_x: 0.40
+      acc_lim_x: 0.25
       acc_lim_y: 0.0
-      acc_lim_theta: 0.80
-      decel_lim_x: -0.50
+      acc_lim_theta: 0.40
+      decel_lim_x: -0.30
       decel_lim_y: 0.0
-      decel_lim_theta: -0.80
+      decel_lim_theta: -0.40
       vx_samples: 10
       vy_samples: 1
       vtheta_samples: 20
@@ -97,7 +116,10 @@ controller_server:
       trans_stopped_velocity: 0.05
       short_circuit_trajectory_evaluation: true
       stateful: true
-      critics: [RotateToGoal, Oscillation, BaseObstacle, GoalAlign, PathAlign, PathDist, GoalDist]
+      # BaseObstacle grades inflated center costs; ObstacleFootprint checks
+      # the actual rectangle, including corners during a dining-area turn.
+      critics: [RotateToGoal, Oscillation, ObstacleFootprint, BaseObstacle, GoalAlign, PathAlign, PathDist, GoalDist]
+      ObstacleFootprint.scale: 0.03
       BaseObstacle.scale: 0.03
       PathAlign.scale: 24.0
       PathAlign.forward_point_distance: 0.15
@@ -121,35 +143,51 @@ local_costmap:
       width: 4
       height: 4
       resolution: 0.05
-      footprint: "[[0.31, 0.27], [0.31, -0.27], [-0.31, -0.27], [-0.31, 0.27]]"
+      footprint: "[[0.35, 0.27], [0.35, -0.27], [-0.31, -0.27], [-0.31, 0.27]]"
+      footprint_padding: 0.01
       plugins: [voxel_layer, inflation_layer]
       voxel_layer:
         plugin: nav2_costmap_2d::VoxelLayer
         enabled: true
-        publish_voxel_map: false
+        publish_voxel_map: true
         origin_z: 0.0
-        z_resolution: 0.10
-        z_voxels: 12
-        max_obstacle_height: 1.20
+        # Sixteen rings span 80 degrees: ~0.187 m vertical separation at
+        # the 2 m local-window edge. A 0.20 m grid avoids retaining thin
+        # quantization slivers between otherwise observed free rays.
+        z_resolution: 0.20
+        z_voxels: 7
+        max_obstacle_height: 1.27
         unknown_threshold: 15
         mark_threshold: 0
-        observation_sources: points
+        observation_sources: points clearing_points
         points:
           topic: /lidar/points_filtered
           data_type: PointCloud2
           marking: true
-          clearing: true
+          clearing: false
           obstacle_min_range: 0.10
           obstacle_max_range: 8.0
           raytrace_min_range: 0.10
           raytrace_max_range: 10.0
           min_obstacle_height: 0.04
-          max_obstacle_height: 1.20
+          max_obstacle_height: 1.27
+        clearing_points:
+          topic: /lidar/points_clearing
+          data_type: PointCloud2
+          marking: false
+          clearing: true
+          raytrace_min_range: 0.10
+          raytrace_max_range: 10.0
+          # Free-space rays may terminate on the rendered floor below z=0
+          # or on distant surfaces. The voxel raytracer clips them to its
+          # volume; these endpoints are never used for obstacle marking.
+          min_obstacle_height: -15.0
+          max_obstacle_height: 15.0
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
-        # The padded footprint's circumscribed radius is about 0.425 m.
+        # The padded footprint's circumscribed radius is about 0.456 m.
         # Keep at least 0.05 m of route clearance around that full radius.
-        inflation_radius: 0.48
+        inflation_radius: 0.51
         cost_scaling_factor: 5.0
       always_send_full_costmap: true
 
@@ -163,20 +201,21 @@ global_costmap:
       robot_base_frame: base_footprint
       resolution: 0.05
       track_unknown_space: true
-      footprint: "[[0.31, 0.27], [0.31, -0.27], [-0.31, -0.27], [-0.31, 0.27]]"
+      footprint: "[[0.35, 0.27], [0.35, -0.27], [-0.31, -0.27], [-0.31, 0.27]]"
       # The SLAM map already contains the fixed first-floor obstacles.  Keep
       # live LiDAR marking in the rolling local costmap only; otherwise old
       # scans can leave stale global obstacles behind the moving robot and
       # make NavFn re-planning nondeterministic.
+      footprint_padding: 0.01
       plugins: [static_layer, inflation_layer]
       static_layer:
         plugin: nav2_costmap_2d::StaticLayer
         map_subscribe_transient_local: true
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
-        # The padded footprint's circumscribed radius is about 0.425 m.
+        # The padded footprint's circumscribed radius is about 0.456 m.
         # Keep a measured 0.05 m map-cell margin around that physical radius.
-        inflation_radius: 0.48
+        inflation_radius: 0.51
         cost_scaling_factor: 5.0
       always_send_full_costmap: true
 
@@ -200,9 +239,9 @@ planner_server:
     GridBased:
       plugin: nav2_navfn_planner::NavfnPlanner
       tolerance: 0.50
-      # Dijkstra is more stable on this SLAM map's narrow high-cost channels;
-      # NavFn's A* extraction intermittently reports a legal potential but
-      # cannot reconstruct a collision-free path from it.
+      # Both A* and Dijkstra passed direct planning from the clean dock.
+      # Preserve the measured Dijkstra baseline; execution failures are
+      # investigated separately from global path generation.
       use_astar: false
       allow_unknown: false
 
@@ -235,9 +274,9 @@ behavior_server:
     robot_base_frame: base_footprint
     transform_tolerance: 0.50
     simulate_ahead_time: 2.0
-    max_rotational_vel: 0.8
-    min_rotational_vel: 0.2
-    rotational_acc_lim: 0.8
+    max_rotational_vel: 0.3
+    min_rotational_vel: 0.1
+    rotational_acc_lim: 0.4
 
 waypoint_follower:
   ros__parameters:
@@ -251,10 +290,10 @@ velocity_smoother:
     smoothing_frequency: 10.0
     scale_velocities: false
     feedback: OPEN_LOOP
-    max_velocity: [0.25, 0.0, 0.8]
-    min_velocity: [-0.10, 0.0, -0.8]
-    max_accel: [0.40, 0.0, 0.80]
-    max_decel: [-0.50, 0.0, -0.80]
+    max_velocity: [0.15, 0.0, 0.3]
+    min_velocity: [-0.10, 0.0, -0.3]
+    max_accel: [0.25, 0.0, 0.40]
+    max_decel: [-0.30, 0.0, -0.40]
     odom_topic: /odom
     odom_duration: 0.10
     deadband_velocity: [0.0, 0.0, 0.0]

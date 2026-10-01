@@ -1,11 +1,15 @@
 """One-command first-floor CSTAM simulation, localization and delivery bringup."""
 
 import os
+import math
+
+import yaml
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
+    GroupAction,
     IncludeLaunchDescription,
     SetEnvironmentVariable,
 )
@@ -18,6 +22,16 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     phase1_share = get_package_share_directory('cstam_phase1')
+    with open(os.path.join(phase1_share, 'maps', 'restaurant', 'locations.yaml'),
+              encoding='utf-8') as stream:
+        dock = yaml.safe_load(stream)['dock']
+    with open(os.path.join(phase1_share, 'maps', 'restaurant', 'world_alignment.yaml'),
+              encoding='utf-8') as stream:
+        alignment = yaml.safe_load(stream)['world_from_map']
+    angle = alignment['yaw']
+    dock_world_x = alignment['x'] + math.cos(angle) * dock['x'] - math.sin(angle) * dock['y']
+    dock_world_y = alignment['y'] + math.sin(angle) * dock['x'] + math.cos(angle) * dock['y']
+    dock_world_yaw = angle + dock['yaw']
     restaurant_share = get_package_share_directory('andino_gz')
     slam = LaunchConfiguration('slam')
     rviz = LaunchConfiguration('rviz')
@@ -59,8 +73,7 @@ def generate_launch_description():
             'map': PathJoinSubstitution([
                 FindPackageShare('cstam_phase1'), 'maps', 'restaurant',
                 'restaurant.yaml']),
-            'params_file': PathJoinSubstitution([
-                FindPackageShare('cstam_phase1'), 'config', 'nav2_params.yaml']),
+            'params_file': LaunchConfiguration('nav2_params_file'),
         }.items(),
         condition=normal_condition,
     )
@@ -106,7 +119,12 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         name='cstam_drive_reference_tf',
-        arguments=['0.18', '0', '0', '0', '0', '0',
+        # DiffDrive integrates wheel angles at a virtual skid-steer centre;
+        # selecting front encoders does not place its frame at the front axle.
+        # Real repeated-turn comparison: the former 0.18 m lever produced
+        # AMCL translation drift up to 0.97 m; a centred reference stayed
+        # within 0.18 m. Both frames are ground projections of the body centre.
+        arguments=['0', '0', '0', '0', '0', '0',
                    'base_drive', 'base_footprint'],
         parameters=[{'use_sim_time': True}],
         output='screen',
@@ -116,7 +134,10 @@ def generate_launch_description():
         package='rviz2',
         executable='rviz2',
         name='cstam_phase1_rviz',
-        arguments=['-d', os.path.join(phase1_share, 'rviz', 'cstam_phase1.rviz')],
+        arguments=['-d', PythonExpression([
+            "'", os.path.join(phase1_share, 'rviz', 'cstam_mapping.rviz'),
+            "' if '", slam, "'.lower() == 'true' else '",
+            os.path.join(phase1_share, 'rviz', 'cstam_phase1.rviz'), "'"])],
         parameters=[{'use_sim_time': True}],
         output='screen',
         condition=rviz_condition,
@@ -136,18 +157,30 @@ def generate_launch_description():
                               description='Run SLAM mapping instead of AMCL/Nav2.'),
         DeclareLaunchArgument('rviz', default_value='false',
                               description='Open the CSTAM Phase 1 RViz view.'),
-        DeclareLaunchArgument('headless', default_value='false',
+        DeclareLaunchArgument(
+            'nav2_params_file',
+            default_value=os.path.join(phase1_share, 'config', 'nav2_params.yaml'),
+            description='Nav2 configuration; override only for controlled comparisons.'),
+        DeclareLaunchArgument('headless', default_value='False',
                               description='Run Gazebo without its GUI.'),
         # The upper rectangle is the actual first-floor restaurant area; the
         # lower rectangle is an empty approach area separated by a solid wall.
-        DeclareLaunchArgument('robot_x', default_value='11.4'),
-        DeclareLaunchArgument('robot_y', default_value='6.95'),
+        # Mapping keeps the measured demonstration start. Normal mode spawns
+        # at the actual world location corresponding to the semantic dock.
+        # AMCL still estimates pose from real scans and wheel odometry.
+        DeclareLaunchArgument('robot_x', default_value=PythonExpression([
+            "'11.4' if '", slam, "'.lower() == 'true' else '", str(dock_world_x), "'"])),
+        DeclareLaunchArgument('robot_y', default_value=PythonExpression([
+            "'6.95' if '", slam, "'.lower() == 'true' else '", str(dock_world_y), "'"])),
         DeclareLaunchArgument('robot_z', default_value='0.02'),
-        DeclareLaunchArgument('robot_yaw', default_value='0.0'),
-        DeclareLaunchArgument('initial_pose_x', default_value='-3.63'),
-        DeclareLaunchArgument('initial_pose_y', default_value='1.08'),
-        DeclareLaunchArgument('initial_pose_yaw', default_value='-0.522'),
-        restaurant,
+        DeclareLaunchArgument('robot_yaw', default_value=PythonExpression([
+            "'0.0' if '", slam, "'.lower() == 'true' else '", str(dock_world_yaw), "'"])),
+        DeclareLaunchArgument('initial_pose_x', default_value=str(dock['x'])),
+        DeclareLaunchArgument('initial_pose_y', default_value=str(dock['y'])),
+        DeclareLaunchArgument('initial_pose_yaw', default_value=str(dock['yaw'])),
+        # Nested restaurant arguments (notably rviz:=False) must stay local;
+        # otherwise they overwrite this launch's RViz setting.
+        GroupAction(actions=[restaurant], scoped=True),
         drive_reference_tf,
         pointcloud_filter,
         slam_launch,

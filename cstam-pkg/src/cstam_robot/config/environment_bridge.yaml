@@ -1,6 +1,12 @@
 # Bridges for the CSTAM robot when it is spawned into another package's world.
 # The camera aliases preserve the environment's existing camera topic names.
 
+- ros_topic_name: "/joint_states"
+  gz_topic_name: "/joint_states"
+  ros_type_name: "sensor_msgs/msg/JointState"
+  gz_type_name: "gz.msgs.Model"
+  direction: GZ_TO_ROS
+
 - ros_topic_name: "cmd_vel"
   gz_topic_name: "/cmd_vel"
   ros_type_name: "geometry_msgs/msg/Twist"

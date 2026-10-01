@@ -1,0 +1,27 @@
+flowchart TB
+    G[Gazebo Harmonic: CSTAM and first-floor restaurant] --> B[ROS Gazebo bridges: cloud, odometry, TF, clock, joints]
+    B --> F[3D body self-filter and height projection]
+    F --> S[/scan_navigation: real nearest returns]
+    F --> M[/lidar/points_filtered: marking]
+    F --> C[/lidar/points_clearing: clearing only]
+    S --> SL[SLAM Toolbox in mapping mode]
+    S --> A[Saved map and AMCL in normal mode]
+    SL --> TF[map to odom to base_drive to base_footprint to sensor TF]
+    A --> TF
+    B --> TF
+    A --> GC[Global static map plus inflation]
+    M --> LC[Local rolling VoxelLayer plus inflation]
+    C --> LC
+    GC --> P[NavFn Dijkstra]
+    P --> CO[Rotation Shim and DWB: full footprint]
+    LC --> CO
+    TF --> P
+    TF --> CO
+    CO --> V[/cmd_vel_nav to velocity smoother to /cmd_vel]
+    V --> G
+    U[Delivery request or manual return service] --> T[Delivery manager: FIFO and actual action results]
+    L[Semantic kitchen, table and dock poses] --> T
+    T -->|NavigateToPose| BT[Nav2 action: replanning and recovery]
+    BT --> P
+    BT -->|real result| T
+    T --> D[Kitchen to table to dock to IDLE]

@@ -46,13 +46,23 @@ def generate_launch_description():
         'velocity_smoother': 'nav2_velocity_smoother',
     }
     for executable in navigation_nodes:
+        remappings = list(tf_remappings)
+        if executable in ('controller_server', 'behavior_server'):
+            remappings.append(('cmd_vel', 'cmd_vel_nav'))
+        elif executable == 'velocity_smoother':
+            # One smoothed command stream reaches Gazebo. Previously the
+            # smoother output had zero subscribers and was bypassed.
+            remappings.extend([
+                ('cmd_vel', 'cmd_vel_nav'),
+                ('cmd_vel_smoothed', 'cmd_vel'),
+            ])
         nodes.append(Node(
             package=package_by_executable[executable],
             executable=executable,
             name=executable,
             output='screen',
             parameters=common,
-            remappings=tf_remappings))
+            remappings=remappings))
     nodes.append(Node(
         package='nav2_lifecycle_manager', executable='lifecycle_manager',
         name='lifecycle_manager_navigation', output='screen',

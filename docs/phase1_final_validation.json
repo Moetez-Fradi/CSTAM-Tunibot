@@ -1,0 +1,87 @@
+{
+  "timestamp": "2026-10-01T21:00:07.747729+01:00",
+  "branch": "Youssef",
+  "mandatory_simulation_workflows_verified": true,
+  "raw_navigation_successes": "4/4",
+  "kitchen_clean_start_successes": "3/3",
+  "fresh_headless_delivery_successes": "2/2",
+  "extra_gui_enabled_delivery_successes": "1/1",
+  "queue": "VERIFIED",
+  "invalid_duplicate_empty": "VERIFIED",
+  "automatic_station_return": "VERIFIED",
+  "manual_station_return": "VERIFIED",
+  "mapping_and_save": "VERIFIED",
+  "original_build_packages": 5,
+  "copied_workspace_build_packages": 5,
+  "original_tests": {
+    "passed": 11,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "copied_workspace_tests": {
+    "passed": 11,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "final_normal_health": {
+    "PASS": 22,
+    "FAIL": 0
+  },
+  "focused_rosdep_check": "All system dependencies have been satisfied",
+  "pristine_second_machine": "NOT TESTED",
+  "final_controller": "Rotation Shim + DWB",
+  "final_planner": "NavFn Dijkstra, stock replanning/recovery BT",
+  "extra_smoothing_execution": "FAILED; collision-check rejection during rotated dock-departure replanning; not adopted",
+  "all_recorded_accepted_route_non_ground_contacts": 0,
+  "physical_application_dock_position_error_range_m": [
+    0.176053,
+    0.292125
+  ],
+  "physical_application_dock_yaw_error_range_rad": [
+    0.046866,
+    0.127152
+  ],
+  "main_reference": "7eab72647befaad3d221d5f03d7228e7e67a871c",
+  "HEAD": "b5b6ea97a8b23c49213ad4a354850044af2bcd13",
+  "commit_performed": false,
+  "push_performed": false,
+  "runtime_shutdown": "VERIFIED: no owned Gazebo, Phase 1 launch, mapping route, contact or stage observer remains.",
+  "limits": [
+    "Simulation only; charger alignment/physical loading/battery/elevator not implemented.",
+    "Dock/table3 orientation constraints and finite localization error.",
+    "GUI delivery minimized display windows during the long mission.",
+    "Historical navigation checkpoint application fields are superseded by final application acceptance.",
+    "Temporary source/caches enabled rosdep check; no system rosdep configuration changes.",
+    "Video recording/upload, evaluator repository access and publication still require operator action."
+  ],
+  "source_sha256": {
+    "cstam-pkg/src/andino_gz/andino_gz/RESTAURANT_SIM.md": "0c08b9b57be381a6906215d243a188cbdec0e34412ec78064d06d3c903f96ea6",
+    "cstam-pkg/src/andino_gz/andino_gz/config_gui/restaurant.config": "53182a3446a6ae57d22056e78cf8e48762d9a36c79e9131b4188f9989f71e1b6",
+    "cstam-pkg/src/andino_gz/andino_gz/launch/restaurant.launch.py": "f52231a4d4a19dee0e2ac884eaf322ed2bedafda565d666937f45a1065f19427",
+    "cstam-pkg/src/andino_gz/andino_gz/package.xml": "0a563cc41138ea11ce5aa4846719737acb90b6e1fef7e3c9f2e8272a2296d4d1",
+    "cstam-pkg/src/cstam_phase1/config/nav2_params.yaml": "1c95cccd4d7975218e60136880f8acff1e6e1654723ec8b632f287a72798674b",
+    "cstam-pkg/src/cstam_phase1/cstam_phase1/delivery_task_manager.py": "feb00edf9b2b487d971361f57fb9f51b678ed192bdf9e29159f9f8bce6c715eb",
+    "cstam-pkg/src/cstam_phase1/cstam_phase1/pointcloud_navigation_filter.py": "2ea1782f8de6cd00a4e6e9c03870173f5c7cf98b433b432a202b5723f7bb473c",
+    "cstam-pkg/src/cstam_phase1/cstam_phase1/startup_health_check.py": "229aeabbf10f62ed4ed4c3d985261208580490ac60b5fc947c38ff75d6df45f7",
+    "cstam-pkg/src/cstam_phase1/launch/nav2_phase1.launch.py": "87c503e39811dea6d7d04dc6aafda019590c95860701f111071ffe36f2b8b305",
+    "cstam-pkg/src/cstam_phase1/launch/phase1.launch.py": "f7f770e86506af903593897320cd19f478bf4b727d6d9267bc216147ab9af217",
+    "cstam-pkg/src/cstam_phase1/maps/restaurant/locations.yaml": "53b5b28eec3b6f7e09264b3fa618803a4c270b92361d6aadebe4a9356d4724a4",
+    "cstam-pkg/src/cstam_phase1/maps/restaurant/restaurant.pgm": "e092a8f500157f1a472e22cdfb719a5b4be8e8bf0cef3c28d46e7435de539274",
+    "cstam-pkg/src/cstam_phase1/maps/restaurant/restaurant.yaml": "4e1c1f4ae0d2459f47ce6f2d2c103580336214981e282e56f5295ff93858da60",
+    "cstam-pkg/src/cstam_phase1/maps/restaurant/world_alignment.yaml": "bae369803f1088b7e96ed5d0408ecb547a054fc78eccc776937cca93dd5acab4",
+    "cstam-pkg/src/cstam_phase1/package.xml": "fb34cbf460e8e8d033ddbf12e870d56d42e05b1d504c2bb3c74c88be3dc4861f",
+    "cstam-pkg/src/cstam_phase1/rviz/cstam_mapping.rviz": "91f30660db2c920908bc5b8fe4afc83e39ef502c2f6289b9b38173d6b6a9a698",
+    "cstam-pkg/src/cstam_phase1/rviz/cstam_phase1.rviz": "fff770157aa592286f1179f192d5da2ad772485762f4fe2b6a79e59f064ea5cb",
+    "cstam-pkg/src/cstam_phase1/test/test_clearing_projection.py": "80a28d6989d6e6995f89fac54943dbdc1879d51171e8949dbc04fd9f6ad9e8c9",
+    "cstam-pkg/src/cstam_phase1/test/test_controller_contract.py": "84b55e54d84acfaf0c22b9d2065e7e7eaef0e11822e85973f6fc77d5f17f2970",
+    "cstam-pkg/src/cstam_phase1/test/test_delivery_control.py": "f96add27424749903eb6187a4dd2408e16f947c05feab97dfc8ba7e5dc1cc264",
+    "cstam-pkg/src/cstam_phase1/test/test_geometry.py": "b72964154f1356e57f9ad97fa12a073b90a97f6ff604dfa5ac07633e8fec69b2",
+    "cstam-pkg/src/cstam_phase1/test/test_restaurant_gui.py": "961444b79a78ffab3ef0c4320ac52d57e8aed0f9e44e5b700eacf371ca86d0d1",
+    "cstam-pkg/src/cstam_robot/config/environment_bridge.yaml": "b197421c461965dea920cd22c80a5f7f39e6df80bd5e1efa644b86022bec1999",
+    "cstam-pkg/src/cstam_robot/urdf/cstam_robot.urdf.xacro": "e9b3a1743eae5bfde27c36ede47ff80589a52899bf0bc18286b20ee2eed2684c",
+    "cstam-pkg/src/cstam_robot/urdf/cstam_robot_gazebo.xacro": "cb95f6062d0e9a30dda20c24d726814bd5cccd1ee82b8b8da2d03e221f10045b",
+    "cstam-pkg/src/cstam_robot/urdf/cstam_robot_sensors.xacro": "10bda5400450c03d7e6b0f15261d6c1ed8a9c102db5280b108a95dc4c262953b"
+  }
+}

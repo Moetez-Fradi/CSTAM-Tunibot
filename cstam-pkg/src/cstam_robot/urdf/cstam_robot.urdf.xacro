@@ -9,7 +9,10 @@
   <!-- Physical wheel-center spacing used to place the four wheels. -->
   <xacro:arg name="wheel_separation" default="0.41"/>
   <!-- Empirically calibrated skid-steer track for Gazebo DiffDrive odometry. -->
-  <xacro:arg name="diff_drive_wheel_separation" default="0.455"/>
+  <!-- Pure-turn measurements at 0.15 rad/s: 1.5855/1.12921 and
+       3.1530/2.45609 rad (odom/physical). Least-squares correction of the
+       previous 0.455 m effective track gives approximately 0.60 m. -->
+  <xacro:arg name="diff_drive_wheel_separation" default="0.60"/>
   <xacro:arg name="lidar_height" default="0.27"/>
   <xacro:arg name="upper_lidar_height" default="0.82"/>
   <xacro:arg name="lidar_3d_height" default="0.92"/>

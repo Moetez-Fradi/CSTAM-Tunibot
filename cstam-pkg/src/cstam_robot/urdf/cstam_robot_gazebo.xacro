@@ -7,7 +7,29 @@
         <always_on>true</always_on>
         <update_rate>50</update_rate>
         <topic>/cstam/contacts/base</topic>
-        <contact><collision>base_link_collision</collision></contact>
+        <!-- SDFormat conversion lumps the fixed base joint and renames the
+             collision. Contact sensors must reference the converted name. -->
+        <contact>
+          <collision>base_footprint_fixed_joint_lump__base_link_collision_collision</collision>
+          <collision>base_footprint_fixed_joint_lump__front_center_ultrasonic_link_collision_1</collision>
+          <collision>base_footprint_fixed_joint_lump__front_left_ultrasonic_link_collision_2</collision>
+          <collision>base_footprint_fixed_joint_lump__front_right_ultrasonic_link_collision_3</collision>
+          <collision>base_footprint_fixed_joint_lump__left_shelf_support_link_collision_4</collision>
+          <collision>base_footprint_fixed_joint_lump__lidar_3d_link_collision_5</collision>
+          <collision>base_footprint_fixed_joint_lump__lidar_mount_link_collision_6</collision>
+          <collision>base_footprint_fixed_joint_lump__lidar_link_collision_7</collision>
+          <collision>base_footprint_fixed_joint_lump__rear_center_ultrasonic_link_collision_8</collision>
+          <collision>base_footprint_fixed_joint_lump__rear_left_ultrasonic_link_collision_9</collision>
+          <collision>base_footprint_fixed_joint_lump__rear_panel_link_collision_10</collision>
+          <collision>base_footprint_fixed_joint_lump__shelf_1_link_collision_11</collision>
+          <collision>base_footprint_fixed_joint_lump__shelf_2_link_collision_12</collision>
+          <collision>base_footprint_fixed_joint_lump__shelf_3_link_collision_13</collision>
+          <collision>base_footprint_fixed_joint_lump__rear_right_ultrasonic_link_collision_14</collision>
+          <collision>base_footprint_fixed_joint_lump__right_shelf_support_link_collision_15</collision>
+          <collision>base_footprint_fixed_joint_lump__sensor_mast_link_collision_16</collision>
+          <collision>base_footprint_fixed_joint_lump__camera_link_collision_17</collision>
+          <collision>base_footprint_fixed_joint_lump__display_link_collision_18</collision>
+        </contact>
       </sensor>
     </gazebo>
 
@@ -18,7 +40,7 @@
       <sensor name="left_front_contact" type="contact">
         <always_on>true</always_on><update_rate>50</update_rate>
         <topic>/cstam/contacts/left_front</topic>
-        <contact><collision>left_front_wheel_collision</collision></contact>
+        <contact><collision>left_front_wheel_link_fixed_joint_lump__left_front_wheel_collision_collision</collision></contact>
       </sensor>
     </gazebo>
     <gazebo reference="left_rear_wheel_link">
@@ -28,7 +50,7 @@
       <sensor name="left_rear_contact" type="contact">
         <always_on>true</always_on><update_rate>50</update_rate>
         <topic>/cstam/contacts/left_rear</topic>
-        <contact><collision>left_rear_wheel_collision</collision></contact>
+        <contact><collision>left_rear_wheel_link_fixed_joint_lump__left_rear_wheel_collision_collision</collision></contact>
       </sensor>
     </gazebo>
     <gazebo reference="right_front_wheel_link">
@@ -38,7 +60,7 @@
       <sensor name="right_front_contact" type="contact">
         <always_on>true</always_on><update_rate>50</update_rate>
         <topic>/cstam/contacts/right_front</topic>
-        <contact><collision>right_front_wheel_collision</collision></contact>
+        <contact><collision>right_front_wheel_link_fixed_joint_lump__right_front_wheel_collision_collision</collision></contact>
       </sensor>
     </gazebo>
     <gazebo reference="right_rear_wheel_link">
@@ -48,7 +70,7 @@
       <sensor name="right_rear_contact" type="contact">
         <always_on>true</always_on><update_rate>50</update_rate>
         <topic>/cstam/contacts/right_rear</topic>
-        <contact><collision>right_rear_wheel_collision</collision></contact>
+        <contact><collision>right_rear_wheel_link_fixed_joint_lump__right_rear_wheel_collision_collision</collision></contact>
       </sensor>
     </gazebo>
 
@@ -107,6 +129,15 @@
     </gazebo>
 
     <gazebo>
+      <!-- Publish real wheel joint positions for RobotModel/TF visualization. -->
+      <plugin filename="gz-sim-joint-state-publisher-system"
+              name="gz::sim::systems::JointStatePublisher">
+        <topic>/joint_states</topic>
+        <joint_name>left_front_wheel_joint</joint_name>
+        <joint_name>left_rear_wheel_joint</joint_name>
+        <joint_name>right_front_wheel_joint</joint_name>
+        <joint_name>right_rear_wheel_joint</joint_name>
+      </plugin>
       <plugin filename="gz-sim-diff-drive-system" name="gz::sim::systems::DiffDrive">
         <left_joint>left_front_wheel_joint</left_joint>
         <left_joint>left_rear_wheel_joint</left_joint>

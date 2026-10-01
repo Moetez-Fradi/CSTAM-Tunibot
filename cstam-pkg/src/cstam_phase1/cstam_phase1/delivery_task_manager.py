@@ -48,6 +48,7 @@ class DeliveryTaskManager(Node):
         self.current_location = None
         self.current_stage = None
         self.current_goal_handle = None
+        self.goal_request_pending = False
         self.manual_dock_requested = False
         self.state = 'IDLE'
         self.last_message = 'ready'
@@ -121,8 +122,15 @@ class DeliveryTaskManager(Node):
             response.success = False
             response.message = 'dock is missing from locations.yaml'
             return response
+        if self.state == 'RETURNING_TO_DOCK' and self.current_stage == 'dock':
+            response.success = True
+            response.message = 'already returning to dock'
+            return response
         self.manual_dock_requested = True
-        if self.current_goal_handle is not None:
+        if self.goal_request_pending:
+            self.state = 'RETURNING_TO_DOCK'
+            self._publish_status('return-to-dock requested; waiting for goal acknowledgement')
+        elif self.current_goal_handle is not None:
             self.get_logger().warn('Cancelling current navigation to return to dock.')
             self.current_goal_handle.cancel_goal_async()
             self.state = 'RETURNING_TO_DOCK'
@@ -142,7 +150,7 @@ class DeliveryTaskManager(Node):
         return response
 
     def _start_queued_task(self):
-        if self.current_goal_handle is not None:
+        if self.current_goal_handle is not None or self.goal_request_pending:
             return
         if self.state not in ('IDLE', 'DELIVERY_COMPLETE'):
             return
@@ -184,6 +192,7 @@ class DeliveryTaskManager(Node):
         self.get_logger().info(
             f'NavigateToPose: stage={stage}, location={location}, '
             f'x={pose_data["x"]:.2f}, y={pose_data["y"]:.2f}')
+        self.goal_request_pending = True
         future = self.navigator.send_goal_async(
             goal, feedback_callback=self._feedback_callback)
         future.add_done_callback(
@@ -191,6 +200,7 @@ class DeliveryTaskManager(Node):
             self._goal_response_callback(completed, target, target_stage))
 
     def _goal_response_callback(self, future, location, stage):
+        self.goal_request_pending = False
         try:
             handle = future.result()
         except Exception as error:
@@ -200,6 +210,8 @@ class DeliveryTaskManager(Node):
             self._fail(f'Nav2 rejected goal for {location}')
             return
         self.current_goal_handle = handle
+        if self.manual_dock_requested and stage != 'dock':
+            handle.cancel_goal_async()
         result_future = handle.get_result_async()
         result_future.add_done_callback(
             lambda completed: self._goal_result_callback(completed, location, stage))
@@ -219,12 +231,15 @@ class DeliveryTaskManager(Node):
             self._fail(f'Nav2 result unavailable for {location}: {error}')
             return
         self.last_result = int(status)
+        # A manual return wins even if the previous goal finishes before its
+        # cancellation is processed. A failed dock goal must stop in ERROR,
+        # rather than recursively retrying forever.
+        if self.manual_dock_requested and stage != 'dock':
+            self._return_to_dock()
+            return
         if status != GoalStatus.STATUS_SUCCEEDED:
-            if self.manual_dock_requested:
-                self._return_to_dock()
-            else:
-                self._fail(
-                    f'Nav2 failed at {location} with action status {int(status)}')
+            self._fail(
+                f'Nav2 failed at {location} with action status {int(status)}')
             return
 
         if stage == 'pickup':
@@ -250,6 +265,8 @@ class DeliveryTaskManager(Node):
 
     def _fail(self, message):
         self.current_goal_handle = None
+        self.goal_request_pending = False
+        self.manual_dock_requested = False
         self.state = 'ERROR'
         self.last_message = message
         self._publish_status(message)

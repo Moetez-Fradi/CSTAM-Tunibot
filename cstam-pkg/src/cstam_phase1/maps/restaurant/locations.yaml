@@ -5,7 +5,9 @@ supported_floors: [1]
 dock:
   floor: 1
   x: -3.63
-  y: 1.08
+  # Shift 0.23 m south within the same docking/staging area. With the full
+  # padded footprint, the old pose enclosed one lethal static-map cell.
+  y: 0.85
   yaw: -0.522
 
 kitchen:
@@ -22,9 +24,11 @@ table_1:
 
 table_2:
   floor: 1
-  x: -3.96
+  # West service approach to the same table. The previous pose was inside
+  # its real tabletop collision despite being a free occupancy-map cell.
+  x: -5.60
   y: 1.96
-  yaw: -0.522
+  yaw: 0.0
 
 table_3:
   floor: 1

@@ -1,96 +1,42 @@
-# Restaurant simulation
+# First-floor CSTAM restaurant simulation
 
-This scene packages the Sweet Home 3D export at
-`models/restaurant/meshes/restaurant.obj` as a static, collidable Gazebo
-model.  Sweet Home 3D uses centimetres and a Y-up coordinate frame, while
-Gazebo uses metres and Z-up; the transform is documented in `model.sdf`.
-
-The integration branch starts the four-wheel CSTAM robot in this scene at
-`x=-8.0`, `y=-12.0`, `z=0.02`, `yaw=0.0`.  This is the clear area
-south-west of the dining tables based on the scene's existing coordinates.
-
-From the workspace containing this package, build and source it once:
+Phase 1 uses ROS 2 Jazzy and Gazebo Harmonic. Build the focused package closure
+from `CSTAM-Tunibot/cstam-pkg`, then launch the integrated system:
 
 ```bash
-ros
-cd /workspace/src/Autonomous-Delivery-Robot
-colcon build --packages-select andino_gz
+source /opt/ros/jazzy/setup.bash
+colcon build --symlink-install --packages-up-to cstam_phase1
 source install/setup.bash
+ros2 launch cstam_phase1 phase1.launch.py rviz:=true
 ```
 
-Then launch the scene:
+Normal mode spawns at the semantic dock's registered world pose, approximately
+(7.59, 7.80, -0.522). Mapping mode (`slam:=true`) uses (11.4, 6.95, 0).
+The raw `andino_gz restaurant.launch.py` remains a simulation-only utility
+with legacy spawn defaults; use `cstam_phase1` for the accepted workflow.
 
-```bash
-ros2 launch andino_gz restaurant.launch.py
-```
+`models/restaurant/meshes/restaurant.obj` provides the authored visual scene.
+Sweet Home centimetres/Y-up are converted in its model SDF. The OBJ is visual
+only: primitive collision boxes in `models/restaurant_collision/model.sdf`
+represent walls, tables, chair seats and backs. The stable world ground plane
+provides contact physics. Preserve the authored collision alignment; globally
+translating the full multi-floor scene down corrupts first-floor sensor geometry.
+Do not regenerate collision assets or the accepted SLAM map merely for a demo.
 
-## Drive the robot with the keyboard
+The Harmonic restaurant GUI configuration uses `gz-gui` tags and a restaurant
+camera view, with no GUI velocity publisher. The world retains the required
+Sensors and Contact systems. Legacy kinematic actor visuals can emit invalid
+`__default__` mesh warnings; elevator/pedestrian behavior is outside Phase 1.
+The robot, static restaurant geometry and real sensor pipeline are the tested
+first-floor deliverable. Original texture material files were not supplied;
+the neutral fallback material is used.
 
-Leave the simulation running in its first terminal. Open a second terminal,
-enter the ROS container, source this workspace, and run:
+CSTAM lives in `cstam_robot`. Its final Phase 1 interfaces are `/cmd_vel`,
+`/odom`, `/tf`, `/joint_states`, `/lidar/points` and RGB-D camera topics. The
+Phase 1 filter produces `/lidar/points_filtered`, `/lidar/points_clearing` and
+`/scan_navigation`. Normal operation uses the saved map and AMCL; mapping uses
+SLAM Toolbox. Never run manual teleop or `mapping_route` during normal Nav2
+acceptance or delivery.
 
-```bash
-ros
-cd /home/golden5ragon/Desktop/Robotics/cstam/Autonomous-Delivery-Robot
-source install/setup.bash
-ros2 run teleop_twist_keyboard teleop_twist_keyboard
-```
-
-Keep focus in that second terminal while driving. Use `i`, `j`, `k`, and `l`
-to drive/turn, `,` to reverse, `q` / `z` to change speed, and `CTRL-C` to
-stop teleoperation. The node publishes to `cmd_vel`, which the restaurant
-launch bridges to the Andino model.
-
-If the container mounts the repository somewhere other than `/workspace`, use
-that mount path instead.  The generic launch remains available when you need a
-different robot pose:
-
-```bash
-ros2 launch andino_gz andino_gz.launch.py \
-  world_name:=restaurant.sdf nav2:=False rviz:=False \
-  'robots:=andino={x: -8.0, y: -12.0, z: 0.10, yaw: 0.0};'
-```
-
-The elevator is a kinematic actor on a 28-second lower-floor / upper-floor
-loop.  Three geometric pedestrian actors use staggered 43-46 second loops:
-they remain at selected dining-table seats, leave on fixed routes, then return
-to those seats.  Change their `<waypoint>` poses and times in
-`worlds/restaurant.sdf` to adjust routes; waypoint coordinates are in Gazebo
-metres.
-
-The source OBJ names a `test.mtl` file that was not provided with the export.
-The scene therefore uses the neutral fallback material in `model.sdf`.  Put a
-matching `test.mtl` plus any texture assets next to `restaurant.obj` if you
-want to restore the original Sweet Home 3D materials.
-
-The OBJ is used for visuals only.  Sweet Home exports a single, self-
-intersecting triangle mesh, which is unsuitable for dynamic collision in ODE.
-`models/restaurant_collision/model.sdf` supplies generated primitive collision
-boxes for each wall segment, table top, chair seat, and chair back, plus the
-world's stable 60 m floor plane. Regenerate it after replacing the OBJ:
-
-```bash
-python3 src/andino_gz/andino_gz/tools/generate_restaurant_collisions.py
-```
-
-If this clone does not contain `models/restaurant/meshes/restaurant.obj`,
-Gazebo cannot load the restaurant visual model.  The local `office.sdf`
-environment is complete and can be used to verify the CSTAM integration:
-
-```bash
-ros2 launch andino_gz cstam_office.launch.py
-```
-
-The CSTAM package is also available independently as `cstam_robot`; its
-verified interfaces are `/cmd_vel`, `/odom`, `/scan`, `/tf`, and RGB-D topics
-under `/camera/rgbd/`.
-
-## Moving the elevator
-
-The elevator is currently centred at Gazebo coordinates `x=-3`, `y=-2`.
-Change its location by replacing both coordinates consistently in
-`worlds/restaurant.sdf`: the `<model name="elevator_shaft">` pose and every
-`restaurant_elevator` trajectory waypoint. Gazebo coordinates are metres;
-positive X points right in the imported scene and positive Y points toward the
-front of the restaurant. Keep the Z values (`0` lower floor, `3` upper floor)
-unless the floor heights change.
+See repository-root README, PHASE1_ARCHITECTURE, PHASE1_DEMO_GUIDE and
+PHASE1_REPORT for accepted semantics, exact commands and measured limitations.

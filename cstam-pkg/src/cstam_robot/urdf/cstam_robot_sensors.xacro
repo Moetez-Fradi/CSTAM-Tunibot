@@ -27,8 +27,8 @@
       <origin xyz="0 0 0.0475" rpy="0 0 0"/>
     </joint>
 
-    <!-- A second scan plane sees chair backs and table edges above the low
-         mapping LiDAR. Nav2 uses it locally; AMCL keeps the original scan. -->
+    <!-- Legacy upper scan frame retained for debugging. No runtime sensor
+         is attached here; Phase 1 uses the primary 3D LiDAR below. -->
     <link name="lidar_upper_link"/>
     <joint name="lidar_upper_joint" type="fixed">
       <parent link="base_link"/><child link="lidar_upper_link"/>

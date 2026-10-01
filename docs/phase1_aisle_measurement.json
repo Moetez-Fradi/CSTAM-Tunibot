@@ -1,0 +1,21 @@
+{
+  "method": "Ray cast normal to a +/-0.25m path tangent; first lethal cells on both sides; interior accepted NavFn path excludes 1m at each endpoint. Half-cell step; conservative one half-cell subtraction each side. Static costmap cross-section, not a full CAD/contact survey.",
+  "resolution_m": 0.05000000074505806,
+  "minimum_sampled_interior_cross_section": {
+    "point": [
+      -5.85036551210829,
+      4.0894784923416125
+    ],
+    "normal_yaw": 3.107880393923039,
+    "sides_m": [
+      0.6250000093132257,
+      0.9500000141561031
+    ],
+    "cross_section_m": 1.5750000234693289
+  },
+  "padded_footprint_m": [
+    0.68,
+    0.56
+  ],
+  "padded_circumscribed_diameter_m": 0.9121403400793104
+}

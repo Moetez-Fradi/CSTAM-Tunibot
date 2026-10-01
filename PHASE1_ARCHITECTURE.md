@@ -1,119 +1,107 @@
-# CSTAM Phase 1 Architecture
+# CSTAM Phase 1 architecture
 
-This document describes the implementation currently in the repository. The
-scope is deliberately limited to the first floor.
+First-floor scope. [Standalone SVG](docs/phase1_architecture.svg),
+[PNG](docs/phase1_architecture.png), [Mermaid source](docs/phase1_architecture.mmd), and
+[Graphviz source](docs/phase1_architecture.dot).
 
-```mermaid
-flowchart LR
-    U[User / terminal] -->|std_msgs/String: location name| T[Delivery Task Manager]
-    L[locations.yaml] --> T
-    T -->|NavigateToPose action| N[Nav2]
-    N --> P[NavFn planner]
-    N --> C[DWB controller]
-    C -->|geometry_msgs/Twist| V[/cmd_vel]
-    V --> B[CSTAM differential drive]
-    B --> G[Gazebo physics]
-    G --> O[/odom]
-    G --> PC[/lidar/points PointCloud2]
-    PC --> F[3D self-filter + height projection]
-    F --> S[/scan_navigation LaserScan]
-    F --> V3[/lidar/points_filtered PointCloud2]
-    O --> TF[TF tree]
-    S --> TF
-    M[restaurant.yaml + restaurant.pgm] --> MS[map_server]
-    MS --> A[AMCL]
-    S --> A
-    O --> A
-    A -->|map -> odom| TF
-    TF --> N
-    V3 --> CM[Nav2 local voxel costmap]
-    CM --> C
-```
+## Simulation and perception
 
-## Runtime modes
+Gazebo Harmonic simulates the restaurant, full CSTAM collision geometry, four
+wheel joints, ground/furniture contact sensors, and one GPU 3D LiDAR.
+`ros_gz_bridge` provides real `/clock`, `/odom`, `/tf`, `/joint_states` and
+`/lidar/points`. The cloud has **16 × 360** samples; the LiDAR sits at
+`(0.24, 0, 0.92)` relative to the ground-projected body centre.
 
-`phase1.launch.py slam:=false` starts the restaurant, CSTAM, real Gazebo
-bridges, the saved-map map server, AMCL, Nav2, the initial-pose helper, and the
-delivery task manager.
+`pointcloud_navigation_filter` provides three separate products:
 
-`phase1.launch.py slam:=true` starts the restaurant, CSTAM, bridges, and
-SLAM Toolbox. The mapping route helper can then drive CSTAM with real
-`/cmd_vel`; map saving remains an explicit operator step.
+- `/lidar/points_filtered`: real scene returns in robot collision heights
+  0.04–1.27 m, with geometric body self-points removed, for local obstacle marking.
+- `/scan_navigation`: nearest real return per horizontal bin, ceiling 1.18 m,
+  for AMCL and SLAM, consistent with the accepted map's projection.
+- `/lidar/points_clearing`: finite scene/floor endpoints and valid organized
+  no-return free rays, exclusively for voxel ray clearing. Gazebo +Inf no-return
+  bins are reconstructed from sensor ring geometry at 15 m. NaN is unknown and
+  is not treated as free. These endpoints never mark obstacles or enter SLAM.
 
-## Normal-mode startup handshake
+The old 2D sensor/self-filter files remain as historical utilities; final bringup
+uses the 3D pipeline above.
 
-Normal mode uses this readiness chain:
+## Modes and TF ownership
+
+Normal mode: saved map → map_server + AMCL → Nav2 + task manager.
+Mapping mode: projected scan + wheel odometry → SLAM Toolbox → live map.
+Only one of AMCL and SLAM publishes `map -> odom`.
 
 ```text
-Gazebo clock + sensors + odometry
-  -> map_server and AMCL active
-  -> valid /map and /odom plus AMCL /initialpose subscriber
-  -> publish configured dock pose on /initialpose
-  -> observe AMCL pose near that dock pose
-  -> map -> odom and map -> base_footprint become available
-  -> planner and controller have a current robot pose
+map -> odom -> base_drive -> base_footprint -> base_link -> lidar_3d_link
 ```
 
-`startup_health_check` tests this chain with one bounded ROS participant rather
-than a sequence of unrelated CLI processes. The smoke wrapper has a hard
-timeout and prints explicit `PASS=<n> FAIL=<n>` totals.
+Gazebo DiffDrive owns `odom -> base_drive`; a zero-translation static transform
+connects its virtual skid centre to `base_footprint`; robot_state_publisher owns
+the robot links. Wheel state comes from the real Gazebo joint-state plugin.
+World/map registration in `world_alignment.yaml` determines a consistent spawn
+and enables diagnostic comparisons; it does not inject ground-truth localization.
 
-The launch also sets a package-local Fast DDS UDP profile for every child
-process. This avoids the shared-memory lock failures that were observed with a
-stale DDS participant while preserving the host's global ROS configuration.
+The initial-pose helper waits for map, odometry and the AMCL subscriber, publishes
+the configured dock, then waits for matching AMCL acknowledgement. The health
+checker verifies 22 normal-mode conditions. A project-local Fast DDS UDP profile
+reduces problems observed with interrupted shared-memory participants.
 
-## Frame ownership
+## Navigation
+
+Global costmap: **static map + inflation**, no transient scan marking.
+Local costmap: **rolling 4 × 4 m VoxelLayer + inflation** in odom; one marking
+source and a separate clearing-only source. Seven 0.20 m vertical cells cover
+1.40 m, above the full 1.245 m robot. Physical stale-voxel experiment cleared
+three marked cells back to zero when the obstacle was removed.
+
+NavFn Dijkstra plans the route. Rotation Shim aligns large initial/final heading
+changes; DWB evaluates trajectories with the complete rectangular footprint.
+PoseProgressChecker counts deliberate angular progress, avoiding translation-only
+timeouts during valid service-speed rotations. A failed action remains a failure.
+The velocity smoother is the sole physical command publisher:
 
 ```text
-map -> odom -> base_footprint -> base_link -> lidar_3d_link
+controller / recovery -> /cmd_vel_nav -> velocity_smoother -> /cmd_vel -> Gazebo
 ```
 
-- `map -> odom`: AMCL in normal operation, or SLAM Toolbox in mapping mode.
-- `odom -> base_footprint`: the Gazebo differential-drive odometry bridge.
-- `base_footprint -> base_link`: CSTAM `robot_state_publisher`.
-- `base_link -> lidar_3d_link`: CSTAM URDF fixed joint through
-  `robot_state_publisher`.
+Robot collision envelope: 0.596 × 0.455 m. Configured footprint: 0.66 × 0.54 m;
+0.01 m padding each side gives 0.68 × 0.56 m. Both costmaps use 0.51 m inflation,
+scaling 5.0. Full footprint checking is retained; inflation is a cost field,
+not proof of arbitrary-heading passage safety.
 
-## 3D LiDAR perception
+## Application
 
-The accepted runtime has one simulated Gazebo GPU LiDAR at approximately
-`(x=0.24, y=0, z=0.92)` in `base_link`, with 360 horizontal samples and 16
-vertical channels covering roughly -60 to +20 degrees. Gazebo and
-`ros_gz_bridge` publish the real cloud as `/lidar/points` (`PointCloud2`).
-`pointcloud_navigation_filter` removes only points inside the known CSTAM
-self-volume and keeps world heights about 0.04--1.18 m. It publishes the
-filtered cloud to `/lidar/points_filtered` for the local `VoxelLayer`, and a
-nearest-return 2-D projection to `/scan_navigation` for SLAM Toolbox, AMCL,
-and the mapping helper. The old low/upper 2-D sensor links and
-`scan_self_filter` source remain for debugging, but they are not started by
-the final Phase 1 launch.
-
-The navigation configuration uses `base_footprint`, not Andino's smaller
-`base_link`-based footprint.
-
-## Delivery flow
-
-The task manager accepts a semantic name such as `table_1`. It loads the name
-from `maps/restaurant/locations.yaml`, rejects unknown or non-first-floor
-locations, and sends three real Nav2 goals when the queue is empty:
+`/delivery/request` names resolve through `locations.yaml`. The task manager
+owns a FIFO queue and one real NavigateToPose goal at a time:
 
 ```text
-IDLE
-  -> NAVIGATING_TO_PICKUP
-  -> NAVIGATING_TO_CUSTOMER
-  -> DELIVERY_COMPLETE
-  -> RETURNING_TO_DOCK
-  -> IDLE
+IDLE -> NAVIGATING_TO_PICKUP
+     -> pickup reached acknowledgement -> NAVIGATING_TO_CUSTOMER
+     -> DELIVERY_COMPLETE
+     -> next queued customer's pickup, or RETURNING_TO_DOCK
+     -> dock reached -> IDLE
 ```
 
-If another request arrives while busy, it is queued. A failed Nav2 action puts
-the task manager in `ERROR`; it does not pretend that delivery succeeded.
+Pickup acknowledgement is emitted immediately before the customer goal; there
+is no physical load/unload mechanism or operator wait state in Phase 1.
+Invalid, empty and duplicate requests preserve the active request/queue.
+A rejected/aborted goal produces `ERROR`. Manual dock handles a pending goal
+acknowledgement or active cancellation before starting the dock goal; a failed
+dock stops in ERROR instead of retrying forever. Queued deliveries remain queued.
 
-## Important current limitation
+Auto-docking means autonomous return to the defined station pose, not connector
+engagement. The delivered/queued/manual flows passed real simulation acceptance.
 
-The original generated restaurant collision primitives were centered around
-`z=3 m`, above CSTAM's old 2-D LiDAR. Their vertical placement was corrected in
-`restaurant_collision/model.sdf`; the real 3-D scan now observes close
-geometry. A 345 x 486 candidate map was regenerated from that sensor chain and
-validated for static connectivity. Long-route controller acceptance remains
-open because DWB and RPP both have trouble tracking the dining-area approach.
+## Assets and exports
+
+Restaurant visual meshes, authored first-floor collision alignment, robot
+Xacro, launch/configuration, saved 345 × 486 map, semantic locations and
+DDS profile are repository assets. Resolve them through package-share paths.
+Build outputs and temporary runtime logs are not source deliverables.
+
+Render the diagram with:
+
+```bash
+dot -Tsvg docs/phase1_architecture.dot -o docs/phase1_architecture.svg
+```

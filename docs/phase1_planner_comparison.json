@@ -1,0 +1,246 @@
+{
+  "scope": "Controlled comparison only; final NavFn/default BT unchanged",
+  "reference": "docs/phase1_navigation_checkpoint.json kitchen runs; same map, footprint, localization and controller",
+  "parameters": {
+    "Smac2D": {
+      "allow_unknown": false,
+      "tolerance": 0.5,
+      "cost_travel_multiplier": 2.0,
+      "downsample_costmap": false
+    },
+    "smoother": "configured SimpleSmoother, check_for_collisions=true"
+  },
+  "notes": [
+    "Initial one-shot BT pilot was excluded from the final comparison because it omitted baseline replanning/recovery.",
+    "Both final experiments retain the stock replanning/recovery tree.",
+    "Path clearance is distance to lethal grid cell centres, not full-footprint safety proof."
+  ],
+  "compare_navfn": {
+    "direct_planning": {
+      "plan_status": 4,
+      "error": 0,
+      "poses": 535,
+      "initial": {
+        "amcl": [
+          -3.615919028743959,
+          0.8522347076220773,
+          -0.5220343062249897
+        ],
+        "odom": [
+          6.29701434387311e-18,
+          -1.1681797259473267e-35,
+          -4.698885939239363e-18
+        ],
+        "actual_vel": [
+          9.16060889636689e-20,
+          5.742860795091676e-19
+        ]
+      }
+    },
+    "path_metrics": {
+      "length": 13.418636876698404,
+      "min_clearance": 0.4609772297337403
+    },
+    "max_adjacent_heading_change_rad": 0.8239763681535373
+  },
+  "compare_smac_replan": {
+    "direct_planning": {
+      "plan_status": 4,
+      "error": 0,
+      "poses": 232,
+      "initial": {
+        "amcl": [
+          -3.615919028743959,
+          0.8522347076220773,
+          -0.5220343062249897
+        ],
+        "odom": [
+          8.210947607443947e-18,
+          -2.0085657786365704e-35,
+          -2.9414978180619787e-18
+        ],
+        "actual_vel": [
+          6.179721487509779e-19,
+          1.5428988011917226e-18
+        ]
+      }
+    },
+    "path_metrics": {
+      "length": 11.804955610033957,
+      "min_clearance": 0.4609772297337403
+    },
+    "max_adjacent_heading_change_rad": 0.11806531046733965,
+    "execution": {
+      "nav_status": 4,
+      "error": 0,
+      "elapsed": 123.77884622700003,
+      "amcl": [
+        0.07716092420735471,
+        9.04523088400825,
+        1.312407256074166
+      ],
+      "odom": [
+        -0.8169571713684498,
+        9.022678707336812,
+        1.737404159116186
+      ],
+      "actual_vel": [
+        4.917044549301863e-10,
+        -0.24999999520630328
+      ],
+      "map_pose": [
+        0.07740378789439983,
+        9.045271478891138,
+        1.4162975619480045
+      ],
+      "path_error": 0.027675625020539617,
+      "world_pose": [
+        11.371,
+        16.0305,
+        1.30057
+      ],
+      "localization_translation_error": 0.08159320520613292,
+      "localization_yaw_error": 0.11572756194800449,
+      "global_center_cost": 0,
+      "global_nearest_lethal_m": 1.3000000193715096,
+      "global_footprint_lethal_cells": 0,
+      "global_footprint_unknown_cells": 0,
+      "local_center_cost": 0,
+      "local_nearest_lethal_m": 1.2529964272852683,
+      "local_footprint_lethal_cells": 0,
+      "local_footprint_unknown_cells": 0,
+      "remaining": 0.22071067988872528,
+      "recoveries": 0,
+      "cmd": [
+        0.0,
+        -0.25
+      ]
+    },
+    "status": "VERIFIED",
+    "max_sampled_path_error_m": 0.07444004619704699,
+    "contacts": {
+      "final": true,
+      "messages": 36968,
+      "ground": 36968,
+      "non_ground": 0,
+      "pairs": []
+    },
+    "settled_world_pose": [
+      11.3446,
+      16.0305,
+      1.08763
+    ],
+    "physical_goal_error_m": 0.2164518653188267,
+    "physical_goal_yaw_error_rad": 0.038630000000000164
+  },
+  "compare_smooth_replan": {
+    "direct_planning": {
+      "plan_status": 4,
+      "error": 0,
+      "poses": 535,
+      "initial": {
+        "odom": [
+          6.0856574868734045e-18,
+          -1.0680238783238996e-35,
+          -4.5771779455932076e-18
+        ],
+        "actual_vel": [
+          2.222445656641174e-18,
+          -5.094586693200701e-19
+        ],
+        "amcl": [
+          -3.615919028743959,
+          0.8522347076220773,
+          -0.5220343062249897
+        ]
+      }
+    },
+    "path_metrics": {
+      "length": 13.418636876698404,
+      "min_clearance": 0.4609772297337403
+    },
+    "max_adjacent_heading_change_rad": 0.8239763681535373,
+    "execution": {
+      "nav_status": 6,
+      "error": 0,
+      "elapsed": 3.6649490679992596,
+      "odom": [
+        1.1268408084937811e-09,
+        -1.0129184709468657e-10,
+        -0.4041455806989177
+      ],
+      "actual_vel": [
+        -3.176907348301228e-10,
+        -0.24999999599807826
+      ],
+      "amcl": [
+        -3.625454324002187,
+        0.898692360301041,
+        -0.8591361128609151
+      ],
+      "local_center_cost": 0,
+      "local_nearest_lethal_m": 1.700000025331974,
+      "local_footprint_lethal_cells": 0,
+      "local_footprint_unknown_cells": 0,
+      "remaining": 13.358024597167969,
+      "recoveries": 0,
+      "cmd": [
+        0.0,
+        -0.25
+      ],
+      "map_pose": [
+        -3.620541394444401,
+        0.8737762636862926,
+        -0.9166456906666045
+      ],
+      "path_error": 0.0175209367086925,
+      "world_pose": [
+        7.59105,
+        7.80925,
+        -0.896607
+      ],
+      "localization_translation_error": 0.016784426831839803,
+      "localization_yaw_error": 0.020038690666604464,
+      "global_center_cost": 47,
+      "global_nearest_lethal_m": 0.42426407503395575,
+      "global_footprint_lethal_cells": 0,
+      "global_footprint_unknown_cells": 0
+    },
+    "status": "FAILED",
+    "max_sampled_path_error_m": 0.019763976631295258,
+    "contacts": {
+      "final": true,
+      "messages": 2880,
+      "ground": 2880,
+      "non_ground": 0,
+      "pairs": []
+    },
+    "settled_world_pose": [
+      7.59506,
+      7.80925,
+      -0.991396
+    ],
+    "physical_goal_error_m": 9.166586232949538,
+    "physical_goal_yaw_error_rad": 2.040396,
+    "failure_reason": "smoother_server: Smoothed path leads to a collision at map x=-3.604, y=0.918, theta=-1.385504 during periodic replanning from the rotated dock departure; collision checking retained."
+  },
+  "smoothing_generation": {
+    "status": 4,
+    "error": 0,
+    "message": "",
+    "completed": true,
+    "original": {
+      "poses": 535,
+      "length_m": 13.418636876698404,
+      "min_lethal_cell_centre_clearance_m": 0.4609772297337403,
+      "max_adjacent_heading_change_rad": 0.8239763681535373
+    },
+    "smoothed": {
+      "poses": 535,
+      "length_m": 13.358025041774223,
+      "min_lethal_cell_centre_clearance_m": 0.4609772297337403,
+      "max_adjacent_heading_change_rad": 0.12859876982223062
+    }
+  },
+  "selection": "Preserve NavFn Dijkstra with stock BT: three clean kitchen successes and two full deliveries already verified. Smac2D one route succeeds, but full delivery/queue robustness is not established. Additional collision-checked smoothing aborts during replanning and is not adopted."
+}
