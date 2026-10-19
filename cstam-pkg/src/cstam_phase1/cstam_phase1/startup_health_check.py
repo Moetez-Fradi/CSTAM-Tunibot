@@ -18,7 +18,7 @@ from rclpy.qos import (
 )
 from rclpy.time import Time
 from rosgraph_msgs.msg import Clock
-from sensor_msgs.msg import LaserScan, PointCloud2
+from sensor_msgs.msg import BatteryState, LaserScan, PointCloud2
 from tf2_ros import Buffer, TransformListener
 
 
@@ -65,6 +65,8 @@ class StartupHealthCheck(Node):
             PoseWithCovarianceStamped, '/amcl_pose',
             self._store('amcl_pose'), transient_qos)
         self.create_subscription(
+            BatteryState, '/battery/state', self._store('battery'), transient_qos)
+        self.create_subscription(
             OccupancyGrid, '/global_costmap/costmap',
             self._store('global_costmap'), reliable_qos)
         self.create_subscription(
@@ -100,7 +102,7 @@ class StartupHealthCheck(Node):
         lifecycle = {}
         required = {
             'map', 'points', 'points_filtered', 'points_clearing', 'scan', 'odom', 'amcl_pose',
-            'global_costmap', 'local_costmap',
+            'global_costmap', 'local_costmap', 'battery',
         }
         while time.monotonic() < deadline:
             rclpy.spin_once(self, timeout_sec=0.1)
@@ -216,6 +218,13 @@ class StartupHealthCheck(Node):
             '/amcl_pose available',
             self.messages.get('amcl_pose') is not None
             and self.messages['amcl_pose'].header.frame_id == 'map')
+        battery = self.messages.get('battery')
+        add(
+            '/battery/state valid',
+            battery is not None
+            and battery.present
+            and 0.0 <= battery.percentage <= 1.0,
+            'expected a present battery with percentage in [0, 1]')
         add(
             'global costmap available/current',
             self.messages.get('global_costmap') is not None)

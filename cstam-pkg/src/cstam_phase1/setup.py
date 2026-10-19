@@ -31,6 +31,7 @@ setup(
     license='MIT',
     entry_points={
         'console_scripts': [
+            'battery_simulator = cstam_phase1.battery_simulator:main',
             'delivery_task_manager = cstam_phase1.delivery_task_manager:main',
             'initial_pose_publisher = cstam_phase1.initial_pose_publisher:main',
             'mapping_route = cstam_phase1.mapping_route:main',

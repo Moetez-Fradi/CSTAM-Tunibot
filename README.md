@@ -70,6 +70,35 @@ interrupted order is requeued at the front.
 A failed navigation puts the application in `ERROR`; success is never synthesized.
 Do not send separate raw goals while a delivery is active.
 
+## Battery simulation
+
+`battery_simulator` publishes `sensor_msgs/BatteryState` on `/battery/state`.
+It integrates a 10 Wh Li-ion model on simulated time: a fixed 4 W electronics
+load, plus extra power proportional to the real `/odom` linear and angular
+speed. One delivery uses about 10% of the charge. The robot charges at 60 W,
+tapering above 80%, but only while it is stationary within 0.5 m of the dock
+(AMCL pose). The task manager reads the battery and decides:
+
+| Battery | Behavior |
+|---|---|
+| < 35% when a delivery would start | does not start; returns to dock, `CHARGING` |
+| ≤ 20% during a delivery | cancels, requeues the order at the front, returns to dock, `CHARGING` |
+| ≥ 80% while `CHARGING` | `IDLE`, then serves the queue |
+| 0% | cancels navigation, keeps the order, `BATTERY_DEPLETED` |
+
+`/delivery/status` includes `battery_percentage` and `battery_charging`.
+Start low or accelerate the model, and override the level live (use a float):
+
+```bash
+ros2 launch cstam_phase1 phase1.launch.py battery_percentage:=40 battery_time_scale:=20
+ros2 param set /cstam_battery_simulator percentage 19.0
+ros2 topic echo /battery/state
+```
+
+Verified headless: a delivery to table 1 was driving to pickup at 99%; forcing
+19% switched it to `RETURNING_TO_DOCK` with `table_1` requeued, it docked and
+reported `CHARGING` (charger current positive), and at 80% it resumed table 1.
+
 ## Mapping: separate mode
 
 Stop the normal launch and verify its children have exited. Then:
@@ -138,7 +167,8 @@ copy was built for portability; a pristine second machine was not tested.
 
 ## Limits
 
-First floor only; no elevator/battery/charger-contact behavior. Static global
+First floor only; no elevator. Charging is simulated by proximity to the dock
+pose, not by charger contact or alignment. Static global
 map and real rolling local obstacles. Sparse 16-ring sensing and simulated
 friction limit real-hardware conclusions. Dock and table 3 are safe at their
 configured headings, not at every possible rotation. Physical dock error in

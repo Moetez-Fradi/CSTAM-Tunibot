@@ -3,6 +3,13 @@
 The node deliberately delegates motion to Nav2's real NavigateToPose action.
 It only resolves semantic locations, queues requests, and advances task state
 when Nav2 reports a real result.
+
+Battery policy (sensor_msgs/BatteryState on /battery/state):
+- below min_start_percentage a new delivery is not started; the robot goes
+  to (or stays at) the dock and charges until resume_percentage;
+- below low_battery_percentage an active delivery is interrupted, its order
+  is requeued at the front, and the robot returns to the dock to charge;
+- at 0% the active goal is cancelled and the robot reports BATTERY_DEPLETED.
 """
 
 from collections import deque
@@ -18,6 +25,7 @@ from nav2_msgs.action import NavigateToPose
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile, QoSReliabilityPolicy
+from sensor_msgs.msg import BatteryState
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
 import yaml
@@ -26,7 +34,11 @@ import yaml
 class DeliveryTaskManager(Node):
     STATES = {
         'IDLE', 'NAVIGATING_TO_PICKUP', 'NAVIGATING_TO_CUSTOMER',
-        'DELIVERY_COMPLETE', 'RETURNING_TO_DOCK', 'ERROR',
+        'DELIVERY_COMPLETE', 'RETURNING_TO_DOCK', 'CHARGING',
+        'BATTERY_DEPLETED', 'ERROR',
+    }
+    DELIVERY_STATES = {
+        'NAVIGATING_TO_PICKUP', 'NAVIGATING_TO_CUSTOMER', 'DELIVERY_COMPLETE',
     }
 
     def __init__(self):
@@ -38,11 +50,21 @@ class DeliveryTaskManager(Node):
         self.declare_parameter('pickup_location', 'kitchen')
         self.declare_parameter('dock_location', 'dock')
         self.declare_parameter('frame_id', 'map')
+        # One complete restaurant delivery uses roughly 10-15% with the default
+        # battery model, so starting above 35% leaves a reserve above 20%.
+        self.declare_parameter('min_start_percentage', 35.0)
+        self.declare_parameter('low_battery_percentage', 20.0)
+        self.declare_parameter('resume_percentage', 80.0)
 
         self.locations_file = str(self.get_parameter('locations_file').value)
         self.pickup_location = str(self.get_parameter('pickup_location').value)
         self.dock_location = str(self.get_parameter('dock_location').value)
         self.frame_id = str(self.get_parameter('frame_id').value)
+        self.min_start_percentage = float(
+            self.get_parameter('min_start_percentage').value)
+        self.low_battery_percentage = float(
+            self.get_parameter('low_battery_percentage').value)
+        self.resume_percentage = float(self.get_parameter('resume_percentage').value)
         self.locations = self._load_locations(self.locations_file)
         self.queue = deque()
         self.current_location = None
@@ -53,6 +75,13 @@ class DeliveryTaskManager(Node):
         self.state = 'IDLE'
         self.last_message = 'ready'
         self.last_result = None
+        # Unknown until the first BatteryState; without a battery node the
+        # manager behaves exactly as before.
+        self.battery_percentage = None
+        self.battery_charging = False
+        self.battery_return = False
+        # Normal mode spawns at the dock.
+        self.at_dock = True
 
         status_qos = QoSProfile(depth=1)
         status_qos.durability = QoSDurabilityPolicy.TRANSIENT_LOCAL
@@ -65,6 +94,11 @@ class DeliveryTaskManager(Node):
             Trigger, '/delivery/return_to_dock', self._return_to_dock_callback)
         self.status_service = self.create_service(
             Trigger, '/delivery/status', self._status_callback)
+        battery_qos = QoSProfile(depth=1)
+        battery_qos.durability = QoSDurabilityPolicy.TRANSIENT_LOCAL
+        battery_qos.reliability = QoSReliabilityPolicy.RELIABLE
+        self.battery_subscription = self.create_subscription(
+            BatteryState, '/battery/state', self._battery_callback, battery_qos)
         self.navigator = ActionClient(self, NavigateToPose, 'navigate_to_pose')
         self.create_timer(0.5, self._start_queued_task)
         self._publish_status('ready')
@@ -118,14 +152,15 @@ class DeliveryTaskManager(Node):
         self._start_queued_task()
 
     def _return_to_dock_callback(self, _request, response):
+        response.success, response.message = self._request_dock_return('manual')
+        return response
+
+    def _request_dock_return(self, reason):
         if self.dock_location not in self.locations:
-            response.success = False
-            response.message = 'dock is missing from locations.yaml'
-            return response
+            return False, 'dock is missing from locations.yaml'
         if self.state == 'RETURNING_TO_DOCK' and self.current_stage == 'dock':
-            response.success = True
-            response.message = 'already returning to dock'
-            return response
+            return True, 'already returning to dock'
+        self.get_logger().info(f'Return to dock requested ({reason}).')
         self.manual_dock_requested = True
         if self.goal_request_pending:
             self.state = 'RETURNING_TO_DOCK'
@@ -140,9 +175,59 @@ class DeliveryTaskManager(Node):
             self.current_stage = 'dock'
             self.state = 'RETURNING_TO_DOCK'
             self._send_navigation_goal(self.dock_location, 'dock')
-        response.success = True
-        response.message = 'return-to-dock requested'
-        return response
+        return True, 'return-to-dock requested'
+
+    def _battery_callback(self, message):
+        percentage = 100.0 * float(message.percentage)
+        if not math.isfinite(percentage):
+            return
+        self.battery_percentage = percentage
+        self.battery_charging = message.power_supply_status in (
+            BatteryState.POWER_SUPPLY_STATUS_CHARGING,
+            BatteryState.POWER_SUPPLY_STATUS_FULL)
+
+        if percentage <= 0.0:
+            if self.state != 'BATTERY_DEPLETED':
+                self._battery_depleted()
+            return
+        if self.state == 'BATTERY_DEPLETED':
+            # Only reachable after an external recharge or level override.
+            if percentage >= self.low_battery_percentage:
+                self.state = 'IDLE' if self.at_dock else 'ERROR'
+                self._publish_status(
+                    f'battery restored to {percentage:.0f}%'
+                    + ('' if self.at_dock else '; robot is not at dock'))
+            return
+        if self.state == 'CHARGING':
+            if percentage >= self.resume_percentage:
+                self.battery_return = False
+                self.state = 'IDLE'
+                self._publish_status(f'charged to {percentage:.0f}%; resuming')
+                self._start_queued_task()
+            return
+        if (percentage <= self.low_battery_percentage
+                and self.state in self.DELIVERY_STATES
+                and not self.manual_dock_requested):
+            self.battery_return = True
+            self._publish_status(
+                f'low battery {percentage:.0f}%; returning to dock to charge')
+            self._request_dock_return('low battery')
+
+    def _battery_depleted(self):
+        if self.current_goal_handle is not None:
+            self.current_goal_handle.cancel_goal_async()
+        if self.current_location is not None and self.current_location not in self.queue:
+            self.queue.appendleft(self.current_location)
+        self.current_location = None
+        self.current_goal_handle = None
+        self.manual_dock_requested = False
+        self.state = 'BATTERY_DEPLETED'
+        self._publish_status('battery depleted; robot stopped')
+        self.get_logger().error('Battery depleted; navigation cancelled.')
+
+    def _battery_low_for_new_task(self):
+        return (self.battery_percentage is not None
+                and self.battery_percentage < self.min_start_percentage)
 
     def _status_callback(self, _request, response):
         response.success = True
@@ -155,6 +240,18 @@ class DeliveryTaskManager(Node):
         if self.state not in ('IDLE', 'DELIVERY_COMPLETE'):
             return
         if self.manual_dock_requested:
+            return
+        if self._battery_low_for_new_task():
+            self.battery_return = True
+            if not self.at_dock:
+                self._publish_status(
+                    f'battery {self.battery_percentage:.0f}% too low for a new '
+                    'delivery; returning to dock')
+                self._return_to_dock()
+            else:
+                self.state = 'CHARGING'
+                self._publish_status(
+                    f'charging at dock from {self.battery_percentage:.0f}%')
             return
         if not self.queue:
             if self.state == 'DELIVERY_COMPLETE':
@@ -189,6 +286,7 @@ class DeliveryTaskManager(Node):
         goal.pose.pose.orientation.z = math.sin(pose_data['yaw'] / 2.0)
         goal.pose.pose.orientation.w = math.cos(pose_data['yaw'] / 2.0)
         self.current_stage = stage
+        self.at_dock = False
         self.get_logger().info(
             f'NavigateToPose: stage={stage}, location={location}, '
             f'x={pose_data["x"]:.2f}, y={pose_data["y"]:.2f}')
@@ -210,7 +308,8 @@ class DeliveryTaskManager(Node):
             self._fail(f'Nav2 rejected goal for {location}')
             return
         self.current_goal_handle = handle
-        if self.manual_dock_requested and stage != 'dock':
+        if self.state == 'BATTERY_DEPLETED' or (
+                self.manual_dock_requested and stage != 'dock'):
             handle.cancel_goal_async()
         result_future = handle.get_result_async()
         result_future.add_done_callback(
@@ -231,6 +330,8 @@ class DeliveryTaskManager(Node):
             self._fail(f'Nav2 result unavailable for {location}: {error}')
             return
         self.last_result = int(status)
+        if self.state == 'BATTERY_DEPLETED':
+            return
         # A manual return wins even if the previous goal finishes before its
         # cancellation is processed. A failed dock goal must stop in ERROR,
         # rather than recursively retrying forever.
@@ -261,8 +362,17 @@ class DeliveryTaskManager(Node):
             self.manual_dock_requested = False
             self.current_location = None
             self.current_stage = None
-            self.state = 'IDLE'
-            self._publish_status('IDLE at first-floor dock')
+            self.at_dock = True
+            if self.battery_return and (
+                    self.battery_percentage is None
+                    or self.battery_percentage < self.resume_percentage):
+                self.state = 'CHARGING'
+                self._publish_status('docked; charging until '
+                                     f'{self.resume_percentage:.0f}%')
+            else:
+                self.battery_return = False
+                self.state = 'IDLE'
+                self._publish_status('IDLE at first-floor dock')
 
     def _requeue_interrupted_order(self):
         # A manual return must not silently drop the customer being served.
@@ -278,6 +388,7 @@ class DeliveryTaskManager(Node):
         self.current_goal_handle = None
         self.goal_request_pending = False
         self.manual_dock_requested = False
+        self.battery_return = False
         self.state = 'ERROR'
         self.last_message = message
         self._publish_status(message)
@@ -294,6 +405,10 @@ class DeliveryTaskManager(Node):
             'current_stage': self.current_stage,
             'queue': list(self.queue),
             'last_result': self.last_result,
+            'battery_percentage': (
+                None if self.battery_percentage is None
+                else round(self.battery_percentage, 1)),
+            'battery_charging': self.battery_charging,
             'message': self.last_message,
         }
 

@@ -101,6 +101,22 @@ def generate_launch_description():
         condition=normal_condition,
     )
 
+    battery = Node(
+        package='cstam_phase1',
+        executable='battery_simulator',
+        name='cstam_battery_simulator',
+        output='screen',
+        parameters=[{
+            'use_sim_time': True,
+            # float() keeps integer CLI values such as 30 a float parameter.
+            'percentage': PythonExpression(
+                ['float(', LaunchConfiguration('battery_percentage'), ')']),
+            'time_scale': PythonExpression(
+                ['float(', LaunchConfiguration('battery_time_scale'), ')']),
+        }],
+        condition=normal_condition,
+    )
+
     slam_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(
             phase1_share, 'launch', 'cstam_slam.launch.py')),
@@ -172,6 +188,10 @@ def generate_launch_description():
             "'11.4' if '", slam, "'.lower() == 'true' else '", str(dock_world_x), "'"])),
         DeclareLaunchArgument('robot_y', default_value=PythonExpression([
             "'6.95' if '", slam, "'.lower() == 'true' else '", str(dock_world_y), "'"])),
+        DeclareLaunchArgument('battery_percentage', default_value='100.0',
+                              description='Initial simulated battery level in percent.'),
+        DeclareLaunchArgument('battery_time_scale', default_value='1.0',
+                              description='Battery drain/charge acceleration for demos.'),
         DeclareLaunchArgument('robot_z', default_value='0.02'),
         DeclareLaunchArgument('robot_yaw', default_value=PythonExpression([
             "'0.0' if '", slam, "'.lower() == 'true' else '", str(dock_world_yaw), "'"])),
@@ -186,6 +206,7 @@ def generate_launch_description():
         slam_launch,
         nav2,
         initial_pose,
+        battery,
         task_manager,
         rviz_node,
     ])
