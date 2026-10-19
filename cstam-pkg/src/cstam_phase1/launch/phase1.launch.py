@@ -117,6 +117,48 @@ def generate_launch_description():
         condition=normal_condition,
     )
 
+    pedestrians_condition = IfCondition(PythonExpression([
+        "'", slam, "'.lower() != 'true' and '",
+        LaunchConfiguration('pedestrians'), "'.lower() == 'true'"]))
+
+    # Evaluation and pedestrian control only: entity spawn/pose services and
+    # the robot's ground-truth pose. Navigation never subscribes to these.
+    simulation_bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        name='cstam_pedestrian_bridge',
+        arguments=[
+            '/world/restaurant/create@ros_gz_interfaces/srv/SpawnEntity',
+            '/world/restaurant/set_pose@ros_gz_interfaces/srv/SetEntityPose',
+            '/model/cstam/pose@geometry_msgs/msg/PoseStamped[gz.msgs.Pose',
+        ],
+        parameters=[{'use_sim_time': True}],
+        output='screen',
+        condition=pedestrians_condition,
+    )
+
+    pedestrian_simulator = Node(
+        package='cstam_phase1',
+        executable='pedestrian_simulator',
+        name='cstam_pedestrian_simulator',
+        output='screen',
+        parameters=[{
+            'use_sim_time': True,
+            'scenario_file': LaunchConfiguration('pedestrian_scenario'),
+        }],
+        condition=pedestrians_condition,
+    )
+
+    # Perception runs whether or not simulated people are present.
+    obstacle_tracker = Node(
+        package='cstam_phase1',
+        executable='dynamic_obstacle_tracker',
+        name='cstam_dynamic_obstacle_tracker',
+        output='screen',
+        parameters=[{'use_sim_time': True}],
+        condition=normal_condition,
+    )
+
     slam_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(
             phase1_share, 'launch', 'cstam_slam.launch.py')),
@@ -192,6 +234,12 @@ def generate_launch_description():
                               description='Initial simulated battery level in percent.'),
         DeclareLaunchArgument('battery_time_scale', default_value='1.0',
                               description='Battery drain/charge acceleration for demos.'),
+        DeclareLaunchArgument('pedestrians', default_value='true',
+                              description='Spawn scenario-driven pedestrians.'),
+        DeclareLaunchArgument(
+            'pedestrian_scenario',
+            default_value=os.path.join(phase1_share, 'config', 'pedestrians.yaml'),
+            description='Pedestrian scenario YAML (routes in the map frame).'),
         DeclareLaunchArgument('robot_z', default_value='0.02'),
         DeclareLaunchArgument('robot_yaw', default_value=PythonExpression([
             "'0.0' if '", slam, "'.lower() == 'true' else '", str(dock_world_yaw), "'"])),
@@ -207,6 +255,9 @@ def generate_launch_description():
         nav2,
         initial_pose,
         battery,
+        obstacle_tracker,
+        simulation_bridge,
+        pedestrian_simulator,
         task_manager,
         rviz_node,
     ])

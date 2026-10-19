@@ -112,12 +112,99 @@
       </sensor>
     </gazebo>
 
+    <!-- Rear short-range sensing. The front-mounted 3D LiDAR cannot see just
+         behind the mast, so a person there is invisible while the robot turns.
+         One wide, low-rate beam emulates the three rear ultrasonic mounts
+         (55 rays, 0.08-2.5 m, 10 Hz): negligible render cost. Its +-135 deg
+         arc wraps around both sides: beside the mast the LiDAR is blind too. -->
+    <gazebo reference="rear_center_ultrasonic_link">
+      <sensor name="cstam_rear_range" type="gpu_lidar">
+        <always_on>true</always_on>
+        <visualize>false</visualize>
+        <update_rate>10</update_rate>
+        <topic>/rear_range</topic>
+        <gz_frame_id>rear_center_ultrasonic_link</gz_frame_id>
+        <lidar>
+          <visibility_mask>1</visibility_mask>
+          <scan>
+            <horizontal>
+              <samples>55</samples>
+              <resolution>1</resolution>
+              <min_angle>-2.36</min_angle>
+              <max_angle>2.36</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.08</min>
+            <max>2.5</max>
+            <resolution>0.01</resolution>
+          </range>
+        </lidar>
+      </sensor>
+    </gazebo>
+
+    <!-- Mid-flank range sensors (33 rays, +-80 deg, 2 m, 10 Hz). A coverage
+         probe found the strip right beside both flanks blind to the LiDAR
+         (mast) and to the rear sensor (shelf supports). -->
+    <gazebo reference="left_side_range_link">
+      <sensor name="cstam_left_side_range" type="gpu_lidar">
+        <always_on>true</always_on>
+        <visualize>false</visualize>
+        <update_rate>10</update_rate>
+        <topic>/left_side_range</topic>
+        <gz_frame_id>left_side_range_link</gz_frame_id>
+        <lidar>
+          <visibility_mask>1</visibility_mask>
+          <scan>
+            <horizontal>
+              <samples>33</samples>
+              <resolution>1</resolution>
+              <min_angle>-1.40</min_angle>
+              <max_angle>1.40</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.03</min>
+            <max>2.0</max>
+            <resolution>0.01</resolution>
+          </range>
+        </lidar>
+      </sensor>
+    </gazebo>
+    <gazebo reference="right_side_range_link">
+      <sensor name="cstam_right_side_range" type="gpu_lidar">
+        <always_on>true</always_on>
+        <visualize>false</visualize>
+        <update_rate>10</update_rate>
+        <topic>/right_side_range</topic>
+        <gz_frame_id>right_side_range_link</gz_frame_id>
+        <lidar>
+          <visibility_mask>1</visibility_mask>
+          <scan>
+            <horizontal>
+              <samples>33</samples>
+              <resolution>1</resolution>
+              <min_angle>-1.40</min_angle>
+              <max_angle>1.40</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.03</min>
+            <max>2.0</max>
+            <resolution>0.01</resolution>
+          </range>
+        </lidar>
+      </sensor>
+    </gazebo>
+
     <!-- Gazebo Harmonic RGB-D sensor. ROS bridges are started by the test launch. -->
     <gazebo reference="camera_link">
       <sensor name="cstam_rgbd_camera" type="rgbd_camera">
         <always_on>true</always_on>
         <visualize>true</visualize>
-        <update_rate>15</update_rate>
+        <!-- 5 Hz: unused by navigation, and colour+depth rendering is the
+             heaviest GPU load here (the integrated GPU hung during long runs). -->
+        <update_rate>5</update_rate>
         <topic>/camera/rgbd</topic>
         <gz_frame_id>camera_optical_frame</gz_frame_id>
         <camera>
@@ -158,6 +245,20 @@
         <tf_topic>/tf</tf_topic>
         <frame_id>odom</frame_id>
         <child_frame_id>base_drive</child_frame_id>
+      </plugin>
+      <!-- Ground-truth model pose for evaluation only (pedestrian clearance
+           metrics). Navigation never consumes it; it uses AMCL. -->
+      <plugin filename="gz-sim-pose-publisher-system"
+              name="gz::sim::systems::PosePublisher">
+        <publish_link_pose>false</publish_link_pose>
+        <publish_model_pose>true</publish_model_pose>
+        <publish_nested_model_pose>false</publish_nested_model_pose>
+        <publish_sensor_pose>false</publish_sensor_pose>
+        <publish_collision_pose>false</publish_collision_pose>
+        <publish_visual_pose>false</publish_visual_pose>
+        <use_pose_vector_msg>false</use_pose_vector_msg>
+        <static_publisher>false</static_publisher>
+        <update_frequency>20</update_frequency>
       </plugin>
     </gazebo>
   </xacro:macro>

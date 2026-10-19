@@ -88,6 +88,28 @@ Visualization Manager:
       Color: 255; 255; 0
       Line Style: Lines
       Line Width: 0.03
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Tracked people (robot perception)
+      Topic:
+        Value: /dynamic_obstacles/markers
+      Enabled: true
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Pedestrian ground truth
+      Topic:
+        Value: /pedestrians/markers
+      Enabled: true
+    - Class: rviz_default_plugins/Polygon
+      Name: Person stop zone
+      Topic:
+        Value: /person_stop_zone
+      Enabled: true
+      Color: 255; 40; 40
+    - Class: rviz_default_plugins/Polygon
+      Name: Person slowdown zone
+      Topic:
+        Value: /person_slowdown_zone
+      Enabled: true
+      Color: 255; 170; 0
   Global Options:
     Background Color: 48; 48; 48
     Fixed Frame: map

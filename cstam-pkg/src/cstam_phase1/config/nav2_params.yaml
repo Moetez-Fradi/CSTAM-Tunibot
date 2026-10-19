@@ -45,7 +45,10 @@ bt_navigator:
     robot_base_frame: base_footprint
     odom_topic: /odom
     bt_loop_duration: 10
-    default_server_timeout: 20
+    # ms to wait for an action server to acknowledge a goal. 20 ms was too
+    # tight once the global costmap also carries the people layer: a first
+    # compute_path_to_pose after startup went unacknowledged and aborted.
+    default_server_timeout: 200
 
 bt_navigator_navigate_through_poses_rclcpp_node:
   ros__parameters:
@@ -145,7 +148,32 @@ local_costmap:
       resolution: 0.05
       footprint: "[[0.35, 0.27], [0.35, -0.27], [-0.31, -0.27], [-0.31, 0.27]]"
       footprint_padding: 0.01
-      plugins: [voxel_layer, inflation_layer]
+      plugins: [voxel_layer, people_layer, inflation_layer]
+      people_layer:
+        # Tracked people now and along their predicted path (2 s), from
+        # dynamic_obstacle_tracker; never raw scans. Its cloud carries a ring beyond obstacle_max_range whose rays clear
+        # this whole layer every update, so people who moved on leave no
+        # stale obstacles behind.
+        plugin: nav2_costmap_2d::ObstacleLayer
+        enabled: true
+        combination_method: 1
+        observation_sources: people
+        people:
+          topic: /dynamic_obstacles/costmap_local
+          data_type: PointCloud2
+          marking: true
+          clearing: true
+          min_obstacle_height: 0.0
+          max_obstacle_height: 2.0
+          obstacle_min_range: 0.0
+          obstacle_max_range: 6.0
+          raytrace_min_range: 0.0
+          raytrace_max_range: 7.0
+          observation_persistence: 0.0
+          # 0 = no staleness abort. A tracker hiccup must not abort navigation:
+          # the voxel layer still sees every raw obstacle, and the collision
+          # monitor stops the robot if the people stream goes stale.
+          expected_update_rate: 0.0
       voxel_layer:
         plugin: nav2_costmap_2d::VoxelLayer
         enabled: true
@@ -161,10 +189,17 @@ local_costmap:
         mark_threshold: 0
         observation_sources: points clearing_points
         points:
-          topic: /lidar/points_filtered
+          # The 3D cloud minus tracked people (dynamic_obstacle_tracker):
+          # people are handled by people_layer and must not leave voxel trails.
+          topic: /lidar/points_static
           data_type: PointCloud2
           marking: true
-          clearing: false
+          # Rays to every hit also clear the voxels they pass through. With
+          # only no-return rays clearing, a person who walked by left a
+          # lethal voxel trail (the enclosed restaurant returns almost every
+          # ray), which stalled the controller among phantom walls. Rays end
+          # at the hit, and floor returns are already filtered out.
+          clearing: true
           obstacle_min_range: 0.10
           obstacle_max_range: 8.0
           raytrace_min_range: 0.10
@@ -203,14 +238,40 @@ global_costmap:
       track_unknown_space: true
       footprint: "[[0.35, 0.27], [0.35, -0.27], [-0.31, -0.27], [-0.31, 0.27]]"
       # The SLAM map already contains the fixed first-floor obstacles.  Keep
-      # live LiDAR marking in the rolling local costmap only; otherwise old
+      # raw LiDAR marking in the rolling local costmap only; otherwise old
       # scans can leave stale global obstacles behind the moving robot and
-      # make NavFn re-planning nondeterministic.
+      # make NavFn re-planning nondeterministic. Tracked people are the one
+      # live input, so the planner routes around someone standing in an aisle.
       footprint_padding: 0.01
-      plugins: [static_layer, inflation_layer]
+      plugins: [static_layer, people_layer, inflation_layer]
       static_layer:
         plugin: nav2_costmap_2d::StaticLayer
         map_subscribe_transient_local: true
+      people_layer:
+        # Only tracked people from dynamic_obstacle_tracker, never raw scans.
+        # Its cloud carries a ring beyond obstacle_max_range whose rays clear
+        # this whole layer every update, so people who moved on leave no
+        # stale obstacles behind.
+        plugin: nav2_costmap_2d::ObstacleLayer
+        enabled: true
+        combination_method: 1
+        observation_sources: people
+        people:
+          topic: /dynamic_obstacles/costmap_global
+          data_type: PointCloud2
+          marking: true
+          clearing: true
+          min_obstacle_height: 0.0
+          max_obstacle_height: 2.0
+          obstacle_min_range: 0.0
+          obstacle_max_range: 6.0
+          raytrace_min_range: 0.0
+          raytrace_max_range: 7.0
+          observation_persistence: 0.0
+          # 0 = no staleness abort. A tracker hiccup must not abort navigation:
+          # the voxel layer still sees every raw obstacle, and the collision
+          # monitor stops the robot if the people stream goes stale.
+          expected_update_rate: 0.0
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
         # The padded footprint's circumscribed radius is about 0.456 m.
@@ -298,3 +359,100 @@ velocity_smoother:
     odom_duration: 0.10
     deadband_velocity: [0.0, 0.0, 0.0]
     velocity_timeout: 1.0
+
+collision_monitor:
+  ros__parameters:
+    use_sim_time: true
+    base_frame_id: base_footprint
+    odom_frame_id: odom
+    cmd_vel_in_topic: cmd_vel_smoothed
+    cmd_vel_out_topic: cmd_vel
+    state_topic: collision_monitor_state
+    transform_tolerance: 0.5
+    source_timeout: 1.0
+    base_shift_correction: true
+    stop_pub_timeout: 2.0
+    # Person-only safety layer. Its source is the tracker's current people,
+    # not the raw scan: the accepted routes pass within centimetres of tables
+    # by design, and a raw-scan zone would stall them. Static geometry is
+    # already handled by the costmaps and the footprint critic.
+    # Only stop / limit / approach actions: each is a cap independent of the
+    # incoming command. A ratio "slowdown" compounds with the controllers'
+    # acceleration ramp (next = measured + accel*dt), measured to pin the
+    # robot at ~1.7 cm/s and 0.027 rad/s until the progress checker failed.
+    polygons: [PersonStop, PersonLimit, PersonApproach]
+    PersonStop:
+      # Direction-aware: only the zone the robot is about to sweep stops it.
+      type: velocity_polygon
+      action_type: stop
+      min_points: 4
+      visualize: true
+      enabled: true
+      polygon_pub_topic: person_stop_zone
+      holonomic: false
+      # First match wins. A turning robot also swings its rear corners
+      # sideways, so only near-straight driving uses the narrow front box.
+      velocity_polygons: [rotation, forward, forward_turning, reverse, stopped]
+      rotation:
+        # Swept circle of an in-place turn (circumscribed radius 0.456 m)
+        # plus ~0.15 m for tracking latency (8 Hz, people up to 1 m/s).
+        points: "[[0.554, 0.230], [0.230, 0.554], [-0.230, 0.554], [-0.554, 0.230], [-0.554, -0.230], [-0.230, -0.554], [0.230, -0.554], [0.554, -0.230]]"
+        linear_min: -0.02
+        linear_max: 0.02
+        theta_min: -1.0
+        theta_max: 1.0
+      forward:
+        points: "[[0.65, 0.33], [0.65, -0.33], [-0.10, -0.33], [-0.10, 0.33]]"
+        linear_min: 0.0
+        linear_max: 1.0
+        theta_min: -0.10
+        theta_max: 0.10
+      forward_turning:
+        # Front zone plus the swept corner circle with latency margin (0.6 m).
+        points: "[[0.65, 0.40], [0.42, 0.55], [0.23, 0.60], [-0.23, 0.60], [-0.55, 0.23], [-0.55, -0.23], [-0.23, -0.60], [0.23, -0.60], [0.42, -0.55], [0.65, -0.40]]"
+        linear_min: 0.0
+        linear_max: 1.0
+        theta_min: -1.0
+        theta_max: 1.0
+      reverse:
+        # Backing away is checked only behind the robot: a person in front
+        # must not prevent the robot from making room (BackUp recovery).
+        points: "[[0.10, 0.40], [0.10, -0.40], [-0.70, -0.40], [-0.70, 0.40]]"
+        linear_min: -1.0
+        linear_max: -0.02
+        theta_min: -1.0
+        theta_max: 1.0
+      stopped:
+        points: "[[0.45, 0.33], [0.45, -0.33], [-0.45, -0.33], [-0.45, 0.33]]"
+        linear_min: -1.0
+        linear_max: 1.0
+        theta_min: -1.0
+        theta_max: 1.0
+    PersonLimit:
+      # Creep past people ahead; turning in place is not limited.
+      type: polygon
+      action_type: limit
+      points: "[[1.40, 0.60], [1.40, -0.60], [-0.10, -0.60], [-0.10, 0.60]]"
+      linear_limit: 0.07
+      angular_limit: 0.30
+      min_points: 4
+      visualize: true
+      enabled: true
+      polygon_pub_topic: person_slowdown_zone
+    PersonApproach:
+      # Scales speed so the footprint never reaches a person within 1.5 s.
+      type: polygon
+      action_type: approach
+      footprint_topic: /local_costmap/published_footprint
+      time_before_collision: 1.5
+      simulation_time_step: 0.1
+      min_points: 4
+      visualize: false
+      enabled: true
+    observation_sources: [people]
+    people:
+      type: pointcloud
+      topic: /dynamic_obstacles/people
+      min_height: 0.1
+      max_height: 1.5
+      enabled: true

@@ -16,7 +16,7 @@ def generate_launch_description():
     navigation_nodes = [
         'controller_server', 'smoother_server', 'planner_server',
         'behavior_server', 'bt_navigator', 'waypoint_follower',
-        'velocity_smoother',
+        'velocity_smoother', 'collision_monitor',
     ]
     nodes = [
         Node(
@@ -44,18 +44,16 @@ def generate_launch_description():
         'bt_navigator': 'nav2_bt_navigator',
         'waypoint_follower': 'nav2_waypoint_follower',
         'velocity_smoother': 'nav2_velocity_smoother',
+        'collision_monitor': 'nav2_collision_monitor',
     }
     for executable in navigation_nodes:
         remappings = list(tf_remappings)
         if executable in ('controller_server', 'behavior_server'):
             remappings.append(('cmd_vel', 'cmd_vel_nav'))
         elif executable == 'velocity_smoother':
-            # One smoothed command stream reaches Gazebo. Previously the
-            # smoother output had zero subscribers and was bypassed.
-            remappings.extend([
-                ('cmd_vel', 'cmd_vel_nav'),
-                ('cmd_vel_smoothed', 'cmd_vel'),
-            ])
+            # controller/behaviors -> smoother -> collision_monitor -> Gazebo.
+            # The monitor is the only /cmd_vel publisher.
+            remappings.append(('cmd_vel', 'cmd_vel_nav'))
         nodes.append(Node(
             package=package_by_executable[executable],
             executable=executable,

@@ -1,0 +1,51 @@
+{
+  "what": "People-sensing coverage around the robot: a person-sized probe placed at 16 bearings (degrees from straight ahead, + = left) at two distances from the footprint; detected = the tracker reported a person within 0.4 m.",
+  "sensors": [
+    "front 3D LiDAR (360x16, 8 Hz)",
+    "rear range (55 rays, +-135 deg, 2.5 m, 10 Hz)",
+    "left/right side range (33 rays, +-80 deg, 2 m, 10 Hz)"
+  ],
+  "before_side_sensors": {
+    "0.15 m": "blind at -90, +90, +113 deg",
+    "0.50 m": "blind at +113 deg"
+  },
+  "detected": {
+    "0.15 m from footprint": {
+      "-180": true,
+      "-158": true,
+      "-135": true,
+      "-112": true,
+      "-90": true,
+      "-68": true,
+      "-45": true,
+      "-22": true,
+      "+0": true,
+      "+22": true,
+      "+45": true,
+      "+67": true,
+      "+90": true,
+      "+113": true,
+      "+135": true,
+      "+157": true
+    },
+    "0.50 m from footprint": {
+      "-180": true,
+      "-158": true,
+      "-135": true,
+      "-112": true,
+      "-90": true,
+      "-68": true,
+      "-45": true,
+      "-22": true,
+      "+0": true,
+      "+22": true,
+      "+45": true,
+      "+67": true,
+      "+90": true,
+      "+113": true,
+      "+135": true,
+      "+157": true
+    }
+  },
+  "all_detected": true
+}

@@ -1,0 +1,142 @@
+{
+  "what": "Phase 2 dynamic-obstacle acceptance: recorded headless runs (scripts/phase2_acceptance.sh) with the five scenario pedestrians, analysed with phase2_report. Clearances are ground truth between the real robot footprint and each person.",
+  "configuration": "final Phase 2 configuration (360 deg people sensing, people layers, person-only collision monitor with reverse zone)",
+  "summary": {
+    "runs": 2,
+    "deliveries_succeeded": 6,
+    "deliveries_total": 6,
+    "contacts": 0,
+    "robot_fault_contacts": 0,
+    "min_clearance_while_robot_moving_m": 0.02,
+    "encounters_within_1m_while_navigating": 140,
+    "longest_navigation_stall_sec": {
+      "r4": 103.5,
+      "r5": 17.5
+    },
+    "delivery_time_sec_range": [
+      288.6,
+      379.3
+    ]
+  },
+  "notes": [
+    "People never step closer than 3 cm to the robot (pedestrian model); the closest passes (2-3 cm) are people walking up to a slow or stopped robot.",
+    "r4 longest stall (103.5 s) was a narrow-aisle standoff, fixed before r5 (reverse zone, pedestrians give way); r5 longest stall 17.5 s.",
+    "Peak system RAM during r5: 6.1 GB of 14 GB."
+  ],
+  "runs": [
+    {
+      "run": "r4",
+      "deliveries": [
+        {
+          "location": "table_1",
+          "result": "success",
+          "wall_time_sec": 379.3,
+          "min_clearance_m": 0.031,
+          "min_clearance_while_robot_moving_m": 0.091,
+          "contacts": 0,
+          "robot_fault_contacts": 0,
+          "close_passes": 4,
+          "collision_monitor_seconds": {
+            "limit": 12.6,
+            "none": 228.5,
+            "stop": 116.5
+          }
+        },
+        {
+          "location": "table_2",
+          "result": "success",
+          "wall_time_sec": 288.6,
+          "min_clearance_m": 0.03,
+          "min_clearance_while_robot_moving_m": 0.03,
+          "contacts": 0,
+          "robot_fault_contacts": 0,
+          "close_passes": 10,
+          "collision_monitor_seconds": {
+            "none": 240.6,
+            "limit": 15.3,
+            "stop": 32.7
+          }
+        },
+        {
+          "location": "table_3",
+          "result": "success",
+          "wall_time_sec": 339.6,
+          "min_clearance_m": 0.027,
+          "min_clearance_while_robot_moving_m": 0.027,
+          "contacts": 0,
+          "robot_fault_contacts": 0,
+          "close_passes": 12,
+          "collision_monitor_seconds": {
+            "none": 286.1,
+            "limit": 11.8,
+            "stop": 41.7
+          }
+        }
+      ],
+      "encounters_within_1m_while_navigating": {
+        "guest_lina": 10,
+        "waiter_ali": 20,
+        "guest_sara": 16,
+        "chef_omar": 13
+      },
+      "longest_navigation_stall_sec": 103.5
+    },
+    {
+      "run": "r5",
+      "deliveries": [
+        {
+          "location": "table_1",
+          "result": "success",
+          "wall_time_sec": 336.1,
+          "min_clearance_m": 0.028,
+          "min_clearance_while_robot_moving_m": 0.028,
+          "contacts": 0,
+          "robot_fault_contacts": 0,
+          "close_passes": 12,
+          "collision_monitor_seconds": {
+            "limit": 23.6,
+            "none": 250.0,
+            "stop": 41.7
+          }
+        },
+        {
+          "location": "table_2",
+          "result": "success",
+          "wall_time_sec": 355.7,
+          "min_clearance_m": 0.02,
+          "min_clearance_while_robot_moving_m": 0.02,
+          "contacts": 0,
+          "robot_fault_contacts": 0,
+          "close_passes": 12,
+          "collision_monitor_seconds": {
+            "none": 260.9,
+            "stop": 74.4,
+            "limit": 20.4
+          }
+        },
+        {
+          "location": "table_3",
+          "result": "success",
+          "wall_time_sec": 340.6,
+          "min_clearance_m": 0.025,
+          "min_clearance_while_robot_moving_m": 0.025,
+          "contacts": 0,
+          "robot_fault_contacts": 0,
+          "close_passes": 11,
+          "collision_monitor_seconds": {
+            "none": 276.5,
+            "limit": 15.3,
+            "stop": 48.8
+          }
+        }
+      ],
+      "encounters_within_1m_while_navigating": {
+        "guest_lina": 11,
+        "waiter_ali": 27,
+        "guest_sara": 24,
+        "chef_omar": 19
+      },
+      "longest_navigation_stall_sec": 17.5
+    }
+  ]
+}

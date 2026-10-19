@@ -32,6 +32,10 @@ setup(
     entry_points={
         'console_scripts': [
             'battery_simulator = cstam_phase1.battery_simulator:main',
+            'phase2_report = cstam_phase1.phase2_report:main',
+            'dynamic_obstacle_trial = cstam_phase1.dynamic_obstacle_trial:main',
+            'dynamic_obstacle_tracker = cstam_phase1.dynamic_obstacle_tracker:main',
+            'pedestrian_simulator = cstam_phase1.pedestrian_simulator:main',
             'delivery_task_manager = cstam_phase1.delivery_task_manager:main',
             'initial_pose_publisher = cstam_phase1.initial_pose_publisher:main',
             'mapping_route = cstam_phase1.mapping_route:main',
