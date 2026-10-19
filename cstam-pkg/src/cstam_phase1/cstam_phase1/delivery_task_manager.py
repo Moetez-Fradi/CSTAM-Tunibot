@@ -235,6 +235,7 @@ class DeliveryTaskManager(Node):
         # cancellation is processed. A failed dock goal must stop in ERROR,
         # rather than recursively retrying forever.
         if self.manual_dock_requested and stage != 'dock':
+            self._requeue_interrupted_order()
             self._return_to_dock()
             return
         if status != GoalStatus.STATUS_SUCCEEDED:
@@ -263,6 +264,16 @@ class DeliveryTaskManager(Node):
             self.state = 'IDLE'
             self._publish_status('IDLE at first-floor dock')
 
+    def _requeue_interrupted_order(self):
+        # A manual return must not silently drop the customer being served.
+        # Put the order back at the head of the queue so it is served first.
+        interrupted = self.current_location
+        self.current_location = None
+        if interrupted is None or interrupted in self.queue:
+            return
+        self.queue.appendleft(interrupted)
+        self._publish_status(f'interrupted {interrupted}; requeued at front')
+
     def _fail(self, message):
         self.current_goal_handle = None
         self.goal_request_pending = False
@@ -273,8 +284,7 @@ class DeliveryTaskManager(Node):
         self.get_logger().error(message)
 
     def _reject(self, message):
-        self.last_message = f'rejected: {message}'
-        self._publish_status(self.last_message)
+        self._publish_status(f'rejected: {message}', log=False)
         self.get_logger().warn(self.last_message)
 
     def _status_payload(self):

@@ -49,7 +49,7 @@ and delivery nodes start. In a second sourced terminal, require `FAIL=0`:
 ```bash
 bash "$(ros2 pkg prefix --share cstam_phase1)/scripts/phase1_smoke_test.sh"
 ros2 topic pub --once /delivery/request std_msgs/msg/String '{data: table_1}'
-ros2 topic echo /delivery/status
+ros2 topic echo /delivery/status std_msgs/msg/String
 ```
 
 The sequence is kitchen → table 1 → dock → `IDLE`. A complete delivery took
@@ -65,7 +65,8 @@ ros2 service call /delivery/return_to_dock std_srvs/srv/Trigger '{}'
 ```
 
 Manual return cancels an application-owned active goal, waits for its result,
-then sends the real dock goal. Pending queued requests remain queued.
+then sends the real dock goal. Pending queued requests remain queued, and an
+interrupted order is requeued at the front.
 A failed navigation puts the application in `ERROR`; success is never synthesized.
 Do not send separate raw goals while a delivery is active.
 

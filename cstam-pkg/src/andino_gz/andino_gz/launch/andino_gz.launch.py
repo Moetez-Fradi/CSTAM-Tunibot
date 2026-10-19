@@ -2,7 +2,7 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, LogInfo, OpaqueFunction, SetEnvironmentVariable
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, GroupAction, IncludeLaunchDescription, LogInfo, OpaqueFunction, SetEnvironmentVariable
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression, TextSubstitution
@@ -100,15 +100,43 @@ def generate_launch_description():
     log_world_path = LogInfo(msg=TextJoin(substitutions=["World path: ", world_path]))
     map_path = PathJoinSubstitution([pkg_andino_gz, 'maps', map_name, TextJoin(substitutions=[map_name ,'.yaml'])])
     log_map_path = LogInfo(msg=TextJoin(substitutions=["Map path: ", map_path]))
-    gz_args = TextJoin(
-        substitutions=[
-            world_path,
-            TextJoin(substitutions=["--gui-config ", gui_config_path]),
-            PythonExpression(['" -s" if "', headless, '" == "True" else ""']),
-            PythonExpression(['" -r" if "', autostart, '" == "True" else ""']),
-        ],
-        separator=' ',
-    )
+
+    def launch_gazebo(context):
+        # Run Gazebo as a direct child of launch.  ros_gz_sim's gz_sim.launch.py
+        # wraps it in `sh -c`, so Ctrl+C stopped only the shell and left an
+        # orphaned `gz sim` server running.  Keep its environment handling.
+        import importlib.util
+        import shutil
+
+        gz_sim_launch = os.path.join(
+            get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')
+        spec = importlib.util.spec_from_file_location('ros_gz_sim_launch', gz_sim_launch)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        model_paths, plugin_paths = module.GazeboRosPaths.get_paths()
+        env = {
+            'GZ_SIM_SYSTEM_PLUGIN_PATH': os.pathsep.join([
+                os.environ.get('GZ_SIM_SYSTEM_PLUGIN_PATH', ''),
+                os.environ.get('LD_LIBRARY_PATH', ''),
+                plugin_paths,
+            ]),
+            'GZ_SIM_RESOURCE_PATH': os.pathsep.join([
+                os.environ.get('GZ_SIM_RESOURCE_PATH', ''),
+                model_paths,
+            ]),
+        }
+        cmd = [
+            'ruby', shutil.which('gz'), 'sim', world_path.perform(context),
+            '--gui-config', gui_config_path.perform(context),
+        ]
+        if headless.perform(context) == 'True':
+            cmd.append('-s')
+        if autostart.perform(context) == 'True':
+            cmd.append('-r')
+        cmd += ['--force-version', '8']
+        return [ExecuteProcess(
+            cmd=cmd, name='gazebo', output='screen', additional_env=env)]
+
     base_group = GroupAction(
         scoped=True, forwarding=False,
         launch_configurations={
@@ -120,12 +148,7 @@ def generate_launch_description():
             'use_webcam': use_webcam,
         },
         actions=[
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(
-                    os.path.join(get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')
-                ),
-                launch_arguments={'gz_args': gz_args}.items(),
-            ),
+            OpaqueFunction(function=launch_gazebo),
             # Node(
             #     package='ros_gz_bridge',
             #     executable='parameter_bridge',

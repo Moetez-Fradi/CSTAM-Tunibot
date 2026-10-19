@@ -26,3 +26,5 @@ node_modules/
 
 # Generated mission evidence / QR captures (if not intended as fixtures)
 mission_proof/
+CSTAM BOOK.pdf
+TUNIBOT_CHALLENGE.md

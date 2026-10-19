@@ -1,4 +1,5 @@
 """Regression checks for manual-return arbitration, separate from real acceptance."""
+from collections import deque
 from types import SimpleNamespace
 from std_srvs.srv import Trigger
 from cstam_phase1.delivery_task_manager import DeliveryTaskManager
@@ -13,6 +14,8 @@ def manager():
     node.current_goal_handle = None
     node.goal_request_pending = True
     node.manual_dock_requested = False
+    node.current_location = None
+    node.queue = deque()
     node.events = []
     node._publish_status = lambda message: node.events.append(message)
     node._send_navigation_goal = lambda *args: node.events.append(args)
@@ -46,3 +49,17 @@ def test_manual_return_wins_over_completed_pickup():
     future = SimpleNamespace(result=lambda: SimpleNamespace(status=4))
     node._goal_result_callback(future, 'kitchen', 'pickup')
     assert node.events == ['dock']
+    assert list(node.queue) == []
+
+
+def test_manual_return_requeues_interrupted_order_first():
+    node = manager()
+    node.manual_dock_requested = True
+    node.current_location = 'table_2'
+    node.queue = deque(['table_3'])
+    node._return_to_dock = lambda: node.events.append('dock')
+    future = SimpleNamespace(result=lambda: SimpleNamespace(status=5))
+    node._goal_result_callback(future, 'kitchen', 'pickup')
+    assert list(node.queue) == ['table_2', 'table_3']
+    assert node.current_location is None
+    assert node.events[-1] == 'dock'
