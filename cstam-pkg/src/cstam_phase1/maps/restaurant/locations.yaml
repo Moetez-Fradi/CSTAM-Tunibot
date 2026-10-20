@@ -22,9 +22,11 @@ kitchen:
 
 table_1:
   floor: 1
-  x: -6.36
-  y: 1.32
-  yaw: -0.522
+  # West-aisle approach to the north table of the west column (centre
+  # -4.11, 4.15); each table location serves its own numbered table.
+  x: -5.60
+  y: 4.15
+  yaw: 0.0
 
 table_2:
   floor: 1
@@ -36,9 +38,11 @@ table_2:
 
 table_3:
   floor: 1
-  x: -3.55
-  y: 1.02
-  yaw: 2.619
+  # West-aisle approach to the south table of the west column (centre
+  # -4.14, -2.30).
+  x: -5.60
+  y: -2.30
+  yaw: 0.0
 
 # Terrace, through the opened west doors (0.92 m clear leaf each).
 # Delivery poses face the table from the facade side: ~0.25 m to the

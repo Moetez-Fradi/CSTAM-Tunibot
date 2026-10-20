@@ -65,6 +65,48 @@
          cstam_phase1/scripts/build_terrace.py. -->
     <include><uri>model://terrace_collision</uri></include>
 
+    <!--
+      Visual-only table-number plaques.  The restaurant came from a single
+      Sweet Home mesh, so its tables have no useful individual visual names.
+      These small seven-segment markers sit on the tabletops the semantic targets
+      (table_1, table_2 and table_3: west column, north to south) serve, while
+      deliberately adding no collision geometry or sensor returns.  Their
+      poses use Gazebo world coordinates (map coordinates + 11.22, +6.95).
+    -->
+    <model name="table_number_plaques">
+      <static>true</static>
+
+      <!-- Table 1: a dark tabletop plaque with a bright "1". -->
+      <link name="table_1_plaque">
+        <pose>7.11 11.10 0.76 0 0 -1.5708</pose>
+        <visual name="backing"><geometry><box><size>0.46 0.32 0.018</size></box></geometry><material><ambient>0.05 0.07 0.10 1</ambient><diffuse>0.05 0.07 0.10 1</diffuse></material></visual>
+        <visual name="one_upper"><pose>0.07 0.045 0.030 0 0 0</pose><geometry><box><size>0.035 0.115 0.012</size></box></geometry><material><emissive>1 0.78 0.18 1</emissive><diffuse>1 0.78 0.18 1</diffuse></material></visual>
+        <visual name="one_lower"><pose>0.07 -0.045 0.030 0 0 0</pose><geometry><box><size>0.035 0.115 0.012</size></box></geometry><material><emissive>1 0.78 0.18 1</emissive><diffuse>1 0.78 0.18 1</diffuse></material></visual>
+      </link>
+
+      <!-- Table 2: seven-segment "2". -->
+      <link name="table_2_plaque">
+        <pose>7.13 8.94 0.76 0 0 -1.5708</pose>
+        <visual name="backing"><geometry><box><size>0.46 0.32 0.018</size></box></geometry><material><ambient>0.05 0.07 0.10 1</ambient><diffuse>0.05 0.07 0.10 1</diffuse></material></visual>
+        <visual name="top"><pose>0 0.09 0.018 0 0 0</pose><geometry><box><size>0.15 0.035 0.012</size></box></geometry><material><emissive>0.25 0.85 1 1</emissive><diffuse>0.25 0.85 1 1</diffuse></material></visual>
+        <visual name="upper_right"><pose>0.075 0.045 0.030 0 0 0</pose><geometry><box><size>0.035 0.115 0.012</size></box></geometry><material><emissive>0.25 0.85 1 1</emissive><diffuse>0.25 0.85 1 1</diffuse></material></visual>
+        <visual name="middle"><pose>0 0 0.030 0 0 0</pose><geometry><box><size>0.15 0.035 0.012</size></box></geometry><material><emissive>0.25 0.85 1 1</emissive><diffuse>0.25 0.85 1 1</diffuse></material></visual>
+        <visual name="lower_left"><pose>-0.075 -0.045 0.030 0 0 0</pose><geometry><box><size>0.035 0.115 0.012</size></box></geometry><material><emissive>0.25 0.85 1 1</emissive><diffuse>0.25 0.85 1 1</diffuse></material></visual>
+        <visual name="bottom"><pose>0 -0.09 0.030 0 0 0</pose><geometry><box><size>0.15 0.035 0.012</size></box></geometry><material><emissive>0.25 0.85 1 1</emissive><diffuse>0.25 0.85 1 1</diffuse></material></visual>
+      </link>
+
+      <!-- Table 3: seven-segment "3". -->
+      <link name="table_3_plaque">
+        <pose>7.08 4.65 0.76 0 0 -1.5708</pose>
+        <visual name="backing"><geometry><box><size>0.46 0.32 0.018</size></box></geometry><material><ambient>0.05 0.07 0.10 1</ambient><diffuse>0.05 0.07 0.10 1</diffuse></material></visual>
+        <visual name="top"><pose>0 0.09 0.018 0 0 0</pose><geometry><box><size>0.15 0.035 0.012</size></box></geometry><material><emissive>1 0.36 0.30 1</emissive><diffuse>1 0.36 0.30 1</diffuse></material></visual>
+        <visual name="upper_right"><pose>0.075 0.045 0.030 0 0 0</pose><geometry><box><size>0.035 0.115 0.012</size></box></geometry><material><emissive>1 0.36 0.30 1</emissive><diffuse>1 0.36 0.30 1</diffuse></material></visual>
+        <visual name="middle"><pose>0 0 0.030 0 0 0</pose><geometry><box><size>0.15 0.035 0.012</size></box></geometry><material><emissive>1 0.36 0.30 1</emissive><diffuse>1 0.36 0.30 1</diffuse></material></visual>
+        <visual name="lower_right"><pose>0.075 -0.045 0.030 0 0 0</pose><geometry><box><size>0.035 0.115 0.012</size></box></geometry><material><emissive>1 0.36 0.30 1</emissive><diffuse>1 0.36 0.30 1</diffuse></material></visual>
+        <visual name="bottom"><pose>0 -0.09 0.030 0 0 0</pose><geometry><box><size>0.15 0.035 0.012</size></box></geometry><material><emissive>1 0.36 0.30 1</emissive><diffuse>1 0.36 0.30 1</diffuse></material></visual>
+      </link>
+    </model>
+
     <!-- A visual reference marker for the two-floor elevator shaft. -->
     <!-- <model name="elevator_shaft">
       <static>true</static>

@@ -97,10 +97,10 @@ controller_server:
       rotate_to_goal_heading: true
       debug_trajectory_details: false
       min_vel_x: 0.0
-      max_vel_x: 0.45
-      max_vel_theta: 0.90
+      max_vel_x: 1.0
+      max_vel_theta: 1.8
       min_speed_xy: 0.0
-      max_speed_xy: 0.45
+      max_speed_xy: 1.0
       min_speed_theta: 0.0
       acc_lim_x: 0.50
       acc_lim_y: 0.0
@@ -351,7 +351,7 @@ velocity_smoother:
     smoothing_frequency: 10.0
     scale_velocities: false
     feedback: OPEN_LOOP
-    max_velocity: [0.45, 0.0, 0.9]
+    max_velocity: [1.0, 0.0, 1.8]
     min_velocity: [-0.10, 0.0, -0.9]
     max_accel: [0.50, 0.0, 1.20]
     max_decel: [-0.80, 0.0, -1.20]
@@ -392,7 +392,7 @@ collision_monitor:
       holonomic: false
       # First match wins. A turning robot also swings its rear corners
       # sideways, so only near-straight driving uses the narrow front box.
-      velocity_polygons: [rotation, forward, forward_turning, reverse, stopped]
+      velocity_polygons: [rotation, forward_creep, forward, forward_turning, reverse, stopped]
       rotation:
         # Swept circle of an in-place turn (circumscribed radius 0.456 m)
         # plus ~0.15 m for tracking latency (8 Hz, people up to 1 m/s).
@@ -401,9 +401,19 @@ collision_monitor:
         linear_max: 0.02
         theta_min: -1.0
         theta_max: 1.0
-      forward:
-        points: "[[0.85, 0.33], [0.85, -0.33], [-0.10, -0.33], [-0.10, 0.33]]"
+      forward_creep:
+        # Creeping (the PersonLimit cap near people): the short zone still
+        # lets the robot settle onto a staging pose 0.65 m from a person
+        # standing in a doorway, so the door check runs instead of a stall.
+        points: "[[0.65, 0.33], [0.65, -0.33], [-0.10, -0.33], [-0.10, 0.33]]"
         linear_min: 0.0
+        linear_max: 0.10
+        theta_min: -0.10
+        theta_max: 0.10
+      forward:
+        # Cruising up to 0.45 m/s: longer zone for the stopping distance.
+        points: "[[0.85, 0.33], [0.85, -0.33], [-0.10, -0.33], [-0.10, 0.33]]"
+        linear_min: 0.10
         linear_max: 1.0
         theta_min: -0.10
         theta_max: 0.10
