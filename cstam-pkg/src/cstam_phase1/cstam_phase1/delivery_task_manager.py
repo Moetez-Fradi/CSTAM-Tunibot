@@ -29,6 +29,7 @@ from collections import deque
 import json
 import math
 import os
+import time
 
 import rclpy
 from action_msgs.msg import GoalStatus
@@ -43,6 +44,13 @@ from std_msgs.msg import String
 from std_srvs.srv import Trigger
 import yaml
 
+
+DOOR_MEMORY_SEC = 180.0  # how long a blocked door is avoided
+# Stalled this close to a door staging pose (e.g. stopped by a person standing
+# in the doorway) counts as arrived, so the door check runs without waiting
+# for Nav2's own recoveries to time out.
+STAGING_NEAR_M = 0.9
+STAGING_STALL_SEC = 4.0
 
 class DeliveryTaskManager(Node):
     STATES = {
@@ -195,7 +203,12 @@ class DeliveryTaskManager(Node):
         if self.doors is None or target_zone == self.zone:
             return []
         terrace_y = target['y'] if target_zone == 'terrace' else self.last_terrace_y
-        candidates = sorted(self.doors['y'], key=lambda d: abs(self.doors['y'][d] - terrace_y))
+        # A door found blocked in the last few minutes (e.g. on the way out)
+        # is tried last, so the trip back does not stall in front of it again.
+        recent = {d for d, t in getattr(self, 'door_blocked_at', {}).items()
+                  if time.monotonic() - t < DOOR_MEMORY_SEC}
+        candidates = sorted(self.doors['y'], key=lambda d: (
+            d in recent, abs(self.doors['y'][d] - terrace_y)))
         untried = [d for d in candidates if d not in self.door_tried]
         if not untried:
             return None
@@ -414,6 +427,24 @@ class DeliveryTaskManager(Node):
         if distance is not None:
             self.last_message = f'{self.current_stage}: {distance:.2f} m remaining'
             self._publish_status(self.last_message, log=False)
+            self._watch_staging_stall(distance)
+
+    def _watch_staging_stall(self, distance):
+        leg = self.legs[0] if getattr(self, 'legs', None) else None
+        if not (isinstance(leg, dict) and leg['name'].endswith('_1')) \
+                or distance > STAGING_NEAR_M or getattr(self, 'staging_near', False):
+            self.stall_ref = None
+            return
+        now = time.monotonic()
+        ref = getattr(self, 'stall_ref', None)
+        if ref is None or ref[1] - distance > 0.05:
+            self.stall_ref = (now, distance)
+            return
+        if now - ref[0] >= STAGING_STALL_SEC and self.current_goal_handle is not None:
+            self.staging_near = True
+            self.get_logger().info(
+                f'stalled {distance:.2f} m before {leg["name"]}; checking the door now')
+            self.current_goal_handle.cancel_goal_async()
 
     def _goal_result_callback(self, future, location, stage):
         self.current_goal_handle = None
@@ -433,6 +464,10 @@ class DeliveryTaskManager(Node):
             self._requeue_interrupted_order()
             self._return_to_dock()
             return
+        if getattr(self, 'staging_near', False):
+            self.staging_near = False
+            self.stall_ref = None
+            status = GoalStatus.STATUS_SUCCEEDED  # close enough: check the door
         if status != GoalStatus.STATUS_SUCCEEDED:
             self._navigation_failed(location, stage, int(status))
             return
@@ -543,6 +578,9 @@ class DeliveryTaskManager(Node):
             return
         final = self.legs[-1]
         self.door_tried.add(door)
+        if not hasattr(self, 'door_blocked_at'):
+            self.door_blocked_at = {}
+        self.door_blocked_at[door] = time.monotonic()
         legs = self._plan_legs(final)
         if legs:
             self.legs = legs + [final]

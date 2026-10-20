@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CSTAM TuniBot, Phase 2 Test Case Documentation</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm; }
+  body { font-family: "Noto Sans", "DejaVu Sans", Arial, sans-serif; font-size: 10pt; color: #1b1f24; line-height: 1.4; }
+  h1 { font-size: 19pt; margin: 0 0 2mm; }
+  h2 { font-size: 13pt; margin: 7mm 0 2mm; border-bottom: 1.5px solid #2b6cb0; padding-bottom: 1mm; color: #1a4b80; }
+  h3 { font-size: 11pt; margin: 4mm 0 1.5mm; }
+  .sub { color: #555; margin-bottom: 4mm; }
+  table { width: 100%; border-collapse: collapse; margin: 2mm 0 3mm; page-break-inside: auto; }
+  tr { page-break-inside: avoid; }
+  th, td { border: 1px solid #c8d0da; padding: 1.6mm 2mm; vertical-align: top; text-align: left; }
+  th { background: #e8eef6; font-weight: 600; }
+  td.id { white-space: nowrap; font-weight: 600; }
+  .pass { color: #1d7a35; font-weight: 700; }
+  .note { background: #f6f8fa; border-left: 3px solid #2b6cb0; padding: 2mm 3mm; margin: 2mm 0; }
+  code { font-family: "DejaVu Sans Mono", monospace; font-size: 8.8pt; background: #f0f2f5; padding: 0 1mm; }
+  ul { margin: 1mm 0 2mm 5mm; padding-left: 3mm; }
+</style>
+</head>
+<body>
+
+<h1>CSTAM TuniBot - Test Case Documentation (Phase 2)</h1>
+<div class="sub">Autonomous restaurant delivery robot - ROS 2 Jazzy, Nav2, Gazebo Harmonic. Edge cases for dynamic obstacles (people), low battery, and complex layout / navigation failure recovery.</div>
+
+<h2>1. Test setup</h2>
+<ul>
+  <li><b>Environment:</b> Gazebo Harmonic restaurant world (dining room, outdoor terrace through two 0.92 m doorways, robot home corridor with dock and kitchen service hatch). The robot is 0.54 m wide and senses with its own 3D LiDAR plus rear/side range sensors; no ground truth is used for navigation.</li>
+  <li><b>People:</b> a pedestrian simulator moves 5 people with different behaviours (polite: slows, steps aside, gives way; oblivious: walks at full speed and stops only when physically blocked), at 0.5-1.0 m/s, each scripted to create a specific encounter on the robot's routes. Extra scenarios place a guest standing in one or both terrace doors.</li>
+  <li><b>Battery:</b> 10 Wh Li-ion model integrated on simulated time from real odometry (4 W idle load plus motion power); charging (60 W, tapering above 80%) only while stationary within 0.5 m of the dock.</li>
+  <li><b>How results are measured:</b> each acceptance run launches the full headless stack, passes a 23-check startup health test, sends delivery requests and records a 2 Hz trace (robot ground truth, every person, delivery state, collision-monitor action). The pedestrian simulator reports contacts and clearances from ground truth, and attributes each contact to the robot or the person (the robot is not at fault if it was stationary or creeping while the person walked into it).</li>
+  <li><b>Automated tests:</b> 66 unit tests (<code>colcon test --packages-select cstam_phase1</code>), all passing: battery model 6, delivery control and recovery 20, pedestrian simulator 18, people tracking 12, locations and footprint clearance 4, geometry 3, others 3.</li>
+</ul>
+
+<h2>2. Dynamic obstacles (people)</h2>
+<p>People are detected only with the robot's own sensors: points not explained by the static map are clustered and tracked with a constant-velocity Kalman multi-tracker. Each track is written into the costmaps with a 2 s predicted path, and a person-only collision monitor stops or slows the robot (stop zone in the direction of travel; 0.07 m/s cap with a person within 1.4 m ahead; speed scaled so the footprint cannot reach a person within 1.5 s).</p>
+
+<table>
+<tr><th style="width:6%">ID</th><th style="width:27%">Edge case</th><th style="width:25%">Problem found before the fix</th><th>Expected / implemented behaviour</th><th style="width:8%">Result</th></tr>
+<tr><td class="id">O1</td><td>Head-on encounter in the narrow (1.6 m) west aisle</td><td>Robot and waiter waited for each other</td><td>Polite person squeezes past along the wall; if impossible, turns back. The robot may always back away (reverse stop zone only checks behind it).</td><td class="pass">Pass</td></tr>
+<tr><td class="id">O2</td><td>Fast perpendicular crossing (1 m/s, oblivious guest)</td><td>-</td><td>Predicted 2 s path marked in the local costmap; the robot yields before the crossing line.</td><td class="pass">Pass</td></tr>
+<tr><td class="id">O3</td><td>Person standing still on the route for 30 s</td><td>-</td><td>Person in the global costmap; the planner replans around them instead of waiting.</td><td class="pass">Pass</td></tr>
+<tr><td class="id">O4</td><td>Person walks up to the robot's side or rear, then the robot turns</td><td>4 contacts across runs</td><td>Rear and side range sensors give 360 deg people sensing (16/16 probe bearings detected at 0.15 m); turning uses a stop zone covering the swept corners plus latency margin.</td><td class="pass">Pass</td></tr>
+<tr><td class="id">O5</td><td>Person disappears into a sensor blind spot</td><td>Track memory drifted ~0.8 m from the person</td><td>Track frozen at its last measured position (10 s coasting); standing tracks kept 3 s.</td><td class="pass">Pass</td></tr>
+<tr><td class="id">O6</td><td>Passer-by leaves obstacle "trails" in the LiDAR near-field</td><td>Robot stalled at phantom obstacles</td><td>Tracked people removed from the voxel layer input; ray clearing removes stale cells.</td><td class="pass">Pass</td></tr>
+<tr><td class="id">O7</td><td>Collision-monitor slowdown fighting the controller's ramp</td><td>Robot pinned at 1.7 cm/s, progress failures</td><td>Absolute speed caps instead of ratios; turning in place is never limited.</td><td class="pass">Pass</td></tr>
+<tr><td class="id">O8</td><td>People-tracker output stalls</td><td>Controller aborted on a stale costmap</td><td>People layers never abort navigation; the collision monitor stops the robot instead.</td><td class="pass">Pass</td></tr>
+<tr><td class="id">O9</td><td>People blocking each other or waiting for the robot forever</td><td>Gridlock in the simulator</td><td>Patience detours with staggered retries; detour lanes checked against map, robot and other people.</td><td class="pass">Pass</td></tr>
+<tr><td class="id">O10</td><td>Person walking into a slow or stopped robot</td><td>-</td><td>Robot stops (stop zone); contact attributed to the person, not the robot. Observed in 2 runs with the oblivious guest: robot at 0.00-0.07 m/s.</td><td class="pass">Pass</td></tr>
+<tr><td class="id">O11</td><td>Higher cruise speed (0.45 then 1.0 m/s) among people</td><td>Longer stopping distance</td><td>Speed-dependent stop zone: 0.85 m ahead when cruising, 0.65 m when creeping (so the robot can still reach a staging pose next to a standing person); stronger braking.</td><td class="pass">Pass</td></tr>
+</table>
+
+<h3>Measured results</h3>
+<table>
+<tr><th>Run</th><th>Configuration</th><th>Deliveries</th><th>Contacts (robot fault)</th><th>Notes</th></tr>
+<tr><td>Phase 2 acceptance (2 runs)</td><td>5 people, tables 1-3, 0.15 m/s</td><td class="pass">6/6</td><td>0 (0)</td><td>140 encounters within 1 m; longest stall 17.5 s; peak RAM 6.1 GB</td></tr>
+<tr><td>Speed check</td><td>5 people, table_1 + terrace_1, 0.45 m/s</td><td class="pass">2/2</td><td>0 (0)</td><td>111 s and 117 s per delivery</td></tr>
+<tr><td>Home corridor check</td><td>5 people, start/end in home corridor, table_1 + terrace_1, 0.45 m/s</td><td class="pass">2/2</td><td>0 (0)</td><td>163 s and 133 s; health check 23/0</td></tr>
+<tr><td>Demo recording</td><td>5 people, table_3, 1.0 m/s</td><td class="pass">1/1</td><td>0</td><td>109 s pickup to dock</td></tr>
+</table>
+
+<h2>3. Low battery</h2>
+<table>
+<tr><th style="width:6%">ID</th><th style="width:30%">Edge case</th><th>Expected / implemented behaviour</th><th style="width:15%">Verified by</th></tr>
+<tr><td class="id">B1</td><td>Battery at or below 20% during a delivery</td><td>Navigation cancelled, order re-queued at the front, robot returns to dock, state <code>CHARGING</code>.</td><td>Unit test; sim run; demo video</td></tr>
+<tr><td class="id">B2</td><td>Low battery while already returning to dock</td><td>The return is not interrupted.</td><td>Unit test</td></tr>
+<tr><td class="id">B3</td><td>Arrival at dock after a low-battery abort</td><td>Charging starts (charger current positive in <code>/battery/state</code>).</td><td>Unit test; sim run</td></tr>
+<tr><td class="id">B4</td><td>Charging reaches 80%</td><td>State <code>IDLE</code>, then the re-queued order is resumed first.</td><td>Unit test; sim run; demo video</td></tr>
+<tr><td class="id">B5</td><td>New order with battery below 35%</td><td>Order not started; robot waits at the dock and charges, order kept in the queue.</td><td>Unit test</td></tr>
+<tr><td class="id">B6</td><td>Battery low between two queued deliveries</td><td>Robot docks first instead of starting the next one.</td><td>Unit test</td></tr>
+<tr><td class="id">B7</td><td>Battery reaches 0%</td><td>Navigation cancelled, order kept, state <code>BATTERY_DEPLETED</code>.</td><td>Unit test</td></tr>
+<tr><td class="id">B8</td><td>Charging only at the dock</td><td>No charging when stationary away from the dock or while moving at the dock.</td><td>Unit tests (model)</td></tr>
+<tr><td class="id">B9</td><td>Energy model sanity</td><td>Motion drains faster than idle; one delivery uses about 10%; energy clamped to 0-100%; voltage monotonic.</td><td>Unit tests (model)</td></tr>
+</table>
+<div class="note"><b>Sim verification (B1, B3, B4):</b> headless run: a delivery to table_1 was driving to pickup at 99%; forcing 19% switched it to <code>RETURNING_TO_DOCK</code> with table_1 re-queued; it docked, reported <code>CHARGING</code> with positive charger current, and at 80% resumed table_1. Demo recording (home corridor dock, 1.0 m/s): order for table_2, battery set to 19% about 10 s into the customer leg - delivery aborted immediately, robot back at the dock and <code>CHARGING</code> 10 s later.</div>
+
+<h2>4. Complex layout and navigation failure recovery</h2>
+<p>Terrace deliveries go through 0.92 m doorways (robot 0.54 m wide). A trip between zones is routed square through a door via inside/outside staging poses. Before driving through, the robot asks the planner for the path through the door; a path much longer than the door (&gt; 2.5 m) means the door is blocked.</p>
+<table>
+<tr><th style="width:6%">ID</th><th style="width:30%">Edge case</th><th>Expected / implemented behaviour</th><th style="width:22%">Result</th></tr>
+<tr><td class="id">L1</td><td>Terrace delivery through a narrow doorway</td><td>Robot lines up square to the door, drives straight through, continues to the table.</td><td class="pass">3/3 (no people), 0 Nav2 failures</td></tr>
+<tr><td class="id">L2</td><td>Guest standing in door B for the whole run</td><td>Door detected blocked, wait 5 s, recheck, reroute through door A (out and back).</td><td class="pass">2/2 delivered, closest 0.25 m; repeated in demo at 1.0 m/s</td></tr>
+<tr><td class="id">L3</td><td>Guests standing in both doors</td><td>Both doors blocked: terrace order given up gracefully (reported in <code>failed_orders</code>), robot docks and serves the rest of the queue.</td><td class="pass">terrace_1 given up, table_1 delivered</td></tr>
+<tr><td class="id">L4</td><td>Nav2 goal fails repeatedly</td><td>Bounded retries (3, 5 s apart); behaviour tree waits and backs up 0.25 m slowly (no spinning near people); then give up and dock. An unreachable dock is the only hard error.</td><td>Unit tests</td></tr>
+<tr><td class="id">L5</td><td>Manual return to dock during a delivery or retry</td><td>Interrupted order re-queued first; stale retries skipped.</td><td>Unit tests</td></tr>
+<tr><td class="id">L6</td><td>Regression: terrace + tables with all 5 people</td><td>No regressions from the door logic.</td><td class="pass">3/3 delivered, 0 contacts, 76 encounters within 1 m</td></tr>
+<tr><td class="id">L7</td><td>Visual-only geometry read as obstacles/people (door leaves, deck, sills), wall missed by SLAM</td><td>Removed from the mesh or drawn into the map; doorway collision boxes split.</td><td class="pass">Fixed, verified by L1-L3</td></tr>
+</table>
+
+<h2>5. Known limits</h2>
+<ul>
+  <li>Charging is simulated by proximity to the dock pose, not by charger contact.</li>
+  <li>In the demo, the battery level is set to 19% mid-delivery and charging is fast-forwarded to 80%, both by parameter (shown in the video captions); the abort, re-queue, docking and resume logic run unmodified.</li>
+  <li>People are simulated with scripted routes; behaviour of real crowds will be more varied.</li>
+  <li>The 1.0 m/s configuration was verified in the demo recordings; the multi-run statistics above were collected at 0.15-0.45 m/s.</li>
+</ul>
+
+</body>
+</html>

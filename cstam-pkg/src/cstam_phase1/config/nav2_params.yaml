@@ -391,7 +391,7 @@ collision_monitor:
       polygon_pub_topic: person_stop_zone
       holonomic: false
       # First match wins. A turning robot also swings its rear corners
-      # sideways, so only near-straight driving uses the narrow front box.
+      # sideways, so only near-straight driving (|w| <= 0.3) uses the narrow box.
       velocity_polygons: [rotation, forward_creep, forward, forward_turning, reverse, stopped]
       rotation:
         # Swept circle of an in-place turn (circumscribed radius 0.456 m)
@@ -408,15 +408,17 @@ collision_monitor:
         points: "[[0.65, 0.33], [0.65, -0.33], [-0.10, -0.33], [-0.10, 0.33]]"
         linear_min: 0.0
         linear_max: 0.10
-        theta_min: -0.10
-        theta_max: 0.10
+        theta_min: -0.30
+        theta_max: 0.30
       forward:
-        # Cruising up to 0.45 m/s: longer zone for the stopping distance.
+        # Cruising (up to 1.0 m/s): longer zone for the stopping distance.
         points: "[[0.85, 0.33], [0.85, -0.33], [-0.10, -0.33], [-0.10, 0.33]]"
         linear_min: 0.10
         linear_max: 1.0
-        theta_min: -0.10
-        theta_max: 0.10
+        # Gentle steering (corners sweep sideways < 0.14 m/s) keeps the
+        # narrow zone, so passing beside a standing person does not stop it.
+        theta_min: -0.30
+        theta_max: 0.30
       forward_turning:
         # Front zone plus the swept corner circle with latency margin (0.6 m).
         points: "[[0.65, 0.40], [0.42, 0.55], [0.23, 0.60], [-0.23, 0.60], [-0.55, 0.23], [-0.55, -0.23], [-0.23, -0.60], [0.23, -0.60], [0.42, -0.55], [0.65, -0.40]]"
