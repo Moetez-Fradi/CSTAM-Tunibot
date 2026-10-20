@@ -10,6 +10,9 @@ and a [complex layout with failure recovery](#complex-layout-terrace-doors-and-f
 deliveries to the terrace through 0.92 m doorways, rerouting around a
 blocked door and giving up gracefully when no route exists.
 
+The robot lives in its [home corridor](#robot-home-corridor): it charges
+there and is loaded through the kitchen service hatch at the corridor's end.
+
 **Measured acceptance:** kitchen 3/3, raw Nav2 4/4, two fresh complete deliveries,
 queued table 1 then table 2, invalid/duplicate rejection, and manual dock return
 passed. Physical arrival errors and recorded results are in the
@@ -43,6 +46,28 @@ export FASTDDS_DEFAULT_PROFILES_FILE="$(ros2 pkg prefix --share cstam_phase1)/co
 export FASTRTPS_DEFAULT_PROFILES_FILE="$FASTDDS_DEFAULT_PROFILES_FILE"
 ```
 
+## Robot home corridor
+
+The restaurant model has a 1.86 m wide, 7.5 m long service corridor north of
+the dining room (map x 4.85–6.71, y 10.44–17.98), opening into the room
+through a 1.56 m doorway. It is the robot's home:
+
+- **dock** (5.78, 15.50), facing the end wall: the robot spawns, waits and
+  charges here;
+- **kitchen** pickup (5.78, 17.25) at the service hatch in the end wall,
+  where the robot is loaded.
+
+An order starts with a short drive forward to the hatch, one turn, and the
+trip out through the doorway; a delivery ends driving straight back in to the
+dock. SLAM only saw the corridor's mouth, so
+`cstam_phase1/scripts/build_home.py` draws it into the saved map from the
+mesh geometry (walls, interior, doorway between the frame jambs). The
+dining-room north wall's collision boxes are split at the doorway, as the
+west wall is at the terrace doors.
+
+The robot cruises at up to 0.45 m/s and turns at up to 0.9 rad/s; near
+people the collision monitor still limits it to 0.07 m/s or stops it.
+
 ## Normal operation: one launch
 
 ```bash
@@ -58,9 +83,10 @@ ros2 topic pub --once /delivery/request std_msgs/msg/String '{data: table_1}'
 ros2 topic echo /delivery/status std_msgs/msg/String
 ```
 
-The sequence is kitchen → table 1 → dock → `IDLE`. A complete delivery took
-333–350 seconds in headless tests; GUI rendering can make wall time longer: an extra GUI-enabled delivery passed
-in 766.72 seconds, with the display windows minimized during the long mission.
+The sequence is kitchen → table 1 → dock → `IDLE`. From the home corridor,
+with the five simulated people walking, a complete headless delivery took
+163 s to table 1 and 133 s to terrace 1 (out through door B and back), with
+no contacts. GUI rendering can make wall time longer.
 While busy, publishing `table_2` queues a second delivery. Duplicates, empty
 requests and unknown names are rejected without changing the active task.
 The FIFO policy serves queued customers before returning to dock.
@@ -115,7 +141,7 @@ frame). Each targets one encounter on the real delivery routes:
 |---|---|---|
 | `waiter_ali` | polite, 0.9 m/s | head-on in the 1.6 m west aisle |
 | `guest_sara` | oblivious, 1.0 m/s | fast crossing of both robot routes |
-| `chef_omar` | polite, 0.6 m/s | crosses the kitchen approach just short of the pickup pose |
+| `chef_omar` | polite, 0.6 m/s | walks across the mouth of the home corridor, where every trip starts and ends |
 | `guest_lina` | oblivious, 0.5 m/s | passes in front of the dock and tables |
 | `guest_youssef` | polite, 0.7 m/s | stands 30 s on the east route, then moves |
 
@@ -324,7 +350,7 @@ RViz includes a `Nav2 Goal` tool. A direct kitchen goal is:
 
 ```bash
 ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose \
-  '{pose: {header: {frame_id: map}, pose: {position: {x: 0.02, y: 9.27}, orientation: {z: 0.5008, w: 0.8655}}}}' --feedback
+  '{pose: {header: {frame_id: map}, pose: {position: {x: 5.78, y: 17.25}, orientation: {z: 0.7071, w: 0.7071}}}}' --feedback
 colcon test --packages-select cstam_phase1 --event-handlers console_direct+
 colcon test-result --verbose
 ```

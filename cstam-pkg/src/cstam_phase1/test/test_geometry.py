@@ -72,8 +72,8 @@ def test_map_spawn_registration():
     alignment = yaml.safe_load((directory / 'world_alignment.yaml').read_text())['world_from_map']
     dock = yaml.safe_load((directory / 'locations.yaml').read_text())['dock']
     assert alignment == {'x': 11.22, 'y': 6.95, 'yaw': 0.0}
-    assert math.isclose(alignment['x'] + dock['x'], 7.59)
-    assert math.isclose(alignment['y'] + dock['y'], 7.80)
+    assert math.isclose(alignment['x'] + dock['x'], 17.00)
+    assert math.isclose(alignment['y'] + dock['y'], 22.45)
 
 
 def test_drive_reference_at_skid_steer_centre():

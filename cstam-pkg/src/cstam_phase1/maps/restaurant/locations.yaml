@@ -2,19 +2,23 @@
 # These are deliberately semantic names: task requests never contain x/y.
 supported_floors: [1]
 
+# Robot home: the 1.86 m service corridor north of the dining room (map
+# x 4.85..6.71, y 10.44..17.98, drawn by scripts/build_home.py). The robot
+# charges at the dock and is loaded at the kitchen service hatch in the
+# corridor's end wall. Both face the hatch: an order starts with a short
+# drive forward, a delivery ends driving straight back in.
 dock:
   floor: 1
-  x: -3.63
-  # Shift 0.23 m south within the same docking/staging area. With the full
-  # padded footprint, the old pose enclosed one lethal static-map cell.
-  y: 0.85
-  yaw: -0.522
+  x: 5.78
+  y: 15.50
+  yaw: 1.5708
 
+# Pickup at the kitchen service hatch (end wall, y 17.98).
 kitchen:
   floor: 1
-  x: 0.02
-  y: 9.27
-  yaw: 1.049
+  x: 5.78
+  y: 17.25
+  yaw: 1.5708
 
 table_1:
   floor: 1
