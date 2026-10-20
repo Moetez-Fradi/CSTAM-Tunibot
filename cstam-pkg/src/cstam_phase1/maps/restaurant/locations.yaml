@@ -35,3 +35,32 @@ table_3:
   x: -3.55
   y: 1.02
   yaw: 2.619
+
+# Terrace, through the opened west doors (0.92 m clear leaf each).
+# Delivery poses face the table from the facade side: ~0.25 m to the
+# furniture ahead, ~0.7 m to the wall behind.
+terrace_1:
+  floor: 1
+  x: -8.05
+  y: 6.55
+  yaw: 3.1416
+
+terrace_2:
+  floor: 1
+  x: -8.00
+  y: 2.50
+  yaw: 3.1416
+
+# Terrace doors (not delivery targets). A trip between the dining room and
+# the terrace is routed square through a door: inside staging pose ->
+# outside staging pose (or the reverse), then the target. The door nearest
+# the terrace location is tried first; if its legs keep failing (e.g. a
+# person standing in it), the other door is used.
+doors:
+  terrace_x: -7.05      # x < terrace_x is the terrace zone
+  inside_x: -6.40
+  outside_x: -7.75
+  door_a:
+    y: 3.74
+  door_b:
+    y: 7.20

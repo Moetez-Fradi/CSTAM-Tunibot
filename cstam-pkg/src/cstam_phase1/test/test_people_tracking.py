@@ -131,3 +131,12 @@ def test_occluded_track_freezes_at_last_measurement_not_extrapolation():
         kept = tracker.update([], last + i * 0.125, lambda position: True)
     assert len(kept) == 1
     assert abs(kept[0].position[0] - last) < 0.1  # not ~0.8 m further on
+
+
+def test_standing_person_track_survives_short_detection_gaps():
+    tracker = MultiTracker(max_age=0.8, standing_max_age=3.0)
+    for i in range(16):
+        tracker.update([np.array([2.0, 1.0])], i * 0.125)
+    kept = tracker.update([], 2.0 + 2.0)   # 2 s without a detection
+    assert len(kept) == 1
+    assert tracker.update([], 2.0 + 3.5) == []

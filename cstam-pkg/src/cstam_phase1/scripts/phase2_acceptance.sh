@@ -5,13 +5,15 @@
 # startup health check, runs recorded deliveries among the scenario
 # pedestrians, then stops the whole group.
 #
-# Usage: phase2_acceptance.sh OUTPUT_DIR [DELIVERIES]
-#   DELIVERIES defaults to "['table_1', 'table_2', 'table_3']".
+# Usage: [PEDESTRIANS=false] [PEDESTRIAN_SCENARIO=file.yaml] \
+#        phase2_acceptance.sh OUTPUT_DIR [DELIVERIES]
+#   DELIVERIES is a comma-separated list, default table_1,table_2,table_3.
 # Writes OUTPUT_DIR/{launch.log, health.txt, trial.json, trace.jsonl}.
 set -u
 
 OUT="${1:?usage: phase2_acceptance.sh OUTPUT_DIR [DELIVERIES]}"
-DELIVERIES="${2:-['table_1', 'table_2', 'table_3']}"
+LIST="${2:-table_1,table_2,table_3}"
+DELIVERIES="[$(echo "${LIST}" | sed "s/[^,][^,]*/'&'/g; s/,/, /g")]"
 mkdir -p "${OUT}"
 
 PHASE1_SHARE="$(ros2 pkg prefix --share cstam_phase1)"
@@ -19,6 +21,8 @@ export FASTDDS_DEFAULT_PROFILES_FILE="${PHASE1_SHARE}/config/fastdds_udp.xml"
 export FASTRTPS_DEFAULT_PROFILES_FILE="${FASTDDS_DEFAULT_PROFILES_FILE}"
 
 setsid ros2 launch cstam_phase1 phase1.launch.py headless:=True rviz:=false \
+  pedestrians:="${PEDESTRIANS:-true}" \
+  ${PEDESTRIAN_SCENARIO:+pedestrian_scenario:="${PHASE1_SHARE}/config/${PEDESTRIAN_SCENARIO}"} \
   > "${OUT}/launch.log" 2>&1 &
 LAUNCH=$!
 cleanup() {

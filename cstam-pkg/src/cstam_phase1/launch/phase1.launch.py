@@ -123,6 +123,7 @@ def generate_launch_description():
 
     # Evaluation and pedestrian control only: entity spawn/pose services and
     # the robot's ground-truth pose. Navigation never subscribes to these.
+    # Runs in every normal launch so layout-only trials still record a trace.
     simulation_bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
@@ -134,7 +135,7 @@ def generate_launch_description():
         ],
         parameters=[{'use_sim_time': True}],
         output='screen',
-        condition=pedestrians_condition,
+        condition=normal_condition,
     )
 
     pedestrian_simulator = Node(

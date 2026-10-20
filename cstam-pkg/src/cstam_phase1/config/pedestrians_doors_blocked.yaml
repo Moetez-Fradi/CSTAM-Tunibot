@@ -1,0 +1,14 @@
+# Recovery test R2: guests stand in both terrace doors for the whole run.
+# The terrace is unreachable: the robot must retry, give the order up,
+# return to the dock and still serve the next (indoor) order.
+pedestrians:
+  - name: guest_in_door_a
+    behavior: oblivious
+    speed: 0.3
+    color: [0.85, 0.75, 0.20]
+    route: [[-7.05, 3.74, 3600.0], [-7.05, 3.76, 3600.0]]
+  - name: guest_in_door_b
+    behavior: oblivious
+    speed: 0.3
+    color: [0.85, 0.75, 0.20]
+    route: [[-7.05, 7.20, 3600.0], [-7.05, 7.22, 3600.0]]

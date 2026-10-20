@@ -61,6 +61,9 @@
 
     <include><uri>model://restaurant</uri></include>
     <include><uri>model://restaurant_collision</uri></include>
+    <!-- Terrace furniture collision, generated from the mesh by
+         cstam_phase1/scripts/build_terrace.py. -->
+    <include><uri>model://terrace_collision</uri></include>
 
     <!-- A visual reference marker for the two-floor elevator shaft. -->
     <!-- <model name="elevator_shaft">

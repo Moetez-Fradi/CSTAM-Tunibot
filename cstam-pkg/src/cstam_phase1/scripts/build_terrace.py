@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+"""Build the terrace from the restaurant mesh: collision model and map extension.
+
+The Sweet Home 3D terrace (west of the dining room) is visual only. This tool
+reads the furniture in the terrace operating area from restaurant.obj, then
+
+1. writes andino_gz/models/terrace_collision (one static box per object), and
+2. extends maps/restaurant/restaurant.pgm westwards: the operating area is
+   drawn free, furniture occupied, and the two opened west doors cleared.
+   Everything else outside the building stays unknown, which the planner
+   (allow_unknown: false) treats as a boundary.
+
+Run from the workspace src directory:
+    python3 cstam_phase1/scripts/build_terrace.py
+The map frame and world alignment are unchanged; only the image grows.
+"""
+
+import collections
+import os
+
+import numpy as np
+
+SRC = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+MESH = os.path.join(SRC, 'andino_gz/andino_gz/models/restaurant/meshes/restaurant.obj')
+MODEL_DIR = os.path.join(SRC, 'andino_gz/andino_gz/models/terrace_collision')
+MAP_DIR = os.path.join(SRC, 'cstam_phase1/maps/restaurant')
+
+# Mesh -> world: model pose (-14.115, 17, 0, roll 90 deg), scale 0.01.
+# World -> map: subtract world_from_map (11.22, 6.95).
+MESH_X0, MESH_Y0, SCALE = -14.115, 17.0, 0.01
+WORLD_FROM_MAP = (11.22, 6.95)
+
+# Terrace operating area (map frame) and what counts as furniture there.
+AREA_X = (-13.3, -7.10)
+AREA_Y = (-9.3, 9.3)
+MAX_FOOTPRINT = 2.5        # m; larger groups are floors or walls
+Z_BAND = (0.05, 1.30)      # objects the robot can hit
+# Opened leaves of west doors A and B (see restaurant_collision walls).
+DOOR_GAPS_Y = ((3.28, 4.20), (6.74, 7.66))
+DOOR_BAND_X = (-7.30, -6.80)
+# The west wall from the collision model. SLAM never saw part of it (the
+# table 1 area shadows y ~ -1..1.8), which only mattered once the terrace
+# beyond became free space: the planner then routed through the wall.
+WEST_WALL_X = (-7.10, -7.00)
+WEST_WALL_Y = (-10.77, 10.35)
+# Door hardware the LiDAR still sees (mullion, closed leaf, frame, handle):
+# drawn occupied so the people tracker does not take it for a person.
+DOOR_HARDWARE_X = (-7.20, -6.75)
+DOOR_HARDWARE_Y = ((3.10, 5.40), (6.55, 8.80))
+EXTEND_WEST_M = 6.0
+
+
+def mesh_boxes():
+    verts, boxes, current = [], collections.defaultdict(
+        lambda: [np.inf, -np.inf, np.inf, -np.inf, np.inf, -np.inf]), None
+    with open(MESH, errors='surrogateescape') as stream:
+        for line in stream:
+            if line.startswith('v '):
+                _, x, y, z = line.split()[:4]
+                verts.append((float(x) * SCALE, float(y) * SCALE, float(z) * SCALE))
+            elif line.startswith('g '):
+                current = line[2:].strip()
+            elif line.startswith('f ') and current:
+                b = boxes[current]
+                for token in line.split()[1:]:
+                    vx, vy, vz = verts[int(token.split('/')[0]) - 1]
+                    x = MESH_X0 + vx - WORLD_FROM_MAP[0]
+                    y = MESH_Y0 - vz - WORLD_FROM_MAP[1]
+                    b[0], b[1] = min(b[0], x), max(b[1], x)
+                    b[2], b[3] = min(b[2], y), max(b[3], y)
+                    b[4], b[5] = min(b[4], vy), max(b[5], vy)
+    return boxes
+
+
+def terrace_furniture(boxes):
+    found = []
+    for name, (x0, x1, y0, y1, z0, z1) in boxes.items():
+        if x1 < AREA_X[0] or x0 > AREA_X[1] or y1 < AREA_Y[0] or y0 > AREA_Y[1]:
+            continue
+        if z1 < Z_BAND[0] or z0 > Z_BAND[1]:
+            continue
+        if x1 - x0 > MAX_FOOTPRINT or y1 - y0 > MAX_FOOTPRINT or x1 > AREA_X[1]:
+            continue
+        found.append((name, x0, x1, y0, y1, max(0.0, z0), min(z1, Z_BAND[1])))
+    return found
+
+
+def door_hardware(boxes):
+    found = []
+    for name, (x0, x1, y0, y1, z0, z1) in boxes.items():
+        if x0 < DOOR_HARDWARE_X[0] or x1 > DOOR_HARDWARE_X[1]:
+            continue
+        if not any(y0 >= a and y1 <= b for a, b in DOOR_HARDWARE_Y):
+            continue
+        if z1 < Z_BAND[0] or z0 > Z_BAND[1] or y1 - y0 > 1.2:
+            continue
+        found.append((name, x0, x1, y0, y1))
+    return found
+
+
+def write_model(furniture):
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    wx, wy = WORLD_FROM_MAP
+    parts = []
+    for i, (name, x0, x1, y0, y1, z0, z1) in enumerate(furniture):
+        sx, sy, sz = max(x1 - x0, 0.02), max(y1 - y0, 0.02), max(z1 - z0, 0.05)
+        cx, cy, cz = (x0 + x1) / 2 + wx, (y0 + y1) / 2 + wy, (z0 + z1) / 2
+        parts.append(
+            f'      <collision name="terrace_{i}">\n'
+            f'        <pose>{cx:.3f} {cy:.3f} {cz:.3f} 0 0 0</pose>\n'
+            f'        <geometry><box><size>{sx:.3f} {sy:.3f} {sz:.3f}</size></box></geometry>\n'
+            f'      </collision>\n')
+    with open(os.path.join(MODEL_DIR, 'model.sdf'), 'w', encoding='utf-8') as stream:
+        stream.write(
+            '<?xml version="1.0"?>\n'
+            '<!-- Generated by cstam_phase1/scripts/build_terrace.py from the\n'
+            '     restaurant mesh: one box per terrace furniture object. -->\n'
+            '<sdf version="1.7">\n  <model name="terrace_collision">\n'
+            '    <static>true</static>\n    <link name="terrace_link">\n'
+            + ''.join(parts) + '    </link>\n  </model>\n</sdf>\n')
+    with open(os.path.join(MODEL_DIR, 'model.config'), 'w', encoding='utf-8') as stream:
+        stream.write(
+            '<?xml version="1.0"?>\n<model>\n  <name>terrace_collision</name>\n'
+            '  <version>1.0</version>\n  <sdf version="1.7">model.sdf</sdf>\n'
+            '  <description>Collision for the restaurant terrace furniture.'
+            '</description>\n</model>\n')
+
+
+def read_pgm(path):
+    raw = open(path, 'rb').read()
+    parts, i = [], 0
+    while len(parts) < 4:
+        while raw[i:i + 1].isspace():
+            i += 1
+        if raw[i:i + 1] == b'#':
+            i = raw.index(b'\n', i) + 1
+            continue
+        j = i
+        while not raw[j:j + 1].isspace():
+            j += 1
+        parts.append(raw[i:j])
+        i = j
+    w, h = int(parts[1]), int(parts[2])
+    return np.frombuffer(raw[i + 1:i + 1 + w * h], dtype=np.uint8).reshape(h, w).copy()
+
+
+def extend_map(furniture, hardware=()):
+    yaml_path = os.path.join(MAP_DIR, 'restaurant.yaml')
+    meta = open(yaml_path).read()
+    origin_line = [line for line in meta.splitlines() if line.startswith('origin:')][0]
+    ox, oy, oth = [float(v) for v in origin_line.split('[')[1].split(']')[0].split(',')]
+    res = 0.05
+    img = read_pgm(os.path.join(MAP_DIR, 'restaurant.pgm'))
+    h, w = img.shape
+    if ox > -10.0:  # not yet extended
+        extra = int(round(EXTEND_WEST_M / res))
+        img = np.hstack([np.full((h, extra), 205, dtype=np.uint8), img])
+        ox -= extra * res
+        h, w = img.shape
+
+    def cells(x0, x1, y0, y1):
+        c0, c1 = int(np.floor((x0 - ox) / res)), int(np.ceil((x1 - ox) / res))
+        r0, r1 = int(np.floor((y0 - oy) / res)), int(np.ceil((y1 - oy) / res))
+        c0, c1 = max(c0, 0), min(c1, w)
+        r0, r1 = max(r0, 0), min(r1, h)
+        return slice(h - r1, h - r0), slice(c0, c1)  # image rows grow downwards
+
+    img[cells(AREA_X[0], -7.12, AREA_Y[0], AREA_Y[1])] = 254
+    for _name, x0, x1, y0, y1, _z0, _z1 in furniture:
+        img[cells(x0, x1, y0, y1)] = 0
+    img[cells(WEST_WALL_X[0], WEST_WALL_X[1], WEST_WALL_Y[0], WEST_WALL_Y[1])] = 0
+    for y0, y1 in DOOR_GAPS_Y:
+        img[cells(DOOR_BAND_X[0], DOOR_BAND_X[1], y0, y1)] = 254
+    for _name, x0, x1, y0, y1 in hardware:
+        img[cells(x0, x1, y0, y1)] = 0
+
+    with open(os.path.join(MAP_DIR, 'restaurant.pgm'), 'wb') as stream:
+        stream.write(b'P5\n%d %d\n255\n' % (w, h))
+        stream.write(img.tobytes())
+    new_origin = f'origin: [{ox:.3f}, {oy:.3f}, {oth:g}]'
+    with open(yaml_path, 'w') as stream:
+        stream.write(meta.replace(origin_line, new_origin))
+    return w, h, new_origin
+
+
+def main():
+    boxes = mesh_boxes()
+    furniture = terrace_furniture(boxes)
+    hardware = door_hardware(boxes)
+    write_model(furniture)
+    w, h, origin = extend_map(furniture, hardware)
+    print(f'{len(furniture)} terrace furniture boxes, {len(hardware)} door hardware '
+          f'parts; map {w}x{h}, {origin}')
+    for name, x0, x1, y0, y1 in hardware:
+        print(f'  door part {name}: x {x0:.2f}..{x1:.2f} y {y0:.2f}..{y1:.2f}')
+
+
+if __name__ == '__main__':
+    main()

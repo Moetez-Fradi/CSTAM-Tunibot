@@ -1,5 +1,8 @@
 """Explicit, non-composed Nav2 launch for the CSTAM first-floor MVP."""
 
+import os
+
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
@@ -54,12 +57,17 @@ def generate_launch_description():
             # controller/behaviors -> smoother -> collision_monitor -> Gazebo.
             # The monitor is the only /cmd_vel publisher.
             remappings.append(('cmd_vel', 'cmd_vel_nav'))
+        parameters = list(common)
+        if executable == 'bt_navigator':
+            parameters.append({'default_nav_to_pose_bt_xml': os.path.join(
+                get_package_share_directory('cstam_phase1'), 'config',
+                'navigate_to_pose_cstam.xml')})
         nodes.append(Node(
             package=package_by_executable[executable],
             executable=executable,
             name=executable,
             output='screen',
-            parameters=common,
+            parameters=parameters,
             remappings=remappings))
     nodes.append(Node(
         package='nav2_lifecycle_manager', executable='lifecycle_manager',

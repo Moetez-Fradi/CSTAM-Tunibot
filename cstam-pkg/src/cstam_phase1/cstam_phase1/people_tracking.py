@@ -175,9 +175,14 @@ class Track:
 class MultiTracker:
     def __init__(self, gate=0.7, max_age=0.8, confirm_hits=3,
                  accel_noise=2.0, measurement_noise=0.08, max_speed=2.0,
-                 occluded_max_age=10.0):
+                 occluded_max_age=10.0, standing_max_age=3.0, standing_speed=0.2):
         self.gate = gate
         self.max_age = max_age
+        # A standing person (e.g. in a doorway, half hidden by the jambs and
+        # partly removed by the static-map filter) is kept longer, so the
+        # track does not flicker and the planner does not flip routes.
+        self.standing_max_age = standing_max_age
+        self.standing_speed = standing_speed
         self.occluded_max_age = occluded_max_age
         self.confirm_hits = confirm_hits
         self.accel_noise = accel_noise
@@ -218,7 +223,8 @@ class MultiTracker:
             if speed > self.max_speed:
                 track.x[2:] *= self.max_speed / speed
             age = stamp - track.last_seen
-            if age <= self.max_age:
+            standing = track.hits >= self.confirm_hits and track.speed < self.standing_speed
+            if age <= self.max_age or (standing and age <= self.standing_max_age):
                 survivors.append(track)
             elif (is_occluded is not None and track.hits >= self.confirm_hits
                   and age <= self.occluded_max_age

@@ -7736,11 +7736,12 @@
           </friction>
         </surface>
       </collision>
-      <collision name="box_483_wall_1_4">
-        <pose>18.3143 1.2197 10.2393 0 0 0</pose>
+      <!-- West wall cut for the open leaves of terrace doors A and B. -->
+      <collision name="box_483_wall_1_4_seg0">
+        <pose>18.3143 1.2197 13.7752 0 0 0</pose>
         <geometry>
           <box>
-            <size>0.0381 2.4394 21.0820</size>
+            <size>0.0381 2.4394 14.0103</size>
           </box>
         </geometry>
         <surface>
@@ -7752,11 +7753,76 @@
           </friction>
         </surface>
       </collision>
-      <collision name="box_484_wall_1_5">
-        <pose>18.2762 1.2197 10.2584 0 0 0</pose>
+      <collision name="box_483_wall_1_4_seg1">
+        <pose>18.3143 1.2197 4.5800 0 0 0</pose>
         <geometry>
           <box>
-            <size>0.0381 2.4394 21.1201</size>
+            <size>0.0381 2.4394 2.5400</size>
+          </box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>1.0</mu>
+              <mu2>1.0</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+      <collision name="box_483_wall_1_4_seg2">
+        <pose>18.3143 1.2197 1.0441 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.0381 2.4394 2.6917</size>
+          </box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>1.0</mu>
+              <mu2>1.0</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+      <!-- West wall cut for the open leaves of terrace doors A and B. -->
+      <collision name="box_484_wall_1_5_seg0">
+        <pose>18.2762 1.2197 13.7942 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.0381 2.4394 14.0485</size>
+          </box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>1.0</mu>
+              <mu2>1.0</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+      <collision name="box_484_wall_1_5_seg1">
+        <pose>18.2762 1.2197 4.5800 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.0381 2.4394 2.5400</size>
+          </box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>1.0</mu>
+              <mu2>1.0</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+      <collision name="box_484_wall_1_5_seg2">
+        <pose>18.2762 1.2197 1.0442 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.0381 2.4394 2.6916</size>
           </box>
         </geometry>
         <surface>

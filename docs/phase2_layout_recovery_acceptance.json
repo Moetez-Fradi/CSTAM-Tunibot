@@ -1,0 +1,133 @@
+{
+  "what": "Phase 2 complex layout and recovery: deliveries through the 0.92 m terrace doors, and recovery when doors are blocked. Recorded headless runs (scripts/phase2_acceptance.sh).",
+  "layout": {
+    "door_clear_width_m": 0.92,
+    "robot_width_m": 0.54,
+    "facade_lane_width_m": 1.6,
+    "terrace_locations": [
+      "terrace_1",
+      "terrace_2"
+    ]
+  },
+  "runs": [
+    {
+      "run": "t3",
+      "scenario": "terrace deliveries, no people",
+      "deliveries": [
+        {
+          "location": "terrace_1",
+          "result": "success",
+          "wall_time_sec": 295.0,
+          "contacts": null,
+          "min_clearance_m": null
+        },
+        {
+          "location": "terrace_2",
+          "result": "success",
+          "wall_time_sec": 384.2,
+          "contacts": null,
+          "min_clearance_m": null
+        },
+        {
+          "location": "table_1",
+          "result": "success",
+          "wall_time_sec": 231.6,
+          "contacts": null,
+          "min_clearance_m": null
+        }
+      ],
+      "nav2_failures": 0
+    },
+    {
+      "run": "r1door",
+      "scenario": "R1: guest standing in door B for the whole run",
+      "deliveries": [
+        {
+          "location": "terrace_1",
+          "result": "success",
+          "wall_time_sec": 396.2,
+          "contacts": 0,
+          "min_clearance_m": 0.253
+        },
+        {
+          "location": "table_1",
+          "result": "success",
+          "wall_time_sec": 220.7,
+          "contacts": 0,
+          "min_clearance_m": 1.825
+        }
+      ],
+      "nav2_failures": 0,
+      "recovery_events": [
+        "door_b looks blocked; waiting 5 s",
+        "door_b blocked; rerouting through door_a to terrace_1",
+        "door_b looks blocked; waiting 5 s",
+        "door_b blocked; rerouting through door_a to dock"
+      ]
+    },
+    {
+      "run": "r2doors",
+      "scenario": "R2: guests standing in both doors",
+      "deliveries": [
+        {
+          "location": "terrace_1",
+          "result": "given_up",
+          "wall_time_sec": 503.4,
+          "contacts": 0,
+          "min_clearance_m": 0.229
+        },
+        {
+          "location": "table_1",
+          "result": "success",
+          "wall_time_sec": 219.9,
+          "contacts": 0,
+          "min_clearance_m": 0.671
+        }
+      ],
+      "nav2_failures": 0,
+      "recovery_events": [
+        "door_b looks blocked; waiting 5 s",
+        "door_b blocked; rerouting through door_a to terrace_1",
+        "door_a looks blocked; waiting 5 s",
+        "all doors blocked; giving up on terrace_1; returning to dock"
+      ],
+      "note": "terrace_1 was correctly given up (see recovery_events); this run predates the trial tool reporting given_up, so its trial.json shows the final IDLE as success."
+    },
+    {
+      "run": "reg",
+      "scenario": "regression: five scenario pedestrians + terrace; table_1, terrace_2, table_2",
+      "deliveries": [
+        {
+          "location": "table_1",
+          "result": "success",
+          "wall_time_sec": 342.4,
+          "contacts": 0,
+          "min_clearance_m": 0.03
+        },
+        {
+          "location": "terrace_2",
+          "result": "success",
+          "wall_time_sec": 417.0,
+          "contacts": 0,
+          "min_clearance_m": 0.029
+        },
+        {
+          "location": "table_2",
+          "result": "success",
+          "wall_time_sec": 313.5,
+          "contacts": 0,
+          "min_clearance_m": 0.03
+        }
+      ],
+      "nav2_failures": 0,
+      "encounters_within_1m": 76,
+      "longest_navigation_stall_sec": 9.0
+    }
+  ],
+  "earlier_findings_fixed": [
+    "Door leaves, 0.10 m terrace deck and 4 cm door sills were visual-only geometry the LiDAR saw as obstacles or people: removed from the mesh",
+    "SLAM had missed part of the west wall: the planner routed through it once the terrace was free; the wall is now drawn from the collision model",
+    "Sharp turns inside the doorway stalled the controller: trips now go square through a door via staging poses",
+    "A person standing in a doorway flickered as a track and the plan flipped between doors: standing tracks persist 3 s; a door check (planned path length) decides before driving through"
+  ]
+}

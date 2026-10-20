@@ -136,10 +136,13 @@ class DynamicObstacleTrial(Node):
         return False
 
     def run_one(self, location, timeout):
-        if not self.reset_client.wait_for_service(timeout_sec=10.0):
-            raise RuntimeError('/pedestrians/reset_metrics unavailable')
-        future = self.reset_client.call_async(Trigger.Request())
-        rclpy.spin_until_future_complete(self, future, timeout_sec=5.0)
+        if self.reset_client.wait_for_service(timeout_sec=10.0):
+            future = self.reset_client.call_async(Trigger.Request())
+            rclpy.spin_until_future_complete(self, future, timeout_sec=5.0)
+        else:
+            # Layout-only runs (pedestrians:=false) have no pedestrian metrics.
+            self.get_logger().warn('No pedestrian simulator: recording without people metrics.')
+            self.metrics = None
         self.monitor_time, self.monitor_events = {}, {}
         self.monitor_since = time.monotonic() if self.monitor_since else None
         if not self._wait_state(lambda s: s['state'] == 'IDLE', 600.0):
@@ -156,10 +159,18 @@ class DynamicObstacleTrial(Node):
                 + time.monotonic() - self.monitor_since)
             self.monitor_since = time.monotonic()
         state = self.status['state'] if self.status else None
+        given_up = location in ((self.status or {}).get('failed_orders') or [])
+        if not finished:
+            result = 'timeout'
+        elif given_up:
+            result = 'given_up'  # delivery abandoned, robot back at the dock
+        elif state == 'IDLE':
+            result = 'success'
+        else:
+            result = state
         return {
             'location': location,
-            'result': 'success' if finished and state == 'IDLE' else
-                      (state if finished else 'timeout'),
+            'result': result,
             'wall_time_sec': round(time.monotonic() - start, 1),
             'last_message': self.status.get('message') if self.status else None,
             'pedestrians': self.metrics,

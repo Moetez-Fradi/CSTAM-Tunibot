@@ -1,8 +1,14 @@
-# CSTAM Tunibot — Phase 1
+# CSTAM Tunibot — Phases 1 and 2
 
 First-floor restaurant service robot using **ROS 2 Jazzy / Gazebo Harmonic**.
 Real simulated 3D LiDAR, SLAM Toolbox, AMCL, Nav2, semantic delivery requests,
 FIFO queue, and autonomous return to a defined dock pose.
+
+Phase 2 adds [battery simulation](#battery-simulation) with return to dock
+before the battery dies, [people as dynamic obstacles](#dynamic-obstacles-people-in-the-restaurant),
+and a [complex layout with failure recovery](#complex-layout-terrace-doors-and-failure-recovery):
+deliveries to the terrace through 0.92 m doorways, rerouting around a
+blocked door and giving up gracefully when no route exists.
 
 **Measured acceptance:** kitchen 3/3, raw Nav2 4/4, two fresh complete deliveries,
 queued table 1 then table 2, invalid/duplicate rejection, and manual dock return
@@ -216,6 +222,68 @@ with its red prediction line; the robot yields before the line), and the chef
 crossing just short of the pickup pose. GUI rendering slows the simulation;
 let it run rather than speeding the clip up in the recording.
 
+## Complex layout: terrace doors and failure recovery
+
+The restaurant's outdoor terrace is reachable through two of the west French
+doors, with one leaf open each: a **0.92 m** clear opening for the 0.54 m
+robot. `terrace_1` and `terrace_2` are delivery locations beside two terrace
+tables; between the table blocks and the facade runs a ~1.6 m lane.
+
+The Sweet Home 3D terrace was visual only, so
+`cstam_phase1/scripts/build_terrace.py` builds it from the mesh:
+
+- cuts the open leaves out of the west collision wall and the visual mesh
+  (the LiDAR renders visuals, so a glass leaf would read as a closed door);
+- removes the visual terrace deck (its 0.10 m surface sat above the LiDAR
+  floor filter and read as one large obstacle) and the 4 cm door sills
+  (right at the filter threshold, they flickered as obstacles and "people");
+- generates `andino_gz/models/terrace_collision` (111 furniture boxes);
+- extends the saved map 6 m west: the terrace operating area is drawn free,
+  furniture and door hardware occupied, the whole west wall from the
+  collision model except the two openings (SLAM had missed a stretch of it,
+  and the planner routed through the gap). Everything else outside stays
+  unknown, which the planner treats as a boundary.
+
+How the robot handles it:
+
+1. **Door routing.** A trip between the dining room and the terrace goes
+   square through the door nearest the terrace stop: an inside staging pose,
+   straight through to an outside staging pose, then the target (and the
+   reverse on the way back). Without it, a sharp turn inside the doorway
+   stalled the controller.
+2. **Restaurant recovery tree** (`config/navigate_to_pose_cstam.xml`):
+   Nav2's tree without Spin (useless and risky in a doorway or beside
+   people), waiting first, a short slow BackUp, 8 retries.
+3. **Task-level retries.** If Nav2 still aborts, the same leg is retried up
+   to 3 times, 5 s apart.
+4. **Alternative door.** If a door leg still fails, the route switches to
+   the other door.
+5. **Give up gracefully.** If no route works, the order is recorded in
+   `failed_orders` (in `/delivery/status`), the robot returns to the dock
+   and serves the rest of the queue. Only an unreachable dock ends in
+   `ERROR`.
+
+Recovery scenarios (`PEDESTRIAN_SCENARIO=...` for `phase2_acceptance.sh`):
+`pedestrians_door_blocked.yaml` keeps a guest standing in door B;
+`pedestrians_doors_blocked.yaml` blocks both doors.
+
+### Layout and recovery test cases
+
+| Run | Scenario | Result |
+|---|---|---|
+| t3 | `terrace_1`, `terrace_2`, `table_1`, no people | 3/3 delivered, 0 Nav2 failures |
+| R1 | guest standing in door B; `terrace_1`, `table_1` | door B detected blocked both ways, rerouted through door A; 2/2 delivered, 0 Nav2 failures, closest 0.25 m |
+| R2 | guests in both doors; `terrace_1`, `table_1` | both doors detected blocked, `terrace_1` given up, robot docked, `table_1` delivered; 0 Nav2 failures |
+| reg | the five scenario pedestrians; `table_1`, `terrace_2`, `table_2` | 3/3 delivered, 0 contacts, 0 Nav2 failures, 76 encounters within 1 m |
+
+Found and fixed on the way, each from a recorded run: door leaves, the
+terrace deck and the door sills were visual geometry the LiDAR read as
+obstacles or people; SLAM had missed part of the west wall, so the planner
+routed through it; sharp turns inside the doorway stalled the controller;
+a person standing in a doorway flickered as a track and the plan flipped
+between doors. Evidence:
+[layout and recovery acceptance data](docs/phase2_layout_recovery_acceptance.json).
+
 ## Mapping: separate mode
 
 Stop the normal launch and verify its children have exited. Then:
@@ -288,9 +356,11 @@ copy was built for portability; a pristine second machine was not tested.
 First floor only; no elevator. Pedestrians are kinematic visuals: they do
 not physically push the robot, so contacts are measured geometrically from
 ground truth rather than by contact sensors. The rear and side range
-sensors emulate ultrasonics with narrow lidar beams. When Nav2 gives up
-after its recoveries, the task manager still stops in `ERROR` rather than
-retrying. On the development laptop, long runs rendering on the integrated
+sensors emulate ultrasonics with narrow lidar beams. The terrace part of the
+map is drawn from the collision geometry, not SLAM, and only two of the west
+doors are open (one leaf each). The people tracker still produces occasional
+short-lived false tracks (a few seconds) near walls and furniture edges.
+On the development laptop, long runs rendering on the integrated
 AMD GPU froze the machine three times (amdgpu `flip_done timed out`); the
 RGB-D camera, unused by navigation, now renders at 5 Hz to reduce that load.
 Charging is simulated by proximity to the dock pose, not by charger contact
