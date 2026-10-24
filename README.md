@@ -1,4 +1,4 @@
-# CSTAM Tunibot — Phases 1 and 2
+# CSTAM Tunibot — autonomous restaurant delivery robot
 
 First-floor restaurant service robot using **ROS 2 Jazzy / Gazebo Harmonic**.
 Real simulated 3D LiDAR, SLAM Toolbox, AMCL, Nav2, semantic delivery requests,
@@ -9,6 +9,11 @@ before the battery dies, [people as dynamic obstacles](#dynamic-obstacles-people
 and a [complex layout with failure recovery](#complex-layout-terrace-doors-and-failure-recovery):
 deliveries to the terrace through 0.92 m doorways, rerouting around a
 blocked door and giving up gracefully when no route exists.
+
+Phase 3 adds [orders and a web UI backend](#orders-and-the-web-ui): menu
+orders with IDs, cancellation, a customer confirmation at the table, ETAs,
+an order history log, and a dependency-free HTTP/Server-Sent Events API for
+the customer and admin pages.
 
 The robot lives in its [home corridor](#robot-home-corridor): it charges
 there and is loaded through the kitchen service hatch at the corridor's end.
@@ -24,7 +29,7 @@ Docking here means autonomous station-pose arrival, not charger alignment.
 Ubuntu 24.04, ROS 2 Jazzy, Gazebo Harmonic through ROS Gazebo packages,
 colcon, rosdep, and an OpenGL display for GUI use. On a new machine, initialize
 rosdep once (`sudo rosdep init`, then `rosdep update`). Install dependencies
-for the five-package Phase 1 closure, excluding unrelated legacy applications:
+for the six-package closure, excluding the legacy applications in `App/`:
 
 ```bash
 git clone --branch main https://github.com/Moetez-Fradi/CSTAM-Tunibot.git
@@ -32,9 +37,9 @@ cd CSTAM-Tunibot/cstam-pkg
 source /opt/ros/jazzy/setup.bash
 rosdep install --from-paths \
   src/cstam_phase1 src/cstam_robot src/andino_gz/andino_gz \
-  src/andino/andino_description src/andino/andino_slam \
+  src/andino/andino_description src/andino/andino_slam src/cstam_ui \
   --ignore-src -r -y --rosdistro jazzy
-colcon build --symlink-install --packages-up-to cstam_phase1
+colcon build --symlink-install --packages-up-to cstam_ui
 source install/setup.bash
 ```
 
@@ -83,7 +88,10 @@ ros2 topic pub --once /delivery/request std_msgs/msg/String '{data: table_1}'
 ros2 topic echo /delivery/status std_msgs/msg/String
 ```
 
-The sequence is kitchen → table 1 → dock → `IDLE`. From the home corridor,
+The web UI is served on <http://localhost:8080> (`ui:=false` disables it,
+`ui_port:=` moves it). The sequence is kitchen → table 1 → wait at the table
+for the customer (`AWAITING_CONFIRMATION`, up to `confirmation_timeout:=20`
+s; `0` completes on arrival) → dock → `IDLE`. From the home corridor,
 with the five simulated people walking, a complete headless delivery took
 163 s to table 1 and 133 s to terrace 1 (out through door B and back), with
 no contacts. GUI rendering can make wall time longer.
@@ -310,6 +318,80 @@ a person standing in a doorway flickered as a track and the plan flipped
 between doors. Evidence:
 [layout and recovery acceptance data](docs/phase2_layout_recovery_acceptance.json).
 
+## Orders and the web UI
+
+`/delivery/request` accepts either a bare location (`table_1`, as before) or
+a JSON order:
+
+```bash
+ros2 topic pub --once /delivery/request std_msgs/msg/String \
+  '{data: "{\"location\": \"table_2\", \"items\": [{\"name\": \"Espresso\", \"qty\": 2}], \"note\": \"no sugar\"}"}'
+ros2 topic pub --once /delivery/confirm std_msgs/msg/String '{data: table_2}'   # or the order id
+ros2 topic pub --once /delivery/cancel std_msgs/msg/String '{data: table_2}'    # or the order id
+```
+
+Each table has at most one open order. Its record (id, items, note,
+`created/started/picked_up/arrived/finished` wall-clock times, status
+`queued`, `in_progress`, `awaiting_confirmation`, `delivered`, `failed` or
+`cancelled`, interruptions) is reported in `/delivery/status` as
+`active_order`, `orders` (queue order) and `history` (last 10), next to the
+existing fields. `progress` gives the distance still to drive on the current
+stage, including door hops, and an ETA at an average 0.3 m/s. A rejection
+is reported as `last_rejection` with its order id and reason.
+
+- At the table the robot waits for `/delivery/confirm`. Without one it
+  counts the order as delivered (unconfirmed) after the timeout. A manual
+  return or a depleted battery while waiting also counts it as delivered,
+  so the order is never served twice.
+- Cancelling a queued order drops it. Cancelling the active order sends the
+  robot back to the dock (the food goes back to the kitchen) without
+  requeueing it, then the queue continues.
+- Every finished order is appended to `$ROS_HOME/cstam_orders.jsonl`
+  (default `~/.ros`), the source for the admin history and analytics.
+
+The `cstam_ui` node is the only bridge between browsers and ROS. It uses the
+task manager's topics and services and never sends navigation goals. It is
+standard-library Python: REST for commands, Server-Sent Events for live
+updates, no rosbridge and nothing to `pip install`. Menu:
+`cstam_ui/config/menu.yaml`. The staff dashboard and admin endpoints need
+the PIN **`0000`** (`admin_pin:=` changes it, `admin_pin:=''` removes it);
+the browser sends it as `X-Admin-Pin` (or `?pin=` for event streams).
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/config` | tables (with zone), dock, kitchen, doors, menu, map metadata |
+| `GET /api/map.png` | the saved map (PNG), placed with `map.origin` / `map.resolution` |
+| `GET /api/events?order=ID` | live public view: robot state, pose, battery, plan, ETA, that order and its queue position |
+| `POST /api/orders` | `{location, items: [{id, qty}], note}`; answers with the accepted order or the robot's reason |
+| `GET /api/orders/ID` | one order and its queue position |
+| `POST /api/orders/ID/cancel`, `/confirm` | customer cancel (only while queued) and confirmation |
+| `GET /api/admin/events`, `/api/admin/state` | everything: status, battery history, tracked people, safety metrics, node health |
+| `GET /api/admin/history?limit=N` | finished orders from the log, newest first |
+| `POST /api/admin/orders/ID/cancel`, `/api/admin/return_to_dock` | staff controls |
+
+### Pages
+
+| Page | For |
+|---|---|
+| `/` | landing page: customer or staff |
+| `/table/<location>` (e.g. `/table/table_3`; `/table` lists them) | customers, phone first: menu, order, live tracking with ETA and a mini map, "I've got my order" at the table, cancel while queued. The order survives a page reload. |
+| `/admin` | staff dashboard. **Overview**: live floor plan (robot, planned route, tracked people, tables, doors), active delivery with its stages, battery with the 20/35/80% policy, queue with cancel, return to dock, battery chart for the last 30 minutes. **Orders**: delivered count, median time to table, confirmation rate, failures, full order log. **System**: node health, data freshness, people-safety metrics, task manager state. |
+| `/qr` | printable QR card per table (staff, linked from the dashboard). Each code opens that table's page. |
+| `/console` | raw API console for development |
+
+Light and dark themes follow the system setting (toggle top right). The
+Geist fonts are bundled (`web/fonts`, SIL OFL 1.1), so the UI works without
+internet.
+
+**Table QR codes.** The codes point at this machine's network address,
+detected at startup and printed in the log (`CSTAM UI on http://…`). Phones
+must be on the same Wi-Fi, and port 8080 must be open in the laptop's
+firewall. If the detected address is wrong (several networks, or a
+hostname is preferred), launch with `ui_public_url:=http://<address>:8080`
+or edit the address on the `/qr` page before printing. The codes are
+generated by a small built-in encoder (`cstam_ui/qr.py`), verified by
+decoding with OpenCV in the tests.
+
 ## Mapping: separate mode
 
 Stop the normal launch and verify its children have exited. Then:
@@ -371,6 +453,10 @@ Normal mode has one physical command publisher, `collision_monitor`
 - `cstam-pkg/src/cstam_robot`: robot Xacro, physics, sensors and bridge configuration.
 - `cstam-pkg/src/andino_gz/andino_gz`: restaurant assets, collision model, world and GUI launch.
 - `cstam-pkg/src/cstam_phase1`: perception, mapping/localization, Nav2, semantic locations, task manager, health checks and tests.
+- `cstam-pkg/src/cstam_ui`: web UI backend (HTTP API, live events, menu) and pages.
+- `cstam-pkg/src/App`, `cstam-pkg/src/deliverybot_bringup`: legacy prototypes
+  (chatbot, QR verification, Streamlit dashboard, mobile bridge) from before
+  the current stack. They are not built or launched by it.
 - `docs`: intentional acceptance summaries and architecture exports.
 
 All runtime assets resolve through package-share directories. Build/install/log,
