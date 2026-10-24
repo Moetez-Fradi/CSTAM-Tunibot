@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Table QR Codes</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  body { background: var(--bg-2); }
+  .nav { background: var(--bg); border-bottom: 1px solid var(--line); }
+  .nav-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 56px; padding: 0 24px; max-width: 1100px; margin: 0 auto; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; letter-spacing: -0.02em; text-decoration: none; }
+  .brand-mark { width: 22px; height: 22px; border-radius: 50%; background: var(--ink); position: relative; flex: none; }
+  .brand-mark::after { content: ''; position: absolute; left: 50%; top: 50%; width: 8px; height: 2px; margin-top: -1px; background: var(--bg); border-radius: 1px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+  .page-head p { margin-top: 6px; color: var(--muted); max-width: 60ch; }
+  .controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; margin-bottom: 8px; }
+  .hint { font-size: 13px; color: var(--muted); margin-bottom: 24px; min-height: 20px; }
+  .hint.tone-warn { color: var(--warn); }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+  /* The card itself stays light in both themes: it is what gets printed. */
+  .card {
+    background: #fff; color: #171717; border: 1px solid var(--line); border-radius: 12px;
+    padding: 24px 20px 18px; display: grid; justify-items: center; text-align: center; gap: 6px;
+  }
+  .card h2 { font-size: 26px; letter-spacing: -0.03em; }
+  .card .zone { font-size: 13px; color: #666; }
+  .card img { width: 100%; max-width: 200px; aspect-ratio: 1; margin: 10px 0 6px; image-rendering: pixelated; }
+  .card .cta { font-weight: 500; font-size: 15px; }
+  .card .url { font: 11px var(--mono); color: #8f8f8f; word-break: break-all; }
+
+  @media print {
+    @page { size: A4; margin: 12mm; }
+    body { background: #fff; }
+    .nav, .page-head, .controls, .hint { display: none !important; }
+    main { padding: 0; max-width: none; }
+    .cards { grid-template-columns: repeat(2, 1fr); gap: 8mm; }
+    .card { border: 1px dashed #bbb; border-radius: 0; break-inside: avoid; padding: 10mm 6mm 8mm; }
+    .card img { max-width: 60mm; }
+  }
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="nav-top">
+    <a class="brand" href="/admin"><span class="brand-mark" aria-hidden="true"></span>Tunibot</a>
+    <a class="btn btn-sm" href="/admin">Back to dashboard</a>
+  </div>
+</header>
+<main>
+  <div class="page-head">
+    <div>
+      <h1>Table QR codes</h1>
+      <p>Print these and place one on each table. Guests scan it to open the menu for that table.</p>
+    </div>
+    <button class="btn btn-primary" id="print" type="button" disabled>Print cards</button>
+  </div>
+  <div id="body"><p class="muted">Loading tables…</p></div>
+</main>
+<script src="/common.js"></script>
+<script>
+'use strict';
+(() => {
+  const { $, el, api, storage, initTheme } = CSTAM;
+  initTheme();
+  const pin = storage.get('sessionStorage', 'cstam.pin') || '';
+  let links = null;
+
+  const isLocal = (url) => /^https?:\/\/(localhost|127\.|\[::1\])/i.test(url);
+
+  function render(base) {
+    const clean = base.replace(/\/+$/, '');
+    const valid = /^https?:\/\/[^\s/]+$/i.test(clean);
+    const hint = $('#hint');
+    hint.className = `hint${!valid || isLocal(clean) ? ' tone-warn' : ''}`;
+    hint.textContent = !valid
+      ? 'Enter an address like http://192.168.1.20:8080 (no path).'
+      : isLocal(clean)
+        ? 'Phones cannot open localhost. Use this laptop’s Wi-Fi address instead.'
+        : 'Phones must be on the same Wi-Fi network as this laptop.';
+    $('#print').disabled = !valid;
+    $('#cards').replaceChildren(...links.tables.map((t) => {
+      const url = `${clean}/table/${t.name}`;
+      return el('article', { class: 'card' },
+        el('h2', {}, t.label),
+        el('div', { class: 'zone' }, t.zone === 'terrace' ? 'Terrace' : 'Dining room'),
+        valid ? el('img', { src: `/api/qr.svg?text=${encodeURIComponent(url)}`, alt: `QR code for ${url}` }) : null,
+        el('div', { class: 'cta' }, 'Scan to order to this table'),
+        el('div', { class: 'url' }, url));
+    }));
+  }
+
+  async function start() {
+    try {
+      links = await api('/api/admin/qr', { pin });
+    } catch (error) {
+      $('#body').replaceChildren(el('p', {}, error.status === 401
+        ? el('span', {}, 'Sign in on the ', el('a', { href: '/admin' }, 'staff dashboard'), ' first, then come back.')
+        : error.message));
+      return;
+    }
+    const input = el('input', { class: 'input mono', id: 'base', value: links.base_url, spellcheck: 'false',
+      oninput: (e) => render(e.target.value.trim()) });
+    $('#body').replaceChildren(
+      el('div', { class: 'controls' },
+        el('div', { class: 'field' }, el('label', { for: 'base' }, 'Address the codes open'), input)),
+      el('p', { class: 'hint', id: 'hint', 'aria-live': 'polite' }),
+      el('div', { class: 'cards', id: 'cards' }));
+    render(links.base_url);
+  }
+
+  $('#print').addEventListener('click', () => window.print());
+  start();
+})();
+</script>
+</body>
+</html>
