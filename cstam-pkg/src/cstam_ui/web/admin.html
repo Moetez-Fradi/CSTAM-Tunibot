@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tunibot Dashboard</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  body { background: var(--bg-2); min-height: 100vh; }
+  .nav { background: var(--bg); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 20; }
+  .nav-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 56px; padding: 0 24px; max-width: 1400px; margin: 0 auto; }
+  .crumbs { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 14px; }
+  .crumbs .sep { color: var(--line-strong); font-size: 20px; font-weight: 300; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; letter-spacing: -0.02em; text-decoration: none; }
+  .brand-mark { width: 22px; height: 22px; border-radius: 50%; background: var(--ink); position: relative; flex: none; }
+  .brand-mark::after { content: ''; position: absolute; left: 50%; top: 50%; width: 8px; height: 2px; margin-top: -1px; background: var(--bg); border-radius: 1px; }
+  .nav-right { display: flex; align-items: center; gap: 8px; }
+  .tabs { display: flex; gap: 4px; padding: 0 16px; max-width: 1400px; margin: 0 auto; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  .tab {
+    position: relative; height: 44px; padding: 0 10px; border: 0; background: none; cursor: pointer;
+    color: var(--muted); font-size: 14px; white-space: nowrap;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab[aria-selected="true"] { color: var(--ink); }
+  .tab[aria-selected="true"]::after { content: ''; position: absolute; left: 8px; right: 8px; bottom: 0; height: 2px; background: var(--ink); border-radius: 1px; }
+
+  main { max-width: 1400px; margin: 0 auto; padding: 32px 24px 64px; }
+  .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+  .page-head p { margin-top: 6px; color: var(--muted); font-size: 14px; }
+  .page-head .mono { font-size: 13px; }
+
+  .overview { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+  .side, .main-col { display: grid; gap: 16px; min-width: 0; }
+  .map-panel .map-wrap { height: min(68vh, 640px); min-height: 360px; }
+
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 13px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; text-align: right; font-family: var(--mono); }
+  .big { font: 500 40px/1 var(--mono); letter-spacing: -0.04em; }
+  .big small { font-size: 18px; color: var(--muted); letter-spacing: 0; }
+
+  .meter { position: relative; height: 8px; border-radius: 4px; background: var(--bg-hover); margin: 16px 0 22px; }
+  .meter-fill { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--ink); transition: width .6s ease; }
+  .meter-tick { position: absolute; top: -4px; width: 1px; height: 16px; background: var(--line-strong); }
+  .meter-tick span { position: absolute; top: 18px; transform: translateX(-50%); font: 11px var(--mono); color: var(--faint); white-space: nowrap; }
+
+  .order-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+  .order-head strong { font-size: 18px; letter-spacing: -0.02em; }
+  .order-items { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+  .eta-row { display: flex; gap: 24px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .eta-row div { display: grid; }
+  .eta-row strong { font: 500 18px var(--mono); }
+  .eta-row span { font-size: 12px; color: var(--muted); }
+
+  .list { list-style: none; margin: 0; padding: 0; }
+  .list li { display: grid; grid-template-columns: 24px 1fr auto; gap: 10px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  .list li:last-child { border-bottom: 0; }
+  .list .pos { font: 12px var(--mono); color: var(--faint); }
+  .list .title { font-weight: 500; }
+  .list .sub { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .chart { position: relative; height: 220px; }
+  .chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .chart .tip {
+    position: absolute; pointer-events: none; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--bg); font-size: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .08); white-space: nowrap; transform: translate(-50%, -100%);
+  }
+  .chart .tip strong { font: 500 14px var(--mono); display: block; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+  .stat { padding: 16px; }
+  .stat .label { font-size: 13px; color: var(--muted); }
+  .stat .value { font: 500 28px/1.3 var(--mono); letter-spacing: -0.03em; margin-top: 4px; }
+  .stat .note { font-size: 12px; color: var(--faint); margin-top: 2px; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-weight: 500; color: var(--muted); padding: 10px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--bg-2); }
+  td { padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td.num, th.num { text-align: right; font-family: var(--mono); white-space: nowrap; }
+  td.items { color: var(--muted); max-width: 320px; }
+
+  .system { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  .health { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .health div { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .health div:nth-child(odd) { border-right: 1px solid var(--line); }
+  .health .name { font-family: var(--mono); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+  .health .state { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); flex: none; }
+  .message { font: 12px/1.6 var(--mono); padding: 12px 16px; background: var(--bg-2); border-top: 1px solid var(--line); word-break: break-word; color: var(--ink-2); }
+
+  .signin { max-width: 360px; margin: 12vh auto; }
+  .signin form { display: grid; gap: 12px; }
+
+  @media (max-width: 1100px) {
+    .overview { grid-template-columns: minmax(0, 1fr); }
+    .side { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .system { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .nav-top { padding: 0 16px; }
+    main { padding: 20px 16px 48px; }
+    .crumbs .hide-sm { display: none; }
+    .health { grid-template-columns: minmax(0, 1fr); }
+    .health div:nth-child(odd) { border-right: 0; }
+    .stats { grid-template-columns: minmax(0, 1fr); }
+    h1 { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="nav-top">
+    <div class="crumbs">
+      <a class="brand" href="/admin"><span class="brand-mark" aria-hidden="true"></span>Tunibot</a>
+      <span class="sep hide-sm" aria-hidden="true">/</span>
+      <span class="hide-sm muted">Restaurant, first floor</span>
+      <span class="badge" id="state-badge"><span class="dot"></span><span>Connecting</span></span>
+    </div>
+    <div class="nav-right">
+      <a class="btn btn-sm hide-sm" href="/qr">Table QR codes</a>
+      <a class="btn btn-sm hide-sm" href="/table" target="_blank" rel="noopener">Customer page</a>
+      <button class="btn btn-ghost icon-btn" id="theme" type="button" aria-label="Switch light or dark theme">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 1.5v11a5.5 5.5 0 0 1 0-11Z"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Dashboard sections">
+    <button class="tab" role="tab" id="tab-overview" aria-controls="overview" aria-selected="true">Overview</button>
+    <button class="tab" role="tab" id="tab-orders" aria-controls="orders" aria-selected="false">Orders</button>
+    <button class="tab" role="tab" id="tab-system" aria-controls="system" aria-selected="false">System</button>
+  </div>
+</header>
+<div class="banner tone-err" id="offline" hidden>Lost the connection to the robot server. Reconnecting…</div>
+
+<main>
+  <section class="signin panel" id="signin" hidden>
+    <div class="panel-head"><h2>Staff sign-in</h2></div>
+    <div class="panel-body">
+      <form id="signin-form">
+        <div class="field"><label for="pin">Admin PIN</label>
+          <input class="input mono" id="pin" type="password" inputmode="numeric" autocomplete="current-password" required></div>
+        <p class="muted" id="signin-error" role="alert"></p>
+        <button class="btn btn-primary" type="submit">Sign in</button>
+      </form>
+    </div>
+  </section>
+
+  <div id="dashboard" hidden>
+    <section id="overview" role="tabpanel" aria-labelledby="tab-overview">
+      <div class="page-head">
+        <div>
+          <h1 id="summary">Connecting to the robot</h1>
+          <p id="summary-detail"></p>
+        </div>
+        <button class="btn" id="dock" type="button">Return to dock</button>
+      </div>
+      <div class="overview">
+        <div class="main-col">
+        <div class="panel map-panel">
+          <div class="panel-head">
+            <h2>Floor plan</h2>
+            <span class="muted mono" id="pose" style="font-size:12px"></span>
+          </div>
+          <div class="map-wrap">
+            <canvas id="map" aria-label="Live map with the robot, its planned route, tables and people"></canvas>
+            <div class="map-legend" aria-hidden="true">
+              <span><i class="swatch" style="background:var(--accent)"></i>Robot</span>
+              <span><i class="swatch-line"></i>Planned route</span>
+              <span><i class="swatch" style="background:var(--person)"></i>Person, as tracked</span>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>Battery, last 30 minutes</h2><span class="muted" style="font-size:13px" id="battery-note"></span></div>
+          <div class="panel-body"><div class="chart" id="battery-chart" role="img" aria-label="Battery level over the last 30 minutes"></div></div>
+        </div>
+        </div>
+        <div class="side">
+          <div class="panel" id="active"></div>
+          <div class="panel" id="battery"></div>
+          <div class="panel" id="queue"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="orders" role="tabpanel" aria-labelledby="tab-orders" hidden>
+      <div class="page-head"><div><h1>Orders</h1><p>Every finished order, newest first, from the robot’s order log.</p></div></div>
+      <div class="stats" id="stats"></div>
+      <div class="panel"><div class="table-wrap" id="history"></div></div>
+    </section>
+
+    <section id="system" role="tabpanel" aria-labelledby="tab-system" hidden>
+      <div class="page-head"><div><h1>System</h1><p>Software health and safety, refreshed live.</p></div></div>
+      <div class="system">
+        <div class="panel"><div class="panel-head"><h2>Robot software</h2><span class="muted" id="nodes-note" style="font-size:13px"></span></div><div class="health" id="nodes"></div></div>
+        <div class="panel"><div class="panel-head"><h2>Live data</h2></div><div class="health" id="feeds"></div></div>
+        <div class="panel"><div class="panel-head"><h2>People safety</h2><span class="muted" style="font-size:13px">Measured from simulator ground truth</span></div><div class="panel-body" id="safety"></div></div>
+        <div class="panel"><div class="panel-head"><h2>Task manager</h2></div><div class="panel-body" id="task"></div><div class="message" id="task-message"></div></div>
+      </div>
+    </section>
+  </div>
+</main>
+<script src="/common.js"></script>
+<script src="/admin.js"></script>
+</body>
+</html>
