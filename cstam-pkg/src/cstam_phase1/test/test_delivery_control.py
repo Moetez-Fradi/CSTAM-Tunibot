@@ -1,6 +1,11 @@
 """Regression checks for manual-return arbitration, separate from real acceptance."""
 from collections import deque
+import json
+import os
 from types import SimpleNamespace
+
+import pytest
+from std_msgs.msg import String
 from sensor_msgs.msg import BatteryState
 from std_srvs.srv import Trigger
 from cstam_phase1.delivery_task_manager import DeliveryTaskManager
@@ -38,12 +43,21 @@ def manager():
     node.goal_attempts = 0
     node.retry_timer = None
     node.failed_orders = []
+    node.orders = {}
+    node.history = deque(maxlen=10)
+    node.last_rejection = None
+    node.confirm_timer = None
+    node.confirmation_timeout = 0.0   # deliver on arrival unless a test opts in
+    node.progress = None
+    node.order_log_file = os.devnull
     node.scheduled = []
     node.create_timer = lambda period, cb: node.scheduled.append(cb) or SimpleNamespace(
         cancel=lambda: None)
     node.destroy_timer = lambda timer: None
     node.events = []
-    node._publish_status = lambda message: node.events.append(message)
+    node.last_message = ''
+    node.last_result = None
+    node._publish_status = lambda message, log=True: node.events.append(message)
     node._send_navigation_goal = lambda *args: node.events.append(args)
     return node
 
@@ -336,3 +350,182 @@ def test_both_doors_blocked_gives_the_order_up():
             node.scheduled.pop()()
     assert node.failed_orders == ['terrace_1']
     assert node.sent[-1] == ('dock-return', 'dock')
+
+
+SUCCEEDED = SimpleNamespace(result=lambda: SimpleNamespace(status=4))
+
+
+def order_manager():
+    node = manager()
+    node.locations = {name: {'floor': 1, 'x': 0.0, 'y': 0.0, 'yaw': 0.0}
+                      for name in ('dock', 'kitchen', 'table_1', 'table_2')}
+    node.state = 'IDLE'
+    node.current_stage = None
+    node.goal_request_pending = False
+    node.at_dock = True
+    return node
+
+
+def request(node, payload):
+    data = payload if isinstance(payload, str) else json.dumps(payload)
+    node._request_callback(String(data=data))
+
+
+def drive_to_table(node):
+    """Queue table_1 (JSON order) and drive through pickup to the table."""
+    request(node, {'id': 'A1', 'location': 'table_1', 'items': [
+        {'name': 'Coffee', 'qty': 2}, 'Water'], 'note': 'no sugar', 'source': 'web'})
+    assert node.state == 'NAVIGATING_TO_PICKUP'
+    assert node.orders['table_1']['status'] == 'in_progress'
+    node._goal_result_callback(SUCCEEDED, 'kitchen', 'pickup')
+    assert node.orders['table_1']['picked_up_at'] is not None
+    node._goal_result_callback(SUCCEEDED, 'table_1', 'customer')
+
+
+def test_json_order_is_queued_with_items_and_reported():
+    node = order_manager()
+    node.state = 'CHARGING'           # keeps the order waiting in the queue
+    request(node, {'id': 'A1', 'location': 'Table_1',
+                   'items': [{'name': 'Coffee', 'qty': 2}, 'Water']})
+    request(node, 'table_2')          # plain strings keep working
+    status = node._status_payload()
+    assert status['queue'] == ['table_1', 'table_2']
+    first, second = status['orders']
+    assert first['id'] == 'A1' and first['status'] == 'queued'
+    assert first['items'] == [{'name': 'Coffee', 'qty': 2}, {'name': 'Water', 'qty': 1}]
+    assert second['items'] == [] and second['id']
+    json.dumps(status)                # the payload stays serializable
+
+
+@pytest.mark.parametrize('payload, reason', [
+    ('{"location": "table_1", "items": [{"name": "Tea", "qty": 0}]}', 'quantity'),
+    ('{"location": "table_1", "items": "tea"}', 'items must be a list'),
+    ('{not json', 'invalid JSON'),
+    ('dock', 'unknown location'),
+    ('kitchen', 'unknown location'),
+    ('{"location": "table_9", "id": "X"}', 'unknown location'),
+])
+def test_invalid_orders_are_rejected_with_a_reason(payload, reason):
+    node = order_manager()
+    request(node, payload)
+    assert not node.queue and not node.orders and node.state == 'IDLE'
+    assert reason in node.last_rejection['reason']
+
+
+def test_duplicate_order_id_is_rejected():
+    node = order_manager()
+    node.state = 'CHARGING'
+    request(node, {'id': 'A1', 'location': 'table_1'})
+    request(node, {'id': 'A1', 'location': 'table_2'})
+    assert list(node.queue) == ['table_1']
+    assert node.last_rejection == {**node.last_rejection, 'id': 'A1', 'location': 'table_2'}
+
+
+def test_robot_waits_at_the_table_until_the_customer_confirms():
+    node = order_manager()
+    node.confirmation_timeout = 20.0
+    drive_to_table(node)
+    assert node.state == 'AWAITING_CONFIRMATION'
+    assert node.orders['table_1']['confirm_by'] is not None
+    assert node.scheduled, 'a confirmation timeout is armed'
+    node._confirm_callback(String(data='table_2'))      # wrong table: ignored
+    assert node.state == 'AWAITING_CONFIRMATION'
+    node._confirm_callback(String(data='A1'))
+    done = node.history[-1]
+    assert done['status'] == 'delivered' and done['confirmed']
+    assert done['items'][0] == {'name': 'Coffee', 'qty': 2} and done['note'] == 'no sugar'
+    assert node.state == 'RETURNING_TO_DOCK' and node.events[-1] == ('dock', 'dock')
+    assert not node.orders
+
+
+def test_unconfirmed_delivery_completes_after_the_timeout():
+    node = order_manager()
+    node.confirmation_timeout = 20.0
+    drive_to_table(node)
+    node.scheduled.pop()()
+    assert node.history[-1]['status'] == 'delivered'
+    assert not node.history[-1]['confirmed']
+    assert node.state == 'RETURNING_TO_DOCK'
+
+
+def test_zero_timeout_delivers_on_arrival():
+    node = order_manager()
+    drive_to_table(node)
+    assert node.history[-1]['status'] == 'delivered'
+    assert node.state == 'RETURNING_TO_DOCK'
+
+
+def test_cancelling_a_queued_order_removes_it():
+    node = order_manager()
+    node.state = 'CHARGING'
+    request(node, {'id': 'A1', 'location': 'table_1'})
+    request(node, 'table_2')
+    node._cancel_callback(String(data='A1'))
+    assert list(node.queue) == ['table_2']
+    assert node.history[-1]['id'] == 'A1' and node.history[-1]['status'] == 'cancelled'
+
+
+def test_cancelling_the_active_order_returns_to_dock_without_requeueing():
+    node = order_manager()
+    request(node, 'table_1')
+    request(node, 'table_2')
+    node.current_goal_handle = SimpleNamespace(
+        cancel_goal_async=lambda: node.events.append('cancel'))
+    node._cancel_callback(String(data='table_1'))
+    assert 'cancel' in node.events and node.state == 'RETURNING_TO_DOCK'
+    node._goal_result_callback(SimpleNamespace(result=lambda: SimpleNamespace(status=5)),
+                               'kitchen', 'pickup')
+    assert list(node.queue) == ['table_2']             # the other order waits
+    assert node.history[-1]['status'] == 'cancelled'
+    assert node.events[-1] == ('dock', 'dock')
+
+
+def test_manual_return_at_the_table_counts_the_order_as_delivered():
+    node = order_manager()
+    node.confirmation_timeout = 20.0
+    drive_to_table(node)
+    node._return_to_dock_callback(None, Trigger.Response())
+    assert node.history[-1]['status'] == 'delivered'
+    assert not node.queue                              # not delivered twice
+    assert node.events[-1] == ('dock', 'dock')
+
+
+def test_interrupted_order_is_marked_requeued():
+    node = order_manager()
+    request(node, 'table_1')
+    node._requeue_interrupted_order()
+    order = node.orders['table_1']
+    assert order['status'] == 'queued' and order['interruptions'] == 1
+
+
+def test_given_up_order_is_recorded_as_failed():
+    node = order_manager()
+    request(node, 'table_1')
+    aborted = SimpleNamespace(result=lambda: SimpleNamespace(status=6))
+    for _ in range(node.goal_retries):
+        node._goal_result_callback(aborted, 'kitchen', 'pickup')
+        node.scheduled.pop()()
+    node._goal_result_callback(aborted, 'kitchen', 'pickup')
+    assert node.history[-1]['status'] == 'failed'
+    assert 'unreachable' in node.history[-1]['reason']
+
+
+def test_finished_orders_are_appended_to_the_log(tmp_path):
+    node = order_manager()
+    node.order_log_file = str(tmp_path / 'logs' / 'orders.jsonl')
+    drive_to_table(node)
+    lines = (tmp_path / 'logs' / 'orders.jsonl').read_text().splitlines()
+    assert [json.loads(line)['id'] for line in lines] == ['A1']
+
+
+def test_progress_adds_the_door_hops_still_ahead():
+    node = order_manager()
+    node.eta_speed = 0.5
+    node.last_feedback_publish = 0.0
+    node.current_stage = 'customer'
+    node.locations['terrace_1'] = {'floor': 1, 'x': -3.0, 'y': 4.0, 'yaw': 0.0}
+    node.legs = [{'name': 'door_b_out_1', 'x': 0.0, 'y': 0.0, 'yaw': 0.0},
+                 {'name': 'door_b_out_2', 'x': 0.0, 'y': 4.0, 'yaw': 0.0}, 'terrace_1']
+    node._feedback_callback(SimpleNamespace(
+        feedback=SimpleNamespace(distance_remaining=1.0)))
+    assert node.progress == {'stage': 'customer', 'distance_remaining_m': 8.0, 'eta_sec': 16}

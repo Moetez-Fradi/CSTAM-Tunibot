@@ -23,6 +23,15 @@ through a terrace door (inside staging pose, outside staging pose, target).
 Sharp turns inside a 0.92 m doorway otherwise stalled the controller. If a
 door leg still fails after its retries, the other door is tried before the
 order is given up.
+
+Orders: /delivery/request takes a bare location ("table_1") or a JSON order
+({"location", "items", "note", "id", "source"}). Each location has at most one
+open order; its record (id, items, timestamps, status) is kept beside the
+location queue and reported in /delivery/status. At the table the robot waits
+in AWAITING_CONFIRMATION until the customer confirms on /delivery/confirm or
+confirmation_timeout_sec passes. /delivery/cancel takes an order id or a
+location: a queued order is dropped, an active one sends the robot back to
+the dock. Finished orders are appended to order_log_file (JSON lines).
 """
 
 from collections import deque
@@ -30,6 +39,7 @@ import json
 import math
 import os
 import time
+import uuid
 
 import rclpy
 from action_msgs.msg import GoalStatus
@@ -51,12 +61,54 @@ DOOR_MEMORY_SEC = 180.0  # how long a blocked door is avoided
 # for Nav2's own recoveries to time out.
 STAGING_NEAR_M = 0.9
 STAGING_STALL_SEC = 4.0
+FEEDBACK_STATUS_PERIOD_SEC = 0.5  # progress updates on /delivery/status
+MAX_ORDER_ITEMS = 20
+MAX_ITEM_QTY = 20
+MAX_NOTE_CHARS = 200
+
+
+def parse_request(text):
+    """Turn a /delivery/request payload into an order dict, or raise ValueError."""
+    text = text.strip()
+    if not text.startswith('{'):
+        return {'location': text.lower(), 'items': [], 'note': '', 'id': None,
+                'source': 'topic'}
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise ValueError(f'invalid JSON order: {error.msg}') from error
+    if not isinstance(data, dict):
+        raise ValueError('order must be a JSON object')
+    location = str(data.get('location') or '').strip().lower()
+    items = []
+    raw_items = data.get('items') or []
+    if not isinstance(raw_items, list) or len(raw_items) > MAX_ORDER_ITEMS:
+        raise ValueError(f'items must be a list of at most {MAX_ORDER_ITEMS} entries')
+    for item in raw_items:
+        if isinstance(item, str):
+            item = {'name': item, 'qty': 1}
+        if not isinstance(item, dict) or not str(item.get('name') or '').strip():
+            raise ValueError('every item needs a name')
+        try:
+            qty = int(item.get('qty', 1))
+        except (TypeError, ValueError):
+            qty = 0
+        if not 1 <= qty <= MAX_ITEM_QTY:
+            raise ValueError(f'item quantity must be 1-{MAX_ITEM_QTY}')
+        items.append({'name': str(item['name']).strip()[:60], 'qty': qty})
+    order_id = data.get('id')
+    if order_id is not None:
+        order_id = str(order_id).strip()[:32] or None
+    return {'location': location, 'items': items,
+            'note': str(data.get('note') or '').strip()[:MAX_NOTE_CHARS],
+            'id': order_id, 'source': str(data.get('source') or 'topic')[:32]}
+
 
 class DeliveryTaskManager(Node):
     STATES = {
         'IDLE', 'NAVIGATING_TO_PICKUP', 'NAVIGATING_TO_CUSTOMER',
-        'DELIVERY_COMPLETE', 'RETURNING_TO_DOCK', 'CHARGING',
-        'BATTERY_DEPLETED', 'ERROR',
+        'AWAITING_CONFIRMATION', 'DELIVERY_COMPLETE', 'RETURNING_TO_DOCK',
+        'CHARGING', 'BATTERY_DEPLETED', 'ERROR',
     }
     DELIVERY_STATES = {
         'NAVIGATING_TO_PICKUP', 'NAVIGATING_TO_CUSTOMER', 'DELIVERY_COMPLETE',
@@ -82,6 +134,12 @@ class DeliveryTaskManager(Node):
         # the planner is going around: the door is blocked.
         self.declare_parameter('door_path_max_m', 2.5)
         self.declare_parameter('door_recheck_sec', 5.0)
+        # 0 disables the wait at the table (delivery completes on arrival).
+        self.declare_parameter('confirmation_timeout_sec', 20.0)
+        self.declare_parameter('order_log_file', '')  # '' = $ROS_HOME/cstam_orders.jsonl
+        self.declare_parameter('history_size', 10)
+        # Average speed for ETA estimates, including slowdowns near people.
+        self.declare_parameter('eta_speed_mps', 0.3)
 
         self.locations_file = str(self.get_parameter('locations_file').value)
         self.pickup_location = str(self.get_parameter('pickup_location').value)
@@ -96,6 +154,17 @@ class DeliveryTaskManager(Node):
         self.retry_delay = float(self.get_parameter('retry_delay_sec').value)
         self.door_path_max = float(self.get_parameter('door_path_max_m').value)
         self.door_recheck = float(self.get_parameter('door_recheck_sec').value)
+        self.confirmation_timeout = float(
+            self.get_parameter('confirmation_timeout_sec').value)
+        self.order_log_file = str(self.get_parameter('order_log_file').value) or os.path.join(
+            os.environ.get('ROS_HOME', os.path.expanduser('~/.ros')), 'cstam_orders.jsonl')
+        self.eta_speed = max(0.05, float(self.get_parameter('eta_speed_mps').value))
+        self.orders = {}             # location -> open (queued or active) order
+        self.history = deque(maxlen=max(1, int(self.get_parameter('history_size').value)))
+        self.last_rejection = None
+        self.confirm_timer = None
+        self.progress = None
+        self.last_feedback_publish = 0.0
         self.door_checks = 0
         self.goal_attempts = 0
         self.retry_timer = None
@@ -131,6 +200,10 @@ class DeliveryTaskManager(Node):
             String, '/delivery/status', status_qos)
         self.request_subscription = self.create_subscription(
             String, '/delivery/request', self._request_callback, 10)
+        self.cancel_subscription = self.create_subscription(
+            String, '/delivery/cancel', self._cancel_callback, 10)
+        self.confirm_subscription = self.create_subscription(
+            String, '/delivery/confirm', self._confirm_callback, 10)
         self.return_service = self.create_service(
             Trigger, '/delivery/return_to_dock', self._return_to_dock_callback)
         self.status_service = self.create_service(
@@ -216,27 +289,90 @@ class DeliveryTaskManager(Node):
         return self._door_legs(self.door_in_use, outbound=target_zone == 'terrace')
 
     def _request_callback(self, message):
-        location = message.data.strip().lower()
-        if not location:
-            self._reject('empty delivery location')
+        try:
+            request = parse_request(message.data)
+        except ValueError as error:
+            self._reject(str(error))
             return
-        if location not in self.locations:
-            self._reject(
+        location, order_id = request['location'], request['id']
+        reject = lambda reason: self._reject(reason, order_id, location)  # noqa: E731
+        if not location:
+            reject('empty delivery location')
+            return
+        if location not in self.locations or location in (
+                self.dock_location, self.pickup_location):
+            reject(
                 f'unknown location "{location}"; valid locations: '
-                f'{", ".join(sorted(self.locations))}')
+                f'{", ".join(self._delivery_locations())}')
             return
         if self.locations[location]['floor'] != 1:
-            self._reject(f'location "{location}" is not on supported floor 1')
+            reject(f'location "{location}" is not on supported floor 1')
             return
         if location in self.queue or location == self.current_location:
-            self._reject(f'duplicate request for "{location}"')
+            reject(f'duplicate request for "{location}"')
             return
+        if order_id is not None and any(
+                o['id'] == order_id for o in list(self.orders.values()) + list(self.history)):
+            reject(f'duplicate order id "{order_id}"')
+            return
+        order = self._new_order(location)
+        order.update(items=request['items'], note=request['note'], source=request['source'])
+        if order_id is not None:
+            order['id'] = order_id
+        self.orders[location] = order
         self.queue.append(location)
-        self.last_message = f'queued {location}'
-        self._publish_status(self.last_message)
+        self._publish_status(f'queued {location} (order {order["id"]})')
         self.get_logger().info(
             f'Queued delivery to {location}; queue={list(self.queue)}')
         self._start_queued_task()
+
+    def _delivery_locations(self):
+        return sorted(name for name in self.locations
+                      if name not in (self.dock_location, self.pickup_location))
+
+    def _find_order(self, key):
+        """Open order by id or location; empty key = the active order."""
+        key = key.strip()
+        if not key:
+            return self.orders.get(self.current_location)
+        if key.lower() in self.orders:
+            return self.orders[key.lower()]
+        return next((o for o in self.orders.values() if o['id'] == key), None)
+
+    def _cancel_callback(self, message):
+        order = self._find_order(message.data)
+        if order is None or not message.data.strip():
+            self._reject(f'cancel: no open order "{message.data.strip()}"')
+            return
+        location = order['location']
+        if location in self.queue:
+            self.queue.remove(location)
+            self._finish_order(location, 'cancelled')
+            self._publish_status(f'cancelled queued order {order["id"]} ({location})')
+            return
+        if location != self.current_location:
+            self._finish_order(location, 'cancelled')
+            self._publish_status(f'cancelled order {order["id"]} ({location})')
+            return
+        if self.state == 'AWAITING_CONFIRMATION':
+            # Refused at the table: the robot takes the order back.
+            self._complete_delivery(status='cancelled')
+            return
+        self._finish_order(location, 'cancelled')
+        self.current_location = None
+        if self.state in self.DELIVERY_STATES:
+            self._publish_status(f'cancelled active order {order["id"]}; returning to dock')
+            self._request_dock_return('order cancelled')
+        else:
+            self._publish_status(f'cancelled order {order["id"]} ({location})')
+
+    def _confirm_callback(self, message):
+        order = self._find_order(message.data)
+        if (self.state != 'AWAITING_CONFIRMATION' or order is None
+                or order['location'] != self.current_location):
+            self._reject(f'confirm: robot is not waiting at "{message.data.strip()}"')
+            return
+        self._complete_delivery(confirmed=True)
 
     def _return_to_dock_callback(self, _request, response):
         response.success, response.message = self._request_dock_return('manual')
@@ -248,6 +384,11 @@ class DeliveryTaskManager(Node):
         if self.state == 'RETURNING_TO_DOCK' and self.current_stage == 'dock':
             return True, 'already returning to dock'
         self.get_logger().info(f'Return to dock requested ({reason}).')
+        if self.state == 'AWAITING_CONFIRMATION':
+            # The order is already at the table: count it as delivered.
+            self._cancel_confirmation()
+            self._finish_order(self.current_location, 'delivered', confirmed=False)
+            self.current_location = None
         self.manual_dock_requested = True
         if self.goal_request_pending:
             self.state = 'RETURNING_TO_DOCK'
@@ -306,8 +447,13 @@ class DeliveryTaskManager(Node):
     def _battery_depleted(self):
         if self.current_goal_handle is not None:
             self.current_goal_handle.cancel_goal_async()
+        if self.state == 'AWAITING_CONFIRMATION':
+            self._cancel_confirmation()
+            self._finish_order(self.current_location, 'delivered', confirmed=False)
+            self.current_location = None
         if self.current_location is not None and self.current_location not in self.queue:
             self.queue.appendleft(self.current_location)
+            self._order_requeued(self.current_location)
         self.current_location = None
         self.current_goal_handle = None
         self.manual_dock_requested = False
@@ -348,6 +494,10 @@ class DeliveryTaskManager(Node):
                 self._return_to_dock()
             return
         self.current_location = self.queue.popleft()
+        self._update_order(self.current_location, status='in_progress')
+        order = self.orders.get(self.current_location)
+        if order is not None and order['started_at'] is None:
+            order['started_at'] = time.time()
         self.current_stage = 'pickup'
         self.state = 'NAVIGATING_TO_PICKUP'
         self._publish_status(f'going to pickup for {self.current_location}')
@@ -425,9 +575,26 @@ class DeliveryTaskManager(Node):
     def _feedback_callback(self, feedback_message):
         distance = getattr(feedback_message.feedback, 'distance_remaining', None)
         if distance is not None:
-            self.last_message = f'{self.current_stage}: {distance:.2f} m remaining'
-            self._publish_status(self.last_message, log=False)
             self._watch_staging_stall(distance)
+            # Door legs are staging poses: add the straight hops still ahead.
+            total = distance + self._remaining_leg_distance()
+            self.progress = {
+                'stage': self.current_stage,
+                'distance_remaining_m': round(total, 2),
+                'eta_sec': round(total / self.eta_speed),
+            }
+            now = time.monotonic()
+            if now - self.last_feedback_publish >= FEEDBACK_STATUS_PERIOD_SEC:
+                self.last_feedback_publish = now
+                self._publish_status(
+                    f'{self.current_stage}: {total:.2f} m remaining', log=False)
+
+    def _remaining_leg_distance(self):
+        poses = [leg if isinstance(leg, dict) else self.locations.get(leg)
+                 for leg in self.legs]
+        poses = [p for p in poses if p is not None]
+        return sum(math.hypot(b['x'] - a['x'], b['y'] - a['y'])
+                   for a, b in zip(poses, poses[1:]))
 
     def _watch_staging_stall(self, distance):
         leg = self.legs[0] if getattr(self, 'legs', None) else None
@@ -486,20 +653,14 @@ class DeliveryTaskManager(Node):
                 self._send_next_leg(stage)
             return
 
+        self.progress = None
         if stage == 'pickup':
             self.state = 'NAVIGATING_TO_CUSTOMER'
+            self._update_order(self.current_location, picked_up_at=time.time())
             self._publish_status(f'pickup reached; going to {self.current_location}')
             self._navigate(self.current_location, 'customer')
         elif stage == 'customer':
-            delivered = self.current_location
-            self.state = 'DELIVERY_COMPLETE'
-            self._publish_status(f'delivery complete at {delivered}')
-            self.current_location = None
-            if self.queue:
-                self.state = 'IDLE'
-                self._start_queued_task()
-            else:
-                self._return_to_dock()
+            self._arrived_at_customer()
         elif stage == 'dock':
             self.manual_dock_requested = False
             self.current_location = None
@@ -515,6 +676,47 @@ class DeliveryTaskManager(Node):
                 self.battery_return = False
                 self.state = 'IDLE'
                 self._publish_status('IDLE at first-floor dock')
+
+    def _arrived_at_customer(self):
+        location = self.current_location
+        self._update_order(location, arrived_at=time.time())
+        if self.confirmation_timeout <= 0.0:
+            self._complete_delivery(confirmed=False)
+            return
+        self.state = 'AWAITING_CONFIRMATION'
+        self._update_order(location, status='awaiting_confirmation',
+                           confirm_by=time.time() + self.confirmation_timeout)
+        self._publish_status(f'arrived at {location}; waiting for the customer')
+        self._cancel_confirmation()
+        self.confirm_timer = self.create_timer(
+            self.confirmation_timeout, lambda: self._confirmation_timed_out(location))
+
+    def _confirmation_timed_out(self, location):
+        self._cancel_confirmation()
+        if self.state == 'AWAITING_CONFIRMATION' and self.current_location == location:
+            self._complete_delivery(confirmed=False)
+
+    def _cancel_confirmation(self):
+        if self.confirm_timer is not None:
+            self.confirm_timer.cancel()
+            self.destroy_timer(self.confirm_timer)
+            self.confirm_timer = None
+
+    def _complete_delivery(self, confirmed=False, status='delivered'):
+        """End the order at the table, then serve the queue or go home."""
+        self._cancel_confirmation()
+        location = self.current_location
+        self._finish_order(location, status, confirmed=confirmed)
+        self.state = 'DELIVERY_COMPLETE'
+        self._publish_status(
+            f'delivery complete at {location}' if status == 'delivered'
+            else f'order for {location} cancelled at the table')
+        self.current_location = None
+        if self.queue:
+            self.state = 'IDLE'
+            self._start_queued_task()
+        else:
+            self._return_to_dock()
 
     def _check_door(self, stage):
         """Ask the planner for the path through the door before driving it."""
@@ -591,6 +793,7 @@ class DeliveryTaskManager(Node):
         if stage in ('pickup', 'customer') and self.current_location is not None:
             failed = self.current_location
             self.failed_orders.append(failed)
+            self._finish_order(failed, 'failed', reason='all terrace doors blocked')
             self.current_location = None
             self._publish_status(f'all doors blocked; giving up on {failed}; returning to dock')
             self._return_to_dock()
@@ -639,6 +842,7 @@ class DeliveryTaskManager(Node):
         if stage in ('pickup', 'customer') and self.current_location is not None:
             failed = self.current_location
             self.failed_orders.append(failed)
+            self._finish_order(failed, 'failed', reason=f'unreachable (Nav2 status {status})')
             self.current_location = None
             self.last_result = status
             self._publish_status(
@@ -678,7 +882,43 @@ class DeliveryTaskManager(Node):
         if interrupted is None or interrupted in self.queue:
             return
         self.queue.appendleft(interrupted)
+        self._order_requeued(interrupted)
         self._publish_status(f'interrupted {interrupted}; requeued at front')
+
+    def _new_order(self, location):
+        return {
+            'id': uuid.uuid4().hex[:6], 'location': location, 'items': [], 'note': '',
+            'source': 'topic', 'status': 'queued', 'created_at': time.time(),
+            'started_at': None, 'picked_up_at': None, 'arrived_at': None,
+            'confirm_by': None, 'finished_at': None, 'confirmed': False,
+            'interruptions': 0, 'reason': None,
+        }
+
+    def _update_order(self, location, **fields):
+        order = self.orders.get(location)
+        if order is not None:
+            order.update(fields)
+
+    def _order_requeued(self, location):
+        order = self.orders.get(location)
+        if order is not None:
+            order['status'] = 'queued'
+            order['interruptions'] += 1
+
+    def _finish_order(self, location, status, confirmed=False, reason=None):
+        """Close an open order (delivered/failed/cancelled) and log it."""
+        order = self.orders.pop(location, None) or self._new_order(location)
+        order.update(status=status, finished_at=time.time(), confirmed=confirmed,
+                     confirm_by=None)
+        if reason is not None:
+            order['reason'] = reason
+        self.history.append(order)
+        try:
+            os.makedirs(os.path.dirname(self.order_log_file) or '.', exist_ok=True)
+            with open(self.order_log_file, 'a', encoding='utf-8') as stream:
+                stream.write(json.dumps(order) + '\n')
+        except OSError as error:
+            self.get_logger().warn(f'cannot write order log {self.order_log_file}: {error}')
 
     def _fail(self, message):
         self._cancel_retry()
@@ -692,7 +932,9 @@ class DeliveryTaskManager(Node):
         self._publish_status(message)
         self.get_logger().error(message)
 
-    def _reject(self, message):
+    def _reject(self, message, order_id=None, location=None):
+        self.last_rejection = {'id': order_id, 'location': location,
+                               'reason': message, 'at': time.time()}
         self._publish_status(f'rejected: {message}', log=False)
         self.get_logger().warn(self.last_message)
 
@@ -702,6 +944,13 @@ class DeliveryTaskManager(Node):
             'current_location': self.current_location,
             'current_stage': self.current_stage,
             'queue': list(self.queue),
+            'active_order': self.orders.get(self.current_location),
+            'orders': [self.orders[location] for location in self.queue
+                       if location in self.orders],
+            'history': list(self.history),
+            'progress': self.progress,
+            'last_rejection': self.last_rejection,
+            'confirmation_timeout_sec': self.confirmation_timeout,
             'last_result': self.last_result,
             'battery_percentage': (
                 None if self.battery_percentage is None
