@@ -17,6 +17,7 @@ from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 
 
@@ -97,8 +98,30 @@ def generate_launch_description():
         executable='delivery_task_manager',
         name='cstam_delivery_task_manager',
         output='screen',
-        parameters=[{'use_sim_time': True}],
+        parameters=[{
+            'use_sim_time': True,
+            'confirmation_timeout_sec': PythonExpression(
+                ['float(', LaunchConfiguration('confirmation_timeout'), ')']),
+        }],
         condition=normal_condition,
+    )
+
+    # Customer and admin web UI (cstam_ui package), http://localhost:<ui_port>.
+    web_ui = Node(
+        package='cstam_ui',
+        executable='ui_server',
+        name='cstam_ui_server',
+        output='screen',
+        parameters=[{
+            'use_sim_time': True,
+            'port': PythonExpression(['int(', LaunchConfiguration('ui_port'), ')']),
+            # Kept a string: as a bare YAML value 0000 would become the integer 0.
+            'admin_pin': ParameterValue(LaunchConfiguration('admin_pin'), value_type=str),
+            'public_url': LaunchConfiguration('ui_public_url'),
+        }],
+        condition=IfCondition(PythonExpression([
+            "'", slam, "'.lower() != 'true' and '",
+            LaunchConfiguration('ui'), "'.lower() == 'true'"])),
     )
 
     battery = Node(
@@ -235,6 +258,20 @@ def generate_launch_description():
                               description='Initial simulated battery level in percent.'),
         DeclareLaunchArgument('battery_time_scale', default_value='1.0',
                               description='Battery drain/charge acceleration for demos.'),
+        DeclareLaunchArgument(
+            'confirmation_timeout', default_value='20.0',
+            description='Seconds the robot waits at the table for the customer '
+                        '(0 = deliver on arrival).'),
+        DeclareLaunchArgument('ui', default_value='true',
+                              description='Start the customer/admin web UI.'),
+        DeclareLaunchArgument('ui_port', default_value='8080',
+                              description='Web UI port.'),
+        DeclareLaunchArgument('admin_pin', default_value='0000',
+                              description='PIN for the staff dashboard ("" = no PIN).'),
+        DeclareLaunchArgument(
+            'ui_public_url', default_value='',
+            description='Address printed in the table QR codes, e.g. http://192.168.1.20:8080 '
+                        '(default: this machine\'s network address).'),
         DeclareLaunchArgument('pedestrians', default_value='true',
                               description='Spawn scenario-driven pedestrians.'),
         DeclareLaunchArgument(
@@ -260,5 +297,6 @@ def generate_launch_description():
         simulation_bridge,
         pedestrian_simulator,
         task_manager,
+        web_ui,
         rviz_node,
     ])

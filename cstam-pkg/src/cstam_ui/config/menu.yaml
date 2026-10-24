@@ -1,0 +1,15 @@
+# Restaurant menu offered by the customer UI. Prices in TND.
+# `id` is what the browser sends; the robot's order carries `name` and `qty`.
+currency: TND
+items:
+  - {id: espresso, name: Espresso, category: Drinks, price: 3.5}
+  - {id: cappuccino, name: Cappuccino, category: Drinks, price: 5.0}
+  - {id: citronnade, name: Citronnade, category: Drinks, price: 4.5}
+  - {id: water, name: Mineral water, category: Drinks, price: 2.0}
+  - {id: fresh_juice, name: Orange juice, category: Drinks, price: 6.0}
+  - {id: brik, name: Brik à l'oeuf, category: Food, price: 5.5}
+  - {id: lablabi, name: Lablabi, category: Food, price: 7.0}
+  - {id: couscous, name: Couscous with lamb, category: Food, price: 18.0}
+  - {id: salade_mechouia, name: Salade méchouia, category: Food, price: 8.0}
+  - {id: makroudh, name: Makroudh, category: Dessert, price: 4.0}
+  - {id: bambalouni, name: Bambalouni, category: Dessert, price: 3.0}

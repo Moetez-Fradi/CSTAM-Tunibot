@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSTAM API Console</title>
+<style>
+  :root { --bg: #f6f7f9; --fg: #1d2330; --muted: #677085; --card: #fff; --line: #dde1e8; --accent: #1b6ef3; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #12151b; --fg: #e6e9ef; --muted: #98a1b3; --card: #1b2029; --line: #2c333f; --accent: #5b9bff; }
+  }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p { color: var(--muted); margin: 0 0 16px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  select, input, button { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+  button { background: var(--accent); color: #fff; border-color: var(--accent); cursor: pointer; }
+  pre { margin: 0; max-height: 420px; overflow: auto; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+  #result { margin-top: 10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>CSTAM UI backend</h1>
+  <p>Developer console for the API. The customer and admin pages replace this page.</p>
+
+  <section>
+    <h2>Place a test order</h2>
+    <form id="order">
+      <select id="location"></select>
+      <select id="item"></select>
+      <input id="qty" type="number" min="1" max="20" value="1" style="width:5em">
+      <button>Send robot</button>
+    </form>
+    <pre id="result"></pre>
+  </section>
+
+  <section>
+    <h2>Live admin state <span id="conn" style="color:var(--muted);font-weight:normal"></span></h2>
+    <pre id="state">waiting for data…</pre>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const pin = new URLSearchParams(location.search).get('pin') || '';
+
+fetch('/api/config').then((r) => r.json()).then((config) => {
+  for (const l of config.locations) $('location').add(new Option(`${l.label} (${l.zone})`, l.name));
+  for (const m of config.menu) $('item').add(new Option(`${m.name} — ${m.price} ${config.currency}`, m.id));
+});
+
+$('order').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const body = { location: $('location').value, items: [{ id: $('item').value, qty: Number($('qty').value) }] };
+  const response = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  $('result').textContent = `${response.status} ${JSON.stringify(await response.json(), null, 2)}`;
+});
+
+const events = new EventSource('/api/admin/events' + (pin ? `?pin=${encodeURIComponent(pin)}` : ''));
+events.addEventListener('state', (event) => {
+  $('conn').textContent = '· live';
+  $('state').textContent = JSON.stringify(JSON.parse(event.data), null, 2);
+});
+events.onerror = () => { $('conn').textContent = '· reconnecting…'; };
+</script>
+</body>
+</html>
