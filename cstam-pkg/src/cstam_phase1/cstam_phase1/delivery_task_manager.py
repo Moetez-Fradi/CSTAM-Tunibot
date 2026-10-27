@@ -169,6 +169,8 @@ class DeliveryTaskManager(Node):
         self.goal_attempts = 0
         self.retry_timer = None
         self.failed_orders = []
+        # Navigation counters for this run (reported in status, for analytics).
+        self.counters = {'nav_goals': 0, 'nav_failures': 0, 'nav_retries': 0, 'door_reroutes': 0}
         self.locations = self._load_locations(self.locations_file)
         self.doors = self._load_doors(self.locations_file)
         self.zone = 'room'           # the robot starts at the dock, indoors
@@ -498,6 +500,7 @@ class DeliveryTaskManager(Node):
         order = self.orders.get(self.current_location)
         if order is not None and order['started_at'] is None:
             order['started_at'] = time.time()
+            order['battery_start'] = self._battery_rounded()
         self.current_stage = 'pickup'
         self.state = 'NAVIGATING_TO_PICKUP'
         self._publish_status(f'going to pickup for {self.current_location}')
@@ -548,6 +551,7 @@ class DeliveryTaskManager(Node):
             f'NavigateToPose: stage={stage}, location={location}, '
             f'x={pose_data["x"]:.2f}, y={pose_data["y"]:.2f}')
         self.goal_request_pending = True
+        self.counters['nav_goals'] += 1
         future = self.navigator.send_goal_async(
             goal, feedback_callback=self._feedback_callback)
         future.add_done_callback(
@@ -787,6 +791,7 @@ class DeliveryTaskManager(Node):
         if legs:
             self.legs = legs + [final]
             self.door_checks = 0
+            self.counters['door_reroutes'] += 1
             self._publish_status(f'{door} blocked; rerouting through {self.door_in_use} to {final}')
             self._send_next_leg(stage)
             return
@@ -818,8 +823,10 @@ class DeliveryTaskManager(Node):
         self._check_door(stage)
 
     def _navigation_failed(self, location, stage, status):
+        self.counters['nav_failures'] += 1
         if self.goal_attempts < self.goal_retries:
             self.goal_attempts += 1
+            self.counters['nav_retries'] += 1
             self._publish_status(
                 f'Nav2 failed at {location} (status {status}); retry '
                 f'{self.goal_attempts}/{self.goal_retries} in {self.retry_delay:.0f} s')
@@ -835,6 +842,7 @@ class DeliveryTaskManager(Node):
             legs = self._plan_legs(final)
             if legs:
                 self.legs = legs + [final]
+                self.counters['door_reroutes'] += 1
                 self._publish_status(
                     f'door blocked; rerouting through {self.door_in_use} to {final}')
                 self._send_next_leg(stage)
@@ -891,7 +899,7 @@ class DeliveryTaskManager(Node):
             'source': 'topic', 'status': 'queued', 'created_at': time.time(),
             'started_at': None, 'picked_up_at': None, 'arrived_at': None,
             'confirm_by': None, 'finished_at': None, 'confirmed': False,
-            'interruptions': 0, 'reason': None,
+            'interruptions': 0, 'reason': None, 'battery_start': None, 'battery_end': None,
         }
 
     def _update_order(self, location, **fields):
@@ -909,6 +917,7 @@ class DeliveryTaskManager(Node):
         """Close an open order (delivered/failed/cancelled) and log it."""
         order = self.orders.pop(location, None) or self._new_order(location)
         order.update(status=status, finished_at=time.time(), confirmed=confirmed,
+                     battery_end=self._battery_rounded(),
                      confirm_by=None)
         if reason is not None:
             order['reason'] = reason
@@ -951,6 +960,7 @@ class DeliveryTaskManager(Node):
             'progress': self.progress,
             'last_rejection': self.last_rejection,
             'confirmation_timeout_sec': self.confirmation_timeout,
+            'counters': dict(self.counters),
             'last_result': self.last_result,
             'battery_percentage': (
                 None if self.battery_percentage is None
@@ -959,6 +969,9 @@ class DeliveryTaskManager(Node):
             'failed_orders': list(self.failed_orders),
             'message': self.last_message,
         }
+
+    def _battery_rounded(self):
+        return None if self.battery_percentage is None else round(self.battery_percentage, 1)
 
     def _publish_status(self, message, log=True):
         self.last_message = message

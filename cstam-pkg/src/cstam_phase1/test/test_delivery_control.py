@@ -43,6 +43,7 @@ def manager():
     node.goal_attempts = 0
     node.retry_timer = None
     node.failed_orders = []
+    node.counters = {'nav_goals': 0, 'nav_failures': 0, 'nav_retries': 0, 'door_reroutes': 0}
     node.orders = {}
     node.history = deque(maxlen=10)
     node.last_rejection = None
@@ -529,3 +530,20 @@ def test_progress_adds_the_door_hops_still_ahead():
     node._feedback_callback(SimpleNamespace(
         feedback=SimpleNamespace(distance_remaining=1.0)))
     assert node.progress == {'stage': 'customer', 'distance_remaining_m': 8.0, 'eta_sec': 16}
+
+
+def test_orders_record_battery_and_navigation_is_counted():
+    node = order_manager()
+    node.battery_percentage = 91.04
+    request(node, 'table_1')
+    assert node.orders['table_1']['battery_start'] == 91.0
+    aborted = SimpleNamespace(result=lambda: SimpleNamespace(status=6))
+    node._goal_result_callback(aborted, 'kitchen', 'pickup')     # fails once, retried
+    node.scheduled.pop()()
+    node._goal_result_callback(SUCCEEDED, 'kitchen', 'pickup')
+    node.battery_percentage = 84.0
+    node._goal_result_callback(SUCCEEDED, 'table_1', 'customer')
+    done = node.history[-1]
+    assert (done['battery_start'], done['battery_end']) == (91.0, 84.0)
+    assert node.counters['nav_failures'] == 1 and node.counters['nav_retries'] == 1
+    assert node._status_payload()['counters'] == node.counters
