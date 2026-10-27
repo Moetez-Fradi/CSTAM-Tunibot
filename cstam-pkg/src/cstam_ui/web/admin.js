@@ -72,7 +72,7 @@
   }
 
   // ----- tabs ------------------------------------------------------------------
-  const TABS = ['overview', 'orders', 'system'];
+  const TABS = ['overview', 'orders', 'insights', 'maintenance', 'system'];
   function selectTab(name) {
     if (!TABS.includes(name)) name = 'overview';
     for (const tab of TABS) {
@@ -80,6 +80,8 @@
       $(`#${tab}`).hidden = tab !== name;
     }
     if (name === 'orders') loadHistory(true);
+    if (name === 'insights') loadInsights();
+    if (name === 'maintenance' && latest) renderMaintenance(latest);
     if (name === 'overview' && map) { map.resize(); chartKey = ''; if (latest) renderChart(latest); }
     if (name === 'system' && latest) renderSystem(latest);
     if (location.hash.slice(1) !== name) history.replaceState(null, '', `#${name}`);
@@ -140,8 +142,10 @@
     renderQueue(status);
     renderChart(state);
     renderSystem(state);
+    renderMaintenance(state);
+    if (!$('#insights').hidden) renderCounters(status.counters);
     const key = (status.history || []).map((o) => o.id + o.status).join();
-    if (key !== historyKey) { historyKey = key; loadHistory(false); }
+    if (key !== historyKey) { historyKey = key; loadHistory(false); if (!$('#insights').hidden) loadInsights(); }
   }
 
   const STEPS = ['Queued', 'Kitchen pickup', 'On the way', 'At the table', 'Delivered'];
@@ -400,6 +404,180 @@
       el('dt', {}, 'Unreachable orders'), el('dd', {}, (status.failed_orders || []).map(label).join(', ') || 'none'),
       el('dt', {}, 'Last rejected request'), el('dd', {}, rejection ? `${clock(rejection.at)} ${rejection.reason}` : 'none')));
     $('#task-message').textContent = status.message || '';
+  }
+
+  // ----- insights tab ------------------------------------------------------------------
+  let range = 'today';
+  let insights = null;
+  for (const button of document.querySelectorAll('#range button')) {
+    button.addEventListener('click', () => {
+      range = button.dataset.range;
+      for (const b of document.querySelectorAll('#range button')) b.setAttribute('aria-checked', String(b === button));
+      loadInsights();
+    });
+  }
+
+  async function loadInsights() {
+    try {
+      insights = await api(`/api/admin/analytics?range=${range}`, { pin });
+      renderInsights(insights);
+    } catch (error) {
+      $('#insight-stats').replaceChildren(el('div', { class: 'empty' }, error.message));
+    }
+    if (latest) renderCounters((latest.status || {}).counters);
+  }
+
+  const money = (v, currency) => `${Number(v).toFixed(2)} ${currency}`;
+  const pct = (v) => (v === null || v === undefined ? '—' : `${Math.round(v * 100)}%`);
+
+  function renderInsights(r) {
+    const stat = (title, value, note) => el('div', { class: 'panel stat' },
+      el('div', { class: 'label' }, title), el('div', { class: 'value' }, value), el('div', { class: 'note' }, note));
+    const t = r.time_to_table;
+    $('#insight-stats').replaceChildren(
+      stat('Deliveries', r.delivered, r.success_rate === null ? 'no finished orders yet'
+        : `${pct(r.success_rate)} delivered, ${r.failed} unreachable, ${r.cancelled} cancelled`),
+      stat('Median time to table', t.median === null ? '—' : duration(t.median),
+        t.p90 === null ? 'from order to arrival' : `90% within ${duration(t.p90)}`),
+      stat('Revenue delivered', money(r.revenue, r.currency),
+        r.average_ticket === null ? 'menu prices' : `${money(r.average_ticket, r.currency)} per order`),
+      stat('Battery per delivery', r.battery_per_delivery === null ? '—' : `${r.battery_per_delivery}%`,
+        r.deliveries_per_charge === null ? 'from start to finish of each order' : `about ${Math.floor(r.deliveries_per_charge)} deliveries per charge`));
+
+    const hourly = r.range === 'today';
+    $('#volume-title').textContent = hourly ? 'Deliveries per hour' : 'Deliveries per day';
+    $('#volume-note').textContent = r.confirmed_rate === null ? '' : `${pct(r.confirmed_rate)} confirmed by the customer`;
+    barChart($('#volume-chart'), r.volume, hourly);
+
+    const list = (host, rows, nameOf, valueOf, empty) => {
+      const top = Math.max(1, ...rows.map(valueOf));
+      host.replaceChildren(...(rows.length ? rows.map((row) => el('div', { class: 'hbar' },
+        el('span', { class: 'name', title: nameOf(row) }, nameOf(row)),
+        el('span', { class: 'track' }, el('span', { class: 'fill', style: `display:block;width:${(100 * valueOf(row)) / top}%` })),
+        el('span', { class: 'num' }, valueOf(row)))) : [el('p', { class: 'muted' }, empty)]));
+    };
+    list($('#top-items'), r.top_items, (i) => i.name, (i) => i.qty, 'Nothing delivered in this period.');
+    list($('#top-tables'), r.tables, (i) => r.labels[i.location] || label(i.location), (i) => i.count, 'Nothing delivered in this period.');
+  }
+
+  function renderCounters(counters) {
+    if (!counters) { $('#nav-counters').replaceChildren(el('p', { class: 'muted' }, 'No data from the task manager.')); return; }
+    const failRate = counters.nav_goals ? counters.nav_failures / counters.nav_goals : null;
+    $('#nav-counters').replaceChildren(el('dl', { class: 'kv' },
+      el('dt', {}, 'Goals sent'), el('dd', {}, counters.nav_goals),
+      el('dt', {}, 'Goals that failed'), el('dd', {}, `${counters.nav_failures}${failRate === null ? '' : ` (${pct(failRate)})`}`),
+      el('dt', {}, 'Retries'), el('dd', {}, counters.nav_retries),
+      el('dt', {}, 'Rerouted through the other terrace door'), el('dd', {}, counters.door_reroutes)));
+  }
+
+  // Single-series bar chart: thin bars, rounded tops, hover readout.
+  function barChart(host, buckets, hourly) {
+    const width = host.clientWidth; const height = host.clientHeight;
+    if (!width) return;
+    const m = { l: 28, r: 4, t: 8, b: 22 };
+    const max = Math.max(1, ...buckets.map((b) => b.count));
+    const top = max <= 4 ? max : Math.ceil(max / 2) * 2;
+    const slot = (width - m.l - m.r) / buckets.length;
+    const bar = Math.max(2, Math.min(28, slot - 2));
+    const y = (v) => m.t + (1 - v / top) * (height - m.t - m.b);
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = (tag, attrs = {}, text) => {
+      const node = document.createElementNS(ns, tag);
+      for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+      if (text !== undefined) node.textContent = text;
+      return node;
+    };
+    const root = svg('svg', { viewBox: `0 0 ${width} ${height}`, 'aria-hidden': 'true' });
+    for (const v of [0, top / 2, top]) {
+      if (v !== Math.round(v)) continue;
+      root.append(svg('line', { x1: m.l, x2: width - m.r, y1: y(v), y2: y(v), stroke: 'var(--line)' }));
+      root.append(svg('text', { x: m.l - 8, y: y(v) + 4, 'text-anchor': 'end', fill: 'var(--faint)', 'font-size': 11, 'font-family': 'var(--mono)' }, v));
+    }
+    const every = hourly ? 3 : Math.ceil(buckets.length / 10);
+    const tip = el('div', { class: 'tip', hidden: true });
+    buckets.forEach((b, i) => {
+      const cx = m.l + slot * i + slot / 2;
+      if (b.count) {
+        const h = y(0) - y(b.count); const r = Math.min(4, bar / 2, h);
+        const x = cx - bar / 2; const y0 = y(0);
+        root.append(svg('path', { fill: 'var(--accent)', d: `M${x},${y0}V${y0 - h + r}Q${x},${y0 - h} ${x + r},${y0 - h}H${x + bar - r}Q${x + bar},${y0 - h} ${x + bar},${y0 - h + r}V${y0}Z` }));
+      }
+      if (i % every === 0) root.append(svg('text', { x: cx, y: height - 6, 'text-anchor': 'middle', fill: 'var(--faint)', 'font-size': 11, 'font-family': 'var(--mono)' }, hourly ? b.label.slice(0, 2) : b.label));
+      const hit = svg('rect', { x: m.l + slot * i, y: 0, width: slot, height, fill: 'transparent' });
+      hit.addEventListener('pointerenter', () => {
+        tip.hidden = false;
+        tip.style.left = `${Math.min(Math.max(cx, 70), width - 70)}px`; tip.style.top = `${y(b.count) - 8}px`;
+        tip.replaceChildren(el('strong', {}, `${b.count} deliver${b.count === 1 ? 'y' : 'ies'}`), hourly ? `${b.label} to ${String(Number(b.label.slice(0, 2)) + 1).padStart(2, '0')}:00` : b.label);
+      });
+      hit.addEventListener('pointerleave', () => { tip.hidden = true; });
+      root.append(hit);
+    });
+    host.setAttribute('aria-label', `${buckets.reduce((a, b) => a + b.count, 0)} deliveries, ${hourly ? 'by hour' : 'by day'}`);
+    host.replaceChildren(root, tip);
+  }
+  window.addEventListener('resize', () => { if (insights && !$('#insights').hidden) barChart($('#volume-chart'), insights.volume, insights.range === 'today'); });
+
+  // ----- maintenance tab ---------------------------------------------------------------
+  const METRIC_FORMAT = {
+    distance_m: (v) => (v < 1000 ? `${v.toFixed(0)} m` : `${(v / 1000).toFixed(v < 10000 ? 2 : 1)} km`),
+    drive_s: (v) => (v < 3600 ? `${(v / 60).toFixed(0)} min` : `${(v / 3600).toFixed(1)} h`),
+    operating_s: (v) => (v < 3600 ? `${(v / 60).toFixed(0)} min` : `${(v / 3600).toFixed(1)} h`),
+    battery_cycles: (v) => `${v.toFixed(v < 10 ? 2 : 0)} cycles`,
+  };
+  const SERVICE_STATE = { ok: { text: 'OK', tone: 'ok' }, soon: { text: 'Due soon', tone: 'warn' }, overdue: { text: 'Overdue', tone: 'err' } };
+  let maintenanceKey = '';
+
+  function forecast(days) {
+    if (days === null || days === undefined) return 'No recent use to forecast from';
+    if (days < 1) return 'Due within a day at the current pace';
+    if (days < 60) return `Due in about ${Math.round(days)} days`;
+    if (days < 730) return `Due in about ${Math.round(days / 30)} months`;
+    return `Due in about ${Math.round(days / 365)} years`;
+  }
+
+  function renderMaintenance(state) {
+    if ($('#maintenance').hidden) return;
+    const report = state.maintenance;
+    if (!report) { $('#service-list').replaceChildren(el('li', { class: 'empty' }, 'Usage tracking is not running.')); return; }
+    const key = JSON.stringify(report);
+    if (key === maintenanceKey) return;   // keep buttons stable between identical updates
+    maintenanceKey = key;
+    const t = report.totals;
+    const stat = (title, value, note) => el('div', { class: 'panel stat' },
+      el('div', { class: 'label' }, title), el('div', { class: 'value' }, value), el('div', { class: 'note' }, note));
+    $('#usage-stats').replaceChildren(
+      stat('Distance driven', METRIC_FORMAT.distance_m(t.distance_m), 'wheel odometry'),
+      stat('Driving time', METRIC_FORMAT.drive_s(t.drive_s), 'moving or turning'),
+      stat('Operating time', METRIC_FORMAT.operating_s(t.operating_s), 'powered on'),
+      stat('Battery cycles', t.battery_cycles.toFixed(2), 'full-charge equivalents'));
+    $('#maintenance-since').textContent = `Lifetime usage since ${new Date(report.since * 1000).toLocaleDateString()}, measured from odometry and the battery.`;
+    $('#service-list').replaceChildren(...report.items.map((item) => {
+      const fmt = METRIC_FORMAT[item.metric];
+      const s = SERVICE_STATE[item.state];
+      const button = el('button', { class: 'btn btn-sm', type: 'button', onclick: (e) => markServiced(item, e.currentTarget) }, 'Mark serviced');
+      return el('li', {},
+        el('div', {}, el('div', { style: 'font-weight:500' }, item.name), el('div', { class: 'task' }, item.task)),
+        el('div', { class: 'service-meter' },
+          el('div', { class: 'line' }, el('span', {}, el('span', { class: 'mono' }, fmt(item.used)), ` of ${fmt(item.interval)}`), el('span', {}, `${Math.min(999, Math.round(item.fraction * 100))}%`)),
+          el('div', { class: 'meter', role: 'meter', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': Math.min(100, item.fraction * 100), 'aria-label': `${item.name} usage` },
+            el('div', { class: 'meter-fill', style: `width:${Math.min(100, Math.max(item.fraction * 100, item.used > 0 ? 1 : 0))}%;background:${item.state === 'overdue' ? 'var(--err)' : item.state === 'soon' ? 'var(--warn-dot)' : 'var(--ink)'}` })),
+          el('div', { class: 'line' }, el('span', {}, forecast(item.due_in_days)),
+            el('span', {}, item.last_service ? `serviced ${new Date(item.last_service * 1000).toLocaleDateString()}` : 'never serviced'))),
+        el('div', { class: 'service-side' }, el('span', { class: `badge tone-${s.tone}` }, el('span', { class: 'dot' }), s.text), button));
+    }));
+  }
+
+  async function markServiced(item, button) {
+    if (button.dataset.armed !== 'yes') {
+      button.dataset.armed = 'yes'; button.textContent = 'Confirm service';
+      setTimeout(() => { button.dataset.armed = ''; button.textContent = 'Mark serviced'; }, 4000);
+      return;
+    }
+    button.disabled = true;
+    try {
+      await api(`/api/admin/maintenance/${item.id}/service`, { method: 'POST', body: {}, pin });
+      toast(`${item.name} marked as serviced`);
+    } catch (error) { toast(error.message, 'err'); button.disabled = false; }
   }
 
   start();
