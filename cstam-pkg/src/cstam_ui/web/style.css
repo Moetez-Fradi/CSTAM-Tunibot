@@ -153,7 +153,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .step { display: grid; grid-template-columns: 20px 1fr auto; gap: 12px; align-items: start; position: relative; padding-bottom: 14px; }
 .step:last-child { padding-bottom: 0; }
 .step::before {
-  content: ''; position: absolute; left: 9px; top: 20px; bottom: 0; width: 2px; background: var(--line);
+  content: ''; position: absolute; inset-inline-start: 9px; top: 20px; bottom: 0; width: 2px; background: var(--line);
 }
 .step:last-child::before { display: none; }
 .step-mark {
@@ -174,7 +174,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .map-wrap { position: relative; background: var(--map-bg); }
 .map-wrap canvas { display: block; width: 100%; height: 100%; }
 .map-legend {
-  position: absolute; left: 12px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 4px 12px;
+  position: absolute; inset-inline-start: 12px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 4px 12px;
   padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg);
   font-size: 12px; color: var(--muted);
 }
@@ -207,3 +207,9 @@ button, input, textarea, select { font: inherit; color: inherit; }
   background: var(--bg); resize: vertical;
 }
 .input:focus-visible { border-color: var(--ink); box-shadow: none; }
+
+/* Arabic: Geist has no Arabic glyphs; use the device's Arabic UI font. */
+:root:lang(ar) { --sans: system-ui, 'Noto Sans Arabic', 'Segoe UI', Tahoma, 'Geist', sans-serif; }
+:lang(ar) h1, :lang(ar) h2 { letter-spacing: 0; }
+/* Prices and counters: the monospace face would space out Arabic letters. */
+:lang(ar) .mono, :lang(ar) .item-price, :lang(ar) .receipt-row span + span { font-family: var(--sans); font-feature-settings: 'tnum'; }

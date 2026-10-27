@@ -42,11 +42,12 @@ def _singular(word):
 
 class OrderParser:
     def __init__(self, menu, location_names):
-        """menu: [{'id', 'name', 'aliases': [...]}]; location_names: e.g. table_1."""
+        """menu: [{'id', 'name', 'aliases', 'names'}]; location_names: e.g. table_1."""
         self.locations = set(location_names)
         self.phrases = []   # (tokens, item) longest first
         for item in menu:
-            for phrase in [item['name'], *item.get('aliases', [])]:
+            # Translated names too; Arabic ones normalise to nothing and drop out.
+            for phrase in [item['name'], *item.get('aliases', []), *item.get('names', {}).values()]:
                 tokens = [_singular(t) for t in normalize(phrase)]
                 if tokens:
                     self.phrases.append((tokens, item))

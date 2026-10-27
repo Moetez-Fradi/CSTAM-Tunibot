@@ -391,3 +391,24 @@ def test_voice_endpoint(api):
     assert body['items'] == [{'id': 'espresso', 'name': 'Espresso', 'qty': 2}]
     assert call('POST', '/api/voice', {'text': ''})[0] == 400
     assert call('POST', '/api/voice', {'text': 'x' * 301})[0] == 400
+
+
+def test_menu_is_translated_for_the_customer_page(catalog):
+    config = catalog.public_config()
+    for item in config['menu']:
+        assert item['names'].get('fr') and item['names'].get('ar'), item['id']
+    for name in {item['category'] for item in config['menu']}:
+        assert set(config['categories'][name]) >= {'fr', 'ar'}, name
+
+
+def test_page_wording_has_every_key_in_every_language():
+    source = open(os.path.join(PACKAGE, 'web', 'i18n.js'), encoding='utf-8').read()
+    strings = source[source.index('const STRINGS'):source.index('const SERVER')]
+    blocks = re.split(r'^    (en|fr|ar): \{$', strings, flags=re.M)[1:]
+    keys = {lang: set(re.findall(r'(?:^      |, )(\w+): ', body, flags=re.M))
+            for lang, body in zip(blocks[::2], blocks[1::2])}
+    assert set(keys) == {'en', 'fr', 'ar'} and len(keys['en']) > 60
+    assert keys['fr'] == keys['en'] and keys['ar'] == keys['en']
+    page = open(os.path.join(PACKAGE, 'web', 'table.js'), encoding='utf-8').read()
+    for used in set(re.findall(r"\bt\('(\w+)'", page)):
+        assert used in keys['en'], used

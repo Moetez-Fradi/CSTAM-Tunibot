@@ -29,6 +29,7 @@ def heard(text):
     ('Salade méchouia et deux bambalouni', {'salade_mechouia': 1, 'bambalouni': 2}, None),
     ('table two: a lemonade', {'citronnade': 1}, 'table_2'),
     ('café crème', {'cappuccino': 1}, None),
+    ('un couscous à l\'agneau et une eau minérale', {'couscous': 1, 'water': 1}, None),
 ])
 def test_orders_are_understood(text, items, location):
     assert heard(text) == (items, location)

@@ -2,16 +2,22 @@
 # `id` is what the browser sends; the robot's order carries `name` and `qty`.
 # `aliases` are other ways guests say the item (voice and typed orders,
 # English or French; accents, case and plurals do not matter).
+# `names` translate the item for the customer page (fr, ar); the robot's
+# order and the staff dashboard keep `name`.
 currency: TND
+categories:
+  Drinks: {fr: Boissons, ar: مشروبات}
+  Food: {fr: Plats, ar: أطباق}
+  Dessert: {fr: Desserts, ar: حلويات}
 items:
-  - {id: espresso, name: Espresso, category: Drinks, price: 3.5, aliases: [coffee, cafe, express]}
-  - {id: cappuccino, name: Cappuccino, category: Drinks, price: 5.0, aliases: [capucin, cafe creme]}
-  - {id: citronnade, name: Citronnade, category: Drinks, price: 4.5, aliases: [lemonade, citron]}
-  - {id: water, name: Mineral water, category: Drinks, price: 2.0, aliases: [water, eau, eau minerale]}
-  - {id: fresh_juice, name: Orange juice, category: Drinks, price: 6.0, aliases: [juice, jus, jus d'orange, orange]}
-  - {id: brik, name: Brik à l'oeuf, category: Food, price: 5.5, aliases: [brik, brick, breek]}
-  - {id: lablabi, name: Lablabi, category: Food, price: 7.0, aliases: [lablebi, chickpea soup]}
-  - {id: couscous, name: Couscous with lamb, category: Food, price: 18.0, aliases: [couscous, kousksi]}
-  - {id: salade_mechouia, name: Salade méchouia, category: Food, price: 8.0, aliases: [mechouia, salad, salade]}
-  - {id: makroudh, name: Makroudh, category: Dessert, price: 4.0, aliases: [makrout, makroud]}
-  - {id: bambalouni, name: Bambalouni, category: Dessert, price: 3.0, aliases: [bambaloni, doughnut, donut, beignet]}
+  - {id: espresso, name: Espresso, category: Drinks, price: 3.5, aliases: [coffee, cafe, express], names: {fr: "Espresso", ar: إسبريسو}}
+  - {id: cappuccino, name: Cappuccino, category: Drinks, price: 5.0, aliases: [capucin, cafe creme], names: {fr: "Cappuccino", ar: كابتشينو}}
+  - {id: citronnade, name: Citronnade, category: Drinks, price: 4.5, aliases: [lemonade, citron], names: {fr: "Citronnade", ar: عصير ليمون}}
+  - {id: water, name: Mineral water, category: Drinks, price: 2.0, aliases: [water, eau, eau minerale], names: {fr: "Eau minérale", ar: مياه معدنية}}
+  - {id: fresh_juice, name: Orange juice, category: Drinks, price: 6.0, aliases: [juice, jus, jus d'orange, orange], names: {fr: "Jus d'orange", ar: عصير برتقال}}
+  - {id: brik, name: Brik à l'oeuf, category: Food, price: 5.5, aliases: [brik, brick, breek], names: {fr: "Brik à l'œuf", ar: بريك بالبيض}}
+  - {id: lablabi, name: Lablabi, category: Food, price: 7.0, aliases: [lablebi, chickpea soup], names: {fr: "Lablabi", ar: لبلابي}}
+  - {id: couscous, name: Couscous with lamb, category: Food, price: 18.0, aliases: [couscous, kousksi], names: {fr: "Couscous à l'agneau", ar: كسكسي بلحم العلوش}}
+  - {id: salade_mechouia, name: Salade méchouia, category: Food, price: 8.0, aliases: [mechouia, salad, salade], names: {fr: "Salade méchouia", ar: سلطة مشوية}}
+  - {id: makroudh, name: Makroudh, category: Dessert, price: 4.0, aliases: [makrout, makroud], names: {fr: "Makroudh", ar: مقروض}}
+  - {id: bambalouni, name: Bambalouni, category: Dessert, price: 3.0, aliases: [bambaloni, doughnut, donut, beignet], names: {fr: "Bambalouni", ar: بمبلوني}}

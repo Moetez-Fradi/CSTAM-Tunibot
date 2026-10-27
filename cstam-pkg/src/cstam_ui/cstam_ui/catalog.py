@@ -51,7 +51,10 @@ class Catalog:
                 'category': str(item.get('category', 'Other')),
                 'price': round(float(item.get('price', 0.0)), 3),
                 'aliases': [str(a) for a in item.get('aliases') or []],
+                'names': {str(k): str(v) for k, v in (item.get('names') or {}).items()},
             })
+        self.categories = {str(k): {str(lang): str(name) for lang, name in (v or {}).items()}
+                           for k, v in (menu.get('categories') or {}).items()}
         self.menu_by_id = {item['id']: item for item in self.menu}
 
     def delivery_locations(self):
@@ -65,6 +68,7 @@ class Catalog:
             'pickup': self.points.get(self.pickup),
             'doors': self.doors,
             'menu': self.menu,
+            'categories': self.categories,
             'currency': self.currency,
         }
 
