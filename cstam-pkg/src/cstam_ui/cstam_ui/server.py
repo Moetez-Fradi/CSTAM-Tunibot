@@ -12,9 +12,13 @@ Public (customer) endpoints:
   POST /api/orders/ID/cancel           only while the order is still queued
   POST /api/orders/ID/confirm          customer received the order
   GET  /api/qr.svg?text=URL            QR code (black on white) for a page URL
+  POST /api/voice                      {text} -> menu items, quantities, table heard
 Admin endpoints (PIN in X-Admin-Pin header or ?pin=, when admin_pin is set):
   GET  /api/admin/state, /api/admin/events, /api/admin/history[?limit=N]
   GET  /api/admin/qr                   table page URLs for printed QR cards
+  GET  /api/admin/analytics?range=today|7d|all   order statistics
+  GET  /api/admin/maintenance          lifetime usage and service forecast
+  POST /api/admin/maintenance/ITEM/service       record that ITEM was serviced
   POST /api/admin/orders/ID/cancel     any open order
   POST /api/admin/return_to_dock
 """
@@ -27,10 +31,13 @@ import mimetypes
 import os
 import re
 import threading
+import traceback
 from urllib.parse import parse_qs, urlparse
 
+from cstam_ui import analytics
 from cstam_ui.catalog import find_order
 from cstam_ui.qr import QrCode
+from cstam_ui.voice import OrderParser
 
 
 mimetypes.add_type('font/woff2', '.woff2')
@@ -62,6 +69,7 @@ class UiServer:
         self.admin_pin = admin_pin
         self.order_log_file = order_log_file
         self.public_url = public_url.rstrip('/')
+        self.voice = OrderParser(catalog.menu, [p['name'] for p in catalog.delivery_locations()])
         self.stopping = threading.Event()
         handler = type('Handler', (_Handler,), {'app': self})
         self.httpd = ThreadingHTTPServer((host, port), handler)
@@ -155,8 +163,8 @@ class UiServer:
             raise ApiError(HTTPStatus.SERVICE_UNAVAILABLE, message)
         return {'message': message}
 
-    def history(self, limit):
-        """Finished orders from the task manager's JSON-lines log, newest first."""
+    def _finished_orders(self):
+        """Finished orders from the task manager's JSON-lines log, oldest first."""
         orders = []
         if self.order_log_file and os.path.exists(self.order_log_file):
             with open(self.order_log_file, encoding='utf-8') as stream:
@@ -165,8 +173,39 @@ class UiServer:
                         orders.append(json.loads(line))
                     except json.JSONDecodeError:
                         continue
-        orders.reverse()
+        return orders
+
+    def history(self, limit):
+        orders = self._finished_orders()[::-1]
         return {'orders': orders[:limit], 'total': len(orders)}
+
+    def analytics(self, range_name):
+        prices = {item['name']: item['price'] for item in self.catalog.menu}
+        try:
+            report = analytics.summarize(self._finished_orders(), prices, range_name)
+        except ValueError as error:
+            raise ApiError(HTTPStatus.BAD_REQUEST, str(error)) from None
+        report['currency'] = self.catalog.currency
+        report['labels'] = {p['name']: p['label'] for p in self.catalog.delivery_locations()}
+        return report
+
+    def understand(self, body):
+        text = str((body or {}).get('text') or '').strip() if isinstance(body, dict) else ''
+        if not text or len(text) > 300:
+            raise ApiError(HTTPStatus.BAD_REQUEST, 'say or type up to 300 characters')
+        return self.voice.parse(text)
+
+    def maintenance(self):
+        report = self.hub.get('maintenance')
+        if report is None:
+            raise ApiError(HTTPStatus.SERVICE_UNAVAILABLE, 'usage tracking is not running')
+        return report
+
+    def record_service(self, item_id):
+        try:
+            return self.bridge.record_service(item_id)
+        except KeyError:
+            raise ApiError(HTTPStatus.NOT_FOUND, f'no maintenance item "{item_id}"') from None
 
     def table_links(self):
         base = self.public_url or f'http://localhost:{self.port}'
@@ -252,6 +291,10 @@ class _Handler(BaseHTTPRequestHandler):
             self._send(error.status, {'error': error.message})
         except (BrokenPipeError, ConnectionResetError):
             pass
+        except Exception:  # a bug must not drop the connection silently
+            traceback.print_exc()
+            self.close_connection = True
+            self._send(HTTPStatus.INTERNAL_SERVER_ERROR, {'error': 'internal error'})
 
     # ----- GET -------------------------------------------------------------
 
@@ -275,6 +318,10 @@ class _Handler(BaseHTTPRequestHandler):
                 HTTPStatus.OK, app.hub.admin_view()))),
             (r'/api/admin/events', self._admin(lambda: self._events(app.hub.admin_view))),
             (r'/api/admin/qr', self._admin(lambda: self._send(HTTPStatus.OK, app.table_links()))),
+            (r'/api/admin/analytics', self._admin(lambda: self._send(
+                HTTPStatus.OK, app.analytics(self._query().get('range', 'today'))))),
+            (r'/api/admin/maintenance', self._admin(lambda: self._send(
+                HTTPStatus.OK, app.maintenance()))),
             (r'/api/admin/history', self._admin(lambda: self._send(
                 HTTPStatus.OK, app.history(self._limit())))),
             (r'/api/.*', self._not_found),
@@ -367,9 +414,15 @@ class _Handler(BaseHTTPRequestHandler):
             self._require_admin()
             self._send(HTTPStatus.OK, app.return_to_dock())
 
+        def service(item_id):
+            self._require_admin()
+            self._send(HTTPStatus.OK, app.record_service(item_id))
+
         self._handle([
             (r'/api/orders', lambda: self._send(
                 HTTPStatus.CREATED, app.place_order(self._body()))),
+            (r'/api/voice', lambda: self._send(HTTPStatus.OK, app.understand(self._body()))),
             (ORDER_PATH.pattern[1:-1], lambda *_: order_action()),
             (r'/api/admin/return_to_dock', admin_dock),
+            (r'/api/admin/maintenance/([a-z0-9_-]{1,40})/service', service),
         ])

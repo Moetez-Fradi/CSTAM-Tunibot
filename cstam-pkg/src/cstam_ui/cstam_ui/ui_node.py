@@ -1,7 +1,8 @@
 """ROS side of the CSTAM web UI.
 
 Feeds the StateHub from the robot (task status, battery, map pose, global
-plan, tracked people, safety metrics, node health) and turns web commands
+plan, tracked people, safety metrics, node health, lifetime usage for
+maintenance) and turns web commands
 into the task manager's own interface: /delivery/request, /delivery/cancel,
 /delivery/confirm and the /delivery/return_to_dock service. It never sends
 navigation goals itself.
@@ -14,7 +15,7 @@ import socket
 import threading
 
 from ament_index_python.packages import get_package_share_directory
-from nav_msgs.msg import Path
+from nav_msgs.msg import Odometry, Path
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile, QoSReliabilityPolicy
@@ -29,9 +30,11 @@ from cstam_ui.catalog import Catalog
 from cstam_ui.hub import StateHub
 from cstam_ui.map_image import load_map
 from cstam_ui.server import UiServer
+from cstam_ui.usage import load_schedule, UsageTracker
 
 
 MAX_PLAN_POINTS = 150
+USAGE_SAVE_SEC = 30.0
 PREDICTION_STEP_SEC = 0.2   # spacing of the tracker's prediction line points
 # Nodes shown in the admin health panel (name as in phase1.launch.py / Nav2).
 WATCHED_NODES = [
@@ -114,9 +117,9 @@ class UiNode(Node):
         latched.durability = QoSDurabilityPolicy.TRANSIENT_LOCAL
         latched.reliability = QoSReliabilityPolicy.RELIABLE
         self.create_subscription(String, '/delivery/status', self._status, latched)
-        self.create_subscription(
-            BatteryState, '/battery/state',
-            lambda m: hub.update('battery', battery_view(m)), latched)
+        self.usage = None
+        self.usage_lock = threading.Lock()
+        self.create_subscription(BatteryState, '/battery/state', self._battery, latched)
         self.create_subscription(Path, '/plan', lambda m: hub.update('plan', plan_view(m)), 5)
         self.create_subscription(
             MarkerArray, '/dynamic_obstacles/markers',
@@ -133,7 +136,43 @@ class UiNode(Node):
         self.create_timer(0.2, self._pose)
         self.create_timer(1.0, self._health)
 
+    def attach_usage(self, usage):
+        """Track lifetime usage (odometry, battery) for the maintenance view."""
+        self.usage = usage
+        self.create_subscription(Odometry, '/odom', self._odometry, 20)
+        self.create_timer(2.0, self._publish_usage)
+        self.create_timer(USAGE_SAVE_SEC, self.save_usage)
+        self._publish_usage()
+
+    def save_usage(self):
+        if self.usage is None:
+            return
+        with self.usage_lock:
+            try:
+                self.usage.save()
+            except OSError as error:
+                self.get_logger().warn(f'cannot save usage to {self.usage.path}: {error}')
+
+    def _publish_usage(self):
+        with self.usage_lock:
+            report = self.usage.report()
+        if report != self.hub.get('maintenance'):
+            self.hub.update('maintenance', report)
+
+    def _odometry(self, message):
+        twist = message.twist.twist
+        stamp = message.header.stamp.sec + message.header.stamp.nanosec * 1e-9
+        with self.usage_lock:
+            self.usage.odometry(stamp, twist.linear.x, twist.angular.z)
+
     # ----- ROS -> hub ------------------------------------------------------
+
+    def _battery(self, message):
+        view = battery_view(message)
+        self.hub.update('battery', view)
+        if self.usage is not None:
+            with self.usage_lock:
+                self.usage.battery(view['percentage'], view['charging'])
 
     def _status(self, message):
         try:
@@ -177,6 +216,16 @@ class UiNode(Node):
     def send_confirm(self, key):
         self.confirm_pub.publish(String(data=key))
 
+    def record_service(self, item_id):
+        if self.usage is None:
+            raise KeyError(item_id)
+        with self.usage_lock:
+            self.usage.record_service(item_id)
+            self.usage.save()
+            report = self.usage.report()
+        self.hub.update('maintenance', report)
+        return report
+
     def return_to_dock(self, timeout):
         if not self.dock_client.service_is_ready():
             return False, 'the task manager is not running'
@@ -204,6 +253,10 @@ def main(args=None):
     order_log = get('order_log_file', '') or os.path.join(
         os.environ.get('ROS_HOME', os.path.expanduser('~/.ros')), 'cstam_orders.jsonl')
     host, port = get('host', '0.0.0.0'), int(get('port', 8080))
+    usage_file = get('usage_file', '') or os.path.join(
+        os.environ.get('ROS_HOME', os.path.expanduser('~/.ros')), 'cstam_robot_usage.json')
+    node.attach_usage(UsageTracker(usage_file, load_schedule(
+        get('maintenance_file', os.path.join(ui_share, 'config', 'maintenance.yaml')))))
 
     catalog = Catalog(locations_file, menu_file)
     try:
@@ -227,6 +280,7 @@ def main(args=None):
         pass
     finally:
         server.stop()
+        node.save_usage()
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()

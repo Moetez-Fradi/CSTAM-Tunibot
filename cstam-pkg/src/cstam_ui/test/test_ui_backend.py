@@ -161,6 +161,13 @@ class FakeRobot:
         self.status['history'].append({**order, 'status': 'delivered', 'finished_at': 1.0})
         self._publish()
 
+    def record_service(self, item_id):
+        if item_id != 'wheels':
+            raise KeyError(item_id)
+        report = {'items': [{'id': 'wheels', 'used': 0.0, 'last_service': 1.0}]}
+        self.hub.update('maintenance', report)
+        return report
+
     def return_to_dock(self, timeout):
         self.dock_calls += 1
         return True, 'return-to-dock requested'
@@ -171,7 +178,10 @@ def api(catalog, tmp_path):
     hub = StateHub()
     robot = FakeRobot(hub)
     log = tmp_path / 'orders.jsonl'
-    log.write_text(''.join(json.dumps({'id': f'h{i}', 'status': 'delivered'}) + '\n'
+    now = time.time()
+    log.write_text(''.join(json.dumps({
+        'id': f'h{i}', 'status': 'delivered', 'location': 'table_1', 'created_at': now - 60,
+        'arrived_at': now - 10, 'items': [{'name': 'Espresso', 'qty': 1}]}) + '\n'
                            for i in range(3)) + 'not json\n')
     web = tmp_path / 'web'
     web.mkdir()
@@ -357,3 +367,27 @@ def test_style_sheet_uses_only_bundled_fonts():
     assert 'googleapis' not in css
     for url in re.findall(r"url\('/fonts/([^']+)'\)", css):
         assert os.path.isfile(os.path.join(PACKAGE, 'web', 'fonts', url)), url
+
+
+def test_analytics_and_maintenance_endpoints(api):
+    call, robot, _ = api
+    assert call('GET', '/api/admin/analytics')[0] == 401
+    status, report = call('GET', '/api/admin/analytics?range=all', pin='4321')
+    assert status == 200 and report['currency'] == 'TND' and report['delivered'] == 3
+    assert report['labels']['table_1'] == 'Table 1'
+    assert call('GET', '/api/admin/analytics?range=year', pin='4321')[0] == 400
+    assert call('GET', '/api/admin/maintenance', pin='4321')[0] == 503   # not tracked yet
+    status, body = call('POST', '/api/admin/maintenance/wheels/service', {}, pin='4321')
+    assert status == 200 and body['items'][0]['used'] == 0.0
+    assert call('GET', '/api/admin/maintenance', pin='4321')[1] == body
+    assert call('POST', '/api/admin/maintenance/wings/service', {}, pin='4321')[0] == 404
+    assert call('POST', '/api/admin/maintenance/wheels/service', {})[0] == 401
+
+
+def test_voice_endpoint(api):
+    call, _, _ = api
+    status, body = call('POST', '/api/voice', {'text': 'deux cafés pour la table 2'})
+    assert status == 200 and body['location'] == 'table_2'
+    assert body['items'] == [{'id': 'espresso', 'name': 'Espresso', 'qty': 2}]
+    assert call('POST', '/api/voice', {'text': ''})[0] == 400
+    assert call('POST', '/api/voice', {'text': 'x' * 301})[0] == 400
