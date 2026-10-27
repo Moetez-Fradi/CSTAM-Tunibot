@@ -1,3 +1,0 @@
-string text     # promnpt
----
-int32[] tokens  # tokens

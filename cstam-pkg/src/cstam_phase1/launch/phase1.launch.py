@@ -63,7 +63,6 @@ def generate_launch_description():
             'autostart': 'True',
             'rviz': 'False',
             'use_webcam': 'False',
-            'start_app': 'False',
         }.items(),
     )
 

@@ -7,7 +7,6 @@ from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression, TextSubstitution
 from launch_ros.actions import Node, PushRosNamespace, SetRemap
-from launch_ros.substitutions import FindPackageShare
 from andino_gz.launch_tools.substitutions import TextJoin
 
 
@@ -78,11 +77,6 @@ def generate_launch_description():
         default_value='False',
         description='Use laptop webcam for compressed stream (QR/YOLO)',
     )
-    start_app_arg = DeclareLaunchArgument(
-        'start_app',
-        default_value='False',
-        description='Start application layer (QR scanner, YOLO detector, etc.)',
-    )
     rviz = LaunchConfiguration('rviz')
     ros_bridge = LaunchConfiguration('ros_bridge')
     world_name = LaunchConfiguration('world_name')
@@ -94,7 +88,6 @@ def generate_launch_description():
     autostart = LaunchConfiguration('autostart')
     headless = LaunchConfiguration('headless')
     use_webcam = LaunchConfiguration('use_webcam')
-    start_app = LaunchConfiguration('start_app')
     robot_type = LaunchConfiguration('robot_type')
     world_path = PathJoinSubstitution([pkg_andino_gz, 'worlds', world_name])
     log_world_path = LogInfo(msg=TextJoin(substitutions=["World path: ", world_path]))
@@ -321,22 +314,10 @@ def generate_launch_description():
     ld.add_action(map_name_arg)
     ld.add_action(params_file_arg)
     ld.add_action(use_webcam_arg)
-    ld.add_action(start_app_arg)
     ld.add_action(autostart_arg)
     ld.add_action(headless_arg)
     ld.add_action(log_world_path)
     ld.add_action(log_map_path)
     ld.add_action(base_group)
     ld.add_action(robot_setup)
-    # Include the optional application layer only when requested.  Resolving
-    # this package eagerly made every simulation fail if the app stack had not
-    # been built, even with start_app:=False.
-    app_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution([FindPackageShare('deliverybot_bringup'), 'launch', 'app.launch.py'])
-        ),
-        condition=IfCondition(
-            PythonExpression(["'", start_app, "'.lower() == 'true'"])),
-    )
-    ld.add_action(app_launch)
     return ld

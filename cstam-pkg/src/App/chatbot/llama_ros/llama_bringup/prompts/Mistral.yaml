@@ -1,8 +1,0 @@
-prefix: "[INST]"
-suffix: "[/INST]"
-stopping_words: ["[INST]"]
-
-system_prompt: |-
-  Below is an instruction that describes a task. Write a response that appropriately completes the request.
-
-  [INST] Hello [/INST] Hello [INST]

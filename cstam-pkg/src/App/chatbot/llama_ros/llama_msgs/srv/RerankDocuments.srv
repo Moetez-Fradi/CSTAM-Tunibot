@@ -1,4 +1,0 @@
-string query                # query to calculate score
-string[] documents          # whether to normalize embeddings
----
-float32[] scores            # scores for the documents
