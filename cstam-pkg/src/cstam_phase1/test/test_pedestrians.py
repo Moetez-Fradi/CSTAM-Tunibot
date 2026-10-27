@@ -282,3 +282,42 @@ def test_person_with_no_way_past_turns_back_instead_of_waiting_forever():
     for _ in range(int(25.0 / 0.05)):
         p.step(0.05, robot, (), is_free=free)
     assert p.position[0] < 3.0  # walked back the way they came
+
+
+def _waypoint_changes(pedestrian, step, seconds, dt=0.05):
+    keys = []
+    for _ in range(int(seconds / dt)):
+        step()
+        keys.append((pedestrian.target, pedestrian.direction))
+    return sum(1 for a, b in zip(keys, keys[1:]) if a != b)
+
+
+def test_two_people_stuck_on_each_other_give_way_without_a_robot():
+    # Face to face, already closer than person_spacing, in a corridor with
+    # no room for a side lane: every move closes the gap. This froze waiter
+    # and guest for good in the simulator (the give-way needed a robot).
+    free = lambda x, y: abs(y) < 0.25  # noqa: E731
+    a = walker('oblivious', route=((0.0, 0.0), (10.0, 0.0)))
+    b = walker('polite', route=((3.0, 0.2), (-7.0, 0.2)))
+    b.config.name = 'q'  # a different stagger from a
+
+    b_keys = []
+
+    def step():
+        a.step(0.05, None, [b.position], free)
+        b.step(0.05, None, [a.position], free)
+        b_keys.append((b.target, b.direction))
+    assert _waypoint_changes(a, step, 60.0) > 0
+    assert len(set(b_keys)) > 1
+
+
+def test_person_behind_a_parked_robot_never_livelocks_at_any_heading():
+    # Walking into the robot's rear: a detour lane that dips below the
+    # contact margin used to be chosen, refused by the motion check and
+    # chosen again, resetting the give-way timer each time, forever.
+    for i in range(63):
+        yaw = -math.pi + i * 0.1
+        p = walker('oblivious', speed=0.5)
+        robot = (4.0, 0.12, yaw)
+        changes = _waypoint_changes(p, lambda: p.step(0.05, robot, ()), 40.0)
+        assert changes > 0, f'stuck behind the robot at yaw {yaw:.1f}'

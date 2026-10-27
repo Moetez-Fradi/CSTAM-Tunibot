@@ -13,7 +13,9 @@ A lane is only taken if every point along it, for the next few metres, is
 free on the static map and keeps clearance from the robot. Nobody waits
 forever: after ``patience`` seconds held up (by the robot or another
 person) people detour through the widest valid lane, keeping personal space
-from the robot; if the robot stands on their next waypoint they skip it.
+from the robot. Without real progress towards the next waypoint for about
+three patience periods (staggered per person), they give way and walk back,
+or skip the waypoint if the robot stands on it.
 """
 
 from dataclasses import dataclass, field
@@ -88,6 +90,7 @@ class PedestrianParams:
     contact_margin: float = 0.03     # nobody walks closer than this
     person_spacing: float = 0.55     # centre distance kept from others
     patience: float = 4.0            # s held up before detouring
+    progress_step: float = 0.25      # m closer to the waypoint that counts as progress
     # Detour lane offsets, widest first: in a narrow aisle people squeeze
     # along the wall rather than wait forever.
     detour_offsets: tuple = (0.95, 0.75, 0.6, 0.45)
@@ -120,6 +123,11 @@ class Pedestrian:
         self.detouring = False
         self.detour_offset = 0.0
         self.detour_progress = 0.0
+        # Real progress towards the next waypoint. Unlike held_time it is not
+        # reset by starting or abandoning a detour, so shuffling in and out
+        # of side lanes without getting anywhere still counts as stuck.
+        self.stuck_time = 0.0
+        self.best_remaining = math.inf
 
     # Geometry ---------------------------------------------------------------
     def _right(self):
@@ -148,9 +156,12 @@ class Pedestrian:
         length = min(length, self._remaining())
         if robot_pose is not None:
             # Never closer than now: someone the robot already came close to
-            # may still move away or along, just not further in.
-            min_clearance = min(min_clearance,
-                                footprint_clearance(robot_pose, self.position) - 0.01)
+            # may still move away or along, just not further in. Nor below
+            # the contact margin, which _blocked() would refuse to walk.
+            current = footprint_clearance(robot_pose, self.position) - 0.01
+            if current + 0.01 >= self.params.contact_margin:
+                current = max(current, self.params.contact_margin)
+            min_clearance = min(min_clearance, current)
         points = [self._point(0.0, self.offset + (offset - self.offset) * k / 4.0)
                   for k in range(1, 5)]
         steps = max(1, int(length / 0.2))
@@ -176,6 +187,14 @@ class Pedestrian:
         return None
 
     # Route --------------------------------------------------------------------
+    def _stagger(self):
+        """Person-specific 0..1, so two people never retry in lockstep."""
+        return (sum(map(ord, self.config.name)) % 5) / 4.0
+
+    def _reset_progress(self):
+        self.stuck_time = 0.0
+        self.best_remaining = math.inf
+
     def _advance_target(self):
         route = self.config.route
         if self.config.mode == 'loop':
@@ -201,6 +220,7 @@ class Pedestrian:
         self.dwell = dwell
         self.detouring = False
         self.held_time = 0.0
+        self._reset_progress()
         self._advance_target()
         tx, ty, _ = self.config.route[self.target]
         self.path_dir = math.atan2(ty - waypoint[1], tx - waypoint[0])
@@ -221,6 +241,7 @@ class Pedestrian:
         here = self.position
         self.detouring = False
         self.held_time = 0.0
+        self._reset_progress()
         if self.config.mode == 'pingpong':
             self.direction = -self.direction
             self.target = min(max(self.target + self.direction, 0),
@@ -292,6 +313,11 @@ class Pedestrian:
             self._arrive(tdwell)
             return
         self.path_dir = math.atan2(dy, dx)
+        if distance < self.best_remaining - p.progress_step:
+            self.best_remaining = distance
+            self.stuck_time = 0.0
+        else:
+            self.stuck_time += dt
 
         if (self.detouring and self.detour_progress >= p.detour_length
                 and self._robot_passed(robot_pose)):
@@ -347,8 +373,7 @@ class Pedestrian:
             # lanes at once). Give up and wait a person-specific extra time
             # before re-planning, so two people never retry in lockstep.
             self.detouring = False
-            stagger = (sum(map(ord, self.config.name)) % 5) / 4.0
-            self.held_time = -stagger * p.patience
+            self.held_time = -self._stagger() * p.patience
         if self.held_time > p.patience and not self.detouring:
             lane = self._find_lane(p.detour_offsets, robot_pose, is_free,
                                    p.personal_space, others)
@@ -357,8 +382,11 @@ class Pedestrian:
                 self.detour_offset = lane
                 self.detour_progress = 0.0
                 self.held_time = 0.0
-        if self.held_time > 3.0 * p.patience and robot_pose is not None:
-            if footprint_clearance(robot_pose, (tx, ty)) < 0.3:
+        if self.stuck_time > (3.0 + self._stagger()) * p.patience:
+            # No real progress for a while, whatever the cause (the robot,
+            # another person, or both): give way instead of waiting forever.
+            # Staggered, so two people blocking each other do not both turn.
+            if robot_pose is not None and footprint_clearance(robot_pose, (tx, ty)) < 0.3:
                 self._arrive(0.0)  # the robot is standing on our waypoint
             else:
                 self._turn_back()  # no way past (narrow aisle): give way
