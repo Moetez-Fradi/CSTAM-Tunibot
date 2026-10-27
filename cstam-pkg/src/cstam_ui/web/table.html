@@ -35,6 +35,20 @@
   .stepper output { min-width: 22px; text-align: center; font: 500 14px var(--mono); }
   .add { height: 36px; border-radius: 999px; padding: 0 16px; }
   .note { margin-top: 28px; }
+  .voice { display: grid; gap: 8px; margin: 0 0 28px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-2); }
+  .voice label { font-size: 13px; font-weight: 500; }
+  .voice-row { display: flex; gap: 8px; }
+  .voice-row .input { min-width: 0; flex: 1; height: 40px; }
+  .voice-row .btn { height: 40px; }
+  .mic { width: 40px; padding: 0; border-radius: 50%; flex: none; }
+  .mic.listening { background: var(--accent); border-color: var(--accent); color: #fff; }
+  @media (prefers-reduced-motion: no-preference) {
+    .mic.listening { animation: listen 1.4s ease-out infinite; }
+  }
+  @keyframes listen { 0% { box-shadow: 0 0 0 0 var(--accent-soft); } 100% { box-shadow: 0 0 0 10px transparent; } }
+  .lang { width: 40px; padding: 0; font: 500 12px var(--mono); flex: none; }
+  .voice-result { font-size: 13px; min-height: 0; }
+  .voice-result:empty { display: none; }
 
   .bar {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;

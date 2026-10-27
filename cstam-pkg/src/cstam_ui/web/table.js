@@ -109,10 +109,19 @@
       }
     };
 
+    const addHeard = (items) => {
+      for (const { id, qty } of items) {
+        cart[id] = Math.min(20, (cart[id] || 0) + qty);
+        renderRow(config.menu.find((m) => m.id === id));
+      }
+      renderBar();
+    };
+
     app.replaceChildren(...[
       el('section', { class: 'hello' },
         el('h1', {}, spot.label),
         el('p', { class: 'muted' }, `Choose what you’d like and the robot brings it to your table on the ${spot.zone === 'terrace' ? 'terrace' : 'dining room floor'}.`)),
+      voiceBox(spot, addHeard),
       categories.map((category) => el('section', { class: 'category', 'aria-label': category },
         el('h2', {}, category),
         config.menu.filter((m) => m.category === category).map((item) => {
@@ -124,6 +133,110 @@
       bar].flat());
     config.menu.forEach(renderRow);
     renderBar();
+  }
+
+  // ----- voice / typed order -----------------------------------------------------
+  // Speech recognition only runs in a secure context (HTTPS or localhost);
+  // elsewhere the same box takes a typed sentence.
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const canListen = Boolean(Recognition) && window.isSecureContext;
+
+  function voiceBox(spot, addHeard) {
+    let lang = storage.get('localStorage', 'cstam.voice.lang') || (navigator.language || 'en').slice(0, 2);
+    if (!['en', 'fr'].includes(lang)) lang = 'en';
+    const input = el('input', { class: 'input', id: 'voice-text', autocomplete: 'off', maxlength: 300,
+      placeholder: lang === 'fr' ? 'deux cafés, une citronnade' : 'two cappuccinos, a brik' });
+    const result = el('p', { class: 'voice-result', 'aria-live': 'polite' });
+    let listening = null;
+
+    const understand = async (text) => {
+      if (!text.trim()) return;
+      result.className = 'voice-result muted';
+      result.textContent = 'Reading your order…';
+      try {
+        const heard = await api('/api/voice', { method: 'POST', body: { text } });
+        if (!heard.items.length) {
+          result.className = 'voice-result';
+          result.textContent = `No menu item recognised in “${heard.transcript}”. Try “two espressos and a brik”.`;
+          return;
+        }
+        addHeard(heard.items);
+        input.value = '';
+        const added = heard.items.map((i) => `${i.qty}× ${i.name}`).join(', ');
+        const other = heard.location && heard.location !== spot.name
+          ? config.locations.find((l) => l.name === heard.location) : null;
+        result.className = 'voice-result';
+        result.replaceChildren(...[`Added ${added}. Check the order below, then send it.`,
+          other && el('span', {}, ' You mentioned ', el('a', { href: `/table/${other.name}` }, other.label),
+            `; this page orders to ${spot.label}.`)].filter(Boolean));
+      } catch (error) {
+        result.className = 'voice-result';
+        result.textContent = error.message;
+      }
+    };
+
+    const mic = canListen ? el('button', {
+      class: 'btn mic', type: 'button', 'aria-pressed': 'false', 'aria-label': 'Speak your order',
+      onclick: () => (listening ? listening.stop() : listen()),
+    }, micIcon()) : null;
+
+    function listen() {
+      const recognition = new Recognition();
+      recognition.lang = lang === 'fr' ? 'fr-FR' : 'en-US';
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+      let finalText = '';
+      recognition.onresult = (event) => {
+        const text = [...event.results].map((r) => r[0].transcript).join(' ');
+        input.value = text;
+        if (event.results[event.results.length - 1].isFinal) finalText = text;
+      };
+      recognition.onerror = (event) => {
+        result.className = 'voice-result';
+        result.textContent = {
+          'not-allowed': 'Microphone access is blocked. Type your order instead.',
+          'service-not-allowed': 'Microphone access is blocked. Type your order instead.',
+          network: 'Voice needs an internet connection. Type your order instead.',
+          'no-speech': 'I didn’t hear anything. Tap the microphone and speak.',
+        }[event.error] || 'Voice input stopped. Type your order instead.';
+      };
+      recognition.onend = () => {
+        listening = null;
+        mic.setAttribute('aria-pressed', 'false');
+        mic.classList.remove('listening');
+        if (finalText) understand(finalText);
+      };
+      listening = recognition;
+      mic.setAttribute('aria-pressed', 'true');
+      mic.classList.add('listening');
+      result.className = 'voice-result muted';
+      result.textContent = lang === 'fr' ? 'J’écoute…' : 'Listening…';
+      recognition.start();
+    }
+
+    const langButton = el('button', { class: 'btn btn-ghost lang', type: 'button',
+      'aria-label': 'Voice language', title: 'Voice language' }, lang.toUpperCase());
+    langButton.addEventListener('click', () => {
+      lang = lang === 'en' ? 'fr' : 'en';
+      storage.set('localStorage', 'cstam.voice.lang', lang);
+      langButton.textContent = lang.toUpperCase();
+      input.placeholder = lang === 'fr' ? 'deux cafés, une citronnade' : 'two cappuccinos, a brik';
+    });
+
+    return el('section', { class: 'voice', 'aria-label': 'Order in your own words' },
+      el('label', { for: 'voice-text' }, canListen ? 'Say or type your order' : 'Type your order in your own words'),
+      el('form', { class: 'voice-row', onsubmit: (e) => { e.preventDefault(); understand(input.value); } },
+        mic, input, canListen ? langButton : null, el('button', { class: 'btn', type: 'submit' }, 'Add')),
+      result);
+  }
+
+  function micIcon() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '16'); svg.setAttribute('height', '16'); svg.setAttribute('viewBox', '0 0 16 16');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.innerHTML = '<rect x="5.5" y="1.5" width="5" height="8" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/>'
+      + '<path d="M3 7.5a5 5 0 0 0 10 0M8 12.5v2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>';
+    return svg;
   }
 
   // ----- tracking --------------------------------------------------------------
