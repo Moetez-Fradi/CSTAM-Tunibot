@@ -1,0 +1,106 @@
+{
+  "what": "Phase 3 end-to-end UI test (scripts/phase3_ui_test.sh): customer and staff over HTTP only, headless Gazebo with the five scenario pedestrians",
+  "date": "2026-10-27",
+  "location": "table_3",
+  "pass": true,
+  "elapsed_sec": 99.5,
+  "checks": [
+    {
+      "check": "web UI up and task manager online",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "config lists the table and a menu",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "rejects unknown table",
+      "ok": true,
+      "detail": "unknown table \"table_99\""
+    },
+    {
+      "check": "rejects empty order",
+      "ok": true,
+      "detail": "add at least one item to the order"
+    },
+    {
+      "check": "rejects unknown item",
+      "ok": true,
+      "detail": "unknown menu item \"nope\""
+    },
+    {
+      "check": "rejects quantity too high",
+      "ok": true,
+      "detail": "Espresso: quantity must be 1-20"
+    },
+    {
+      "check": "order accepted",
+      "ok": true,
+      "detail": "order dd009d"
+    },
+    {
+      "check": "second order for the same table refused",
+      "ok": true,
+      "detail": "order "
+    },
+    {
+      "check": "confirm before arrival refused",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "customer confirms at the table",
+      "ok": true,
+      "detail": "delivered"
+    },
+    {
+      "check": "order went queued/active -> at table -> delivered",
+      "ok": true,
+      "detail": [
+        "in_progress",
+        "awaiting_confirmation",
+        "delivered"
+      ]
+    },
+    {
+      "check": "delivery recorded as confirmed",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "robot back at the dock and IDLE",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "admin API refuses a wrong PIN",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "admin sees the order in history",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "final docking approach reported its error",
+      "ok": true,
+      "detail": [
+        0.036,
+        0.034
+      ]
+    },
+    {
+      "check": "analytics count the delivery",
+      "ok": true,
+      "detail": 1
+    },
+    {
+      "check": "physical dock error under 0.10 m / 0.10 rad",
+      "ok": true,
+      "detail": "0.062 m, 0.010 rad"
+    }
+  ]
+}

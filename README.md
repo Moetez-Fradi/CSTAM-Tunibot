@@ -22,14 +22,15 @@ there and is loaded through the kitchen service hatch at the corridor's end.
 queued table 1 then table 2, invalid/duplicate rejection, and manual dock return
 passed. Physical arrival errors and recorded results are in the
 [application acceptance data](docs/phase1_application_acceptance.json).
-Docking here means autonomous station-pose arrival, not charger alignment.
+Docking ends with a slow final approach onto the dock pose (see
+[Docking](#docking)); charging is simulated by proximity, not charger contact.
 
 ## Prerequisites and focused build
 
 Ubuntu 24.04, ROS 2 Jazzy, Gazebo Harmonic through ROS Gazebo packages,
 colcon, rosdep, and an OpenGL display for GUI use. On a new machine, initialize
 rosdep once (`sudo rosdep init`, then `rosdep update`). Install dependencies
-for the six-package closure, excluding the legacy applications in `App/`:
+for the six-package closure:
 
 ```bash
 git clone --branch main https://github.com/Moetez-Fradi/CSTAM-Tunibot.git
@@ -109,6 +110,19 @@ then sends the real dock goal. Pending queued requests remain queued, and an
 interrupted order is requeued at the front.
 A failed navigation puts the application in `ERROR`; success is never synthesized.
 Do not send separate raw goals while a delivery is active.
+
+### Docking
+
+Nav2 accepts the dock goal within its 0.25 m goal tolerance (tighter
+tolerances made the controller oscillate in the 1.86 m corridor). The task
+manager then runs a slow final approach (`cstam_phase1/docking.py`): turn
+towards the dock point, drive straight (backwards if it overshot), turn to
+the dock heading, until within 4 cm and 0.04 rad of the AMCL pose. Its
+commands enter the collision monitor like Nav2's, so a person still stops
+the robot. The remaining error is reported as `dock_error` in
+`/delivery/status`; `precise_docking:=false` (task manager parameter)
+restores the old behaviour. Measured against Gazebo ground truth: 0.06 m and
+0.01 rad, down from 0.18–0.29 m with Nav2 alone; the rest is AMCL error.
 
 ## Battery simulation
 
@@ -227,6 +241,7 @@ and re-run. "Found" names what failed before the fix.
 | 9 | People blocking each other / waiting on the robot forever | gridlocks in the simulator | Patience detours with staggered retries; lanes checked against the map, the robot and other people |
 | 10 | Livelock: a detour picked but never walkable, or two people blocking each other with no robot near | robot stuck behind a guest until the battery ran out; waiter and guest frozen together | Lanes respect the same 3 cm contact margin as the walking check; anyone without real progress towards their waypoint for 12-16 s (staggered) gives way, robot or not |
 | 11 | First planner request after startup | goal unacknowledged within 20 ms | BT server timeout 200 ms; smaller people-layer update area |
+| 12 | Furniture edges reported as people | 133 false tracks (337 s) in one run, 8 during safety stops | Centres closer than 0.30 m to the map are rejected (no real person ever was); within 0.50 m a track must move 0.40 m first. Same run after: 29 (32 s), none during stops; people within 2 m still tracked 98% |
 
 Measured on the final configuration, two consecutive recorded runs (tables 1,
 2 and 3 each): **6/6 deliveries, 0 contacts, 140 encounters within 1 m**,
@@ -375,7 +390,7 @@ the browser sends it as `X-Admin-Pin` (or `?pin=` for event streams).
 | Page | For |
 |---|---|
 | `/` | landing page: customer or staff |
-| `/table/<location>` (e.g. `/table/table_3`; `/table` lists them) | customers, phone first: menu, order, live tracking with ETA and a mini map, "I've got my order" at the table, cancel while queued. The order survives a page reload. Guests can also say or type the order in their own words (see [Voice ordering](#voice-ordering)). |
+| `/table/<location>` (e.g. `/table/table_3`; `/table` lists them) | customers, phone first: menu, order, live tracking with ETA and a mini map, "I've got my order" at the table, cancel while queued. The order survives a page reload. Guests can also say or type the order in their own words (see [Voice ordering](#voice-ordering)). English, French or Arabic (right to left), see [Languages](#languages). |
 | `/admin` | staff dashboard. **Overview**: live floor plan (robot, planned route, tracked people, tables, doors), active delivery with its stages, battery with the 20/35/80% policy, queue with cancel, return to dock, battery chart for the last 30 minutes. **Orders**: delivered count, median time to table, confirmation rate, failures, full order log. **Insights**: deliveries per hour or day, revenue, time to table (median and 90th percentile), battery used per delivery and deliveries per charge, popular items, busiest tables, Nav2 goal/failure/retry counters (today, 7 days or all time). **Maintenance**: lifetime distance, driving time, operating time and battery cycles; a service schedule with a forecast of when each item falls due, and "Mark serviced". **System**: node health, data freshness, people-safety metrics, task manager state. |
 | `/qr` | printable QR card per table (staff, linked from the dashboard). Each code opens that table's page. |
 | `/console` | raw API console for development |
@@ -384,7 +399,9 @@ Light and dark themes follow the system setting (toggle top right). The
 Geist fonts are bundled (`web/fonts`, SIL OFL 1.1), so the UI works without
 internet.
 
-**Voice ordering.** The customer page reads an order in the guest's own
+#### Voice ordering
+
+The customer page reads an order in the guest's own
 words, spoken or typed, in English or French: "two cappuccinos and a brik",
 "deux cafés et une citronnade pour la terrasse 2". `POST /api/voice`
 (`cstam_ui/voice.py`) finds menu items (names and the `aliases` in
@@ -394,6 +411,32 @@ recognition, which browsers only allow on HTTPS or `localhost` (and Chrome's
 recognition needs internet). Phones opening the plain-HTTP table page
 therefore get the typed box only; for a spoken demo, use the laptop at
 `http://localhost:8080/table/table_2`.
+
+#### Languages
+
+The customer page is in English, French and Arabic; the
+picker in the header switches it in place (remembered per phone, first
+visit follows the phone's language). Arabic lays the page out right to
+left. Wording lives in `web/i18n.js`; menu items and categories carry their
+French and Arabic names in `menu.yaml` (`names`, `categories`). Orders,
+the robot and the staff dashboard keep the English names. Voice ordering
+understands English and French (the French names too), so on the Arabic
+page the dictation language defaults to French. Arabic text uses the
+phone's own Arabic font (the bundled Geist has no Arabic glyphs).
+
+**End-to-end test.** One command starts the headless simulation with the UI
+and acts as a customer and as staff over HTTP only: invalid orders (unknown
+table or item, empty, quantity) and a duplicate are refused, a real order is
+followed to the table and confirmed there, the robot docks, the admin API
+refuses a wrong PIN and shows the order, analytics count it, and the
+physical dock error is measured from Gazebo ground truth:
+
+```bash
+bash "$(ros2 pkg prefix --share cstam_phase1)/scripts/phase3_ui_test.sh" ~/runs/ui1 table_3
+```
+
+Measured: 18/18 checks passed, order at table 3 in 51 s, docked 0.062 m /
+0.010 rad from the dock pose.
 
 **Maintenance data.** Usage is integrated from `/odom` and `/battery/state`
 by the UI node and kept in `$ROS_HOME/cstam_robot_usage.json` (saved every
@@ -471,10 +514,7 @@ Normal mode has one physical command publisher, `collision_monitor`
 - `cstam-pkg/src/andino_gz/andino_gz`: restaurant assets, collision model, world and GUI launch.
 - `cstam-pkg/src/cstam_phase1`: perception, mapping/localization, Nav2, semantic locations, task manager, health checks and tests.
 - `cstam-pkg/src/cstam_ui`: web UI backend (HTTP API, live events, menu) and pages.
-- `cstam-pkg/src/App`, `cstam-pkg/src/deliverybot_bringup`: legacy prototypes
-  (chatbot, QR verification, Streamlit dashboard, mobile bridge) from before
-  the current stack. They are not built or launched by it.
-- `docs`: intentional acceptance summaries and architecture exports.
+- `docs`: acceptance summaries and architecture exports ([index](docs/README.md)).
 
 All runtime assets resolve through package-share directories. Build/install/log,
 ROS logs and temporary measurements are excluded. A separate workspace source
@@ -487,8 +527,11 @@ not physically push the robot, so contacts are measured geometrically from
 ground truth rather than by contact sensors. The rear and side range
 sensors emulate ultrasonics with narrow lidar beams. The terrace part of the
 map is drawn from the collision geometry, not SLAM, and only two of the west
-doors are open (one leaf each). The people tracker still produces occasional
-short-lived false tracks (a few seconds) near walls and furniture edges.
+doors are open (one leaf each). The people tracker still produces a few
+short false tracks (about 30 s in total over a 9-minute run, none near a
+stop), and a person who stands still beside furniture from the moment the
+robot first sees them is treated as an obstacle, not a person, until they
+move 0.4 m.
 On the development laptop, long runs rendering on the integrated
 AMD GPU froze the machine three times (amdgpu `flip_done timed out`); the
 RGB-D camera, unused by navigation, now renders at 5 Hz to reduce that load.
@@ -496,7 +539,7 @@ Charging is simulated by proximity to the dock pose, not by charger contact
 or alignment. Static global
 map and real rolling local obstacles. Sparse 16-ring sensing and simulated
 friction limit real-hardware conclusions. Dock and table 3 are safe at their
-configured headings, not at every possible rotation. Physical dock error in
-accepted application runs was 0.176–0.292 m. Controller recovery maneuvers still
+configured headings, not at every possible rotation. Physical dock error is
+about 0.06 m after the final approach (AMCL accuracy). Controller recovery maneuvers still
 occur; these trials establish repeatability for the tested routes, not universal
 collision avoidance. Consult the acceptance data for quantitative details.

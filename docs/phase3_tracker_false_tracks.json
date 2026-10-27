@@ -1,0 +1,31 @@
+{
+  "what": "People-tracker false tracks before/after the furniture filters, same four deliveries (table_1, table_3, terrace_2, table_2) with the five scenario pedestrians. A track is false when no ground-truth person is within 0.6 m.",
+  "date": "2026-10-27",
+  "filters": {
+    "person_min_clearance_m": 0.3,
+    "furniture_distance_m": 0.5,
+    "furniture_min_travel_m": 0.4
+  },
+  "evidence_for_thresholds": "before the fix, 0% of real-people track samples were within 0.30 m of the map vs 50% of false ones; ground-truth people never came within 0.30 m",
+  "before": {
+    "false_track_episodes": 133,
+    "false_track_seconds": 337.5,
+    "episodes_during_monitor_stop": 8,
+    "people_within_2m_tracked": 0.974
+  },
+  "after": {
+    "false_track_episodes": 29,
+    "false_track_seconds": 32.5,
+    "episodes_during_monitor_stop": 0,
+    "people_within_2m_tracked": 0.978,
+    "deliveries": "4/4",
+    "contacts": 0,
+    "nav2_failures": 0,
+    "dock_error_amcl_cm": [
+      3.2,
+      3.9,
+      4.4,
+      3.6
+    ]
+  }
+}
