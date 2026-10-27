@@ -32,6 +32,10 @@ in AWAITING_CONFIRMATION until the customer confirms on /delivery/confirm or
 confirmation_timeout_sec passes. /delivery/cancel takes an order id or a
 location: a queued order is dropped, an active one sends the robot back to
 the dock. Finished orders are appended to order_log_file (JSON lines).
+
+Docking: Nav2 accepts the dock goal within its 0.25 m goal tolerance; a slow
+final approach (docking.py) then drives onto the dock pose from the AMCL
+pose, through the collision monitor, before the robot reports IDLE/CHARGING.
 """
 
 from collections import deque
@@ -44,15 +48,19 @@ import uuid
 import rclpy
 from action_msgs.msg import GoalStatus
 from ament_index_python.packages import get_package_share_directory
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Twist
 from nav2_msgs.action import ComputePathToPose, NavigateToPose
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile, QoSReliabilityPolicy
+from rclpy.time import Time
 from sensor_msgs.msg import BatteryState
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
+from tf2_ros import Buffer, TransformException, TransformListener
 import yaml
+
+from cstam_phase1.docking import DockApproach
 
 
 DOOR_MEMORY_SEC = 180.0  # how long a blocked door is avoided
@@ -140,6 +148,12 @@ class DeliveryTaskManager(Node):
         self.declare_parameter('history_size', 10)
         # Average speed for ETA estimates, including slowdowns near people.
         self.declare_parameter('eta_speed_mps', 0.3)
+        # Final docking approach after Nav2 (see docking.py). The command goes
+        # into the collision monitor's input, so people still stop the robot.
+        self.declare_parameter('precise_docking', True)
+        self.declare_parameter('docking_cmd_topic', 'cmd_vel_smoothed')
+        self.declare_parameter('docking_timeout_sec', 30.0)
+        self.declare_parameter('base_frame', 'base_footprint')
 
         self.locations_file = str(self.get_parameter('locations_file').value)
         self.pickup_location = str(self.get_parameter('pickup_location').value)
@@ -159,6 +173,13 @@ class DeliveryTaskManager(Node):
         self.order_log_file = str(self.get_parameter('order_log_file').value) or os.path.join(
             os.environ.get('ROS_HOME', os.path.expanduser('~/.ros')), 'cstam_orders.jsonl')
         self.eta_speed = max(0.05, float(self.get_parameter('eta_speed_mps').value))
+        self.precise_docking = bool(self.get_parameter('precise_docking').value)
+        self.docking_timeout = float(self.get_parameter('docking_timeout_sec').value)
+        self.base_frame = str(self.get_parameter('base_frame').value)
+        self.docking = None          # DockApproach while the final approach runs
+        self.docking_timer = None
+        self.docking_started = 0.0
+        self.dock_error = None       # (metres, radians) left after the last docking
         self.orders = {}             # location -> open (queued or active) order
         self.history = deque(maxlen=max(1, int(self.get_parameter('history_size').value)))
         self.last_rejection = None
@@ -216,6 +237,10 @@ class DeliveryTaskManager(Node):
         self.battery_subscription = self.create_subscription(
             BatteryState, '/battery/state', self._battery_callback, battery_qos)
         self.navigator = ActionClient(self, NavigateToPose, 'navigate_to_pose')
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+        self.docking_cmd = self.create_publisher(
+            Twist, str(self.get_parameter('docking_cmd_topic').value), 10)
         self.path_planner = ActionClient(self, ComputePathToPose, 'compute_path_to_pose')
         self.create_timer(0.5, self._start_queued_task)
         self._publish_status('ready')
@@ -447,6 +472,7 @@ class DeliveryTaskManager(Node):
             self._request_dock_return('low battery')
 
     def _battery_depleted(self):
+        self._stop_docking()
         if self.current_goal_handle is not None:
             self.current_goal_handle.cancel_goal_async()
         if self.state == 'AWAITING_CONFIRMATION':
@@ -666,20 +692,83 @@ class DeliveryTaskManager(Node):
         elif stage == 'customer':
             self._arrived_at_customer()
         elif stage == 'dock':
-            self.manual_dock_requested = False
-            self.current_location = None
-            self.current_stage = None
-            self.at_dock = True
-            if self.battery_return and (
-                    self.battery_percentage is None
-                    or self.battery_percentage < self.resume_percentage):
-                self.state = 'CHARGING'
-                self._publish_status('docked; charging until '
-                                     f'{self.resume_percentage:.0f}%')
-            else:
-                self.battery_return = False
-                self.state = 'IDLE'
-                self._publish_status('IDLE at first-floor dock')
+            if not self._start_docking():
+                self._docked()
+
+    # Docking ------------------------------------------------------------------
+    def _robot_pose(self):
+        try:
+            transform = self.tf_buffer.lookup_transform(self.frame_id, self.base_frame, Time())
+        except TransformException:
+            return None
+        t, q = transform.transform.translation, transform.transform.rotation
+        yaw = math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
+        return (t.x, t.y, yaw)
+
+    def _start_docking(self):
+        dock = self.locations.get(self.dock_location)
+        if not self.precise_docking or dock is None or self._robot_pose() is None:
+            return False
+        self.docking = DockApproach((dock['x'], dock['y'], dock['yaw']))
+        self.docking_started = time.monotonic()
+        self._publish_status('final docking approach')
+        # Let the velocity smoother finish Nav2's stop first (velocity_timeout 1 s).
+        self.docking_timer = self.create_timer(0.1, self._docking_step)
+        return True
+
+    def _docking_step(self):
+        if self.docking is None:
+            return
+        elapsed = time.monotonic() - self.docking_started
+        if elapsed < 1.2:
+            return
+        pose = self._robot_pose()
+        timed_out = elapsed > self.docking_timeout
+        if pose is None or timed_out:
+            if timed_out:
+                self.get_logger().warn('final docking approach timed out; docked as is')
+            self._stop_docking(pose)
+            self._docked()
+            return
+        linear, angular, done = self.docking.step(pose)
+        if done:
+            self._stop_docking(pose)
+            self._docked()
+            return
+        command = Twist()
+        command.linear.x, command.angular.z = linear, angular
+        self.docking_cmd.publish(command)
+
+    def _stop_docking(self, pose=None):
+        if self.docking is None:
+            return
+        if pose is not None:
+            distance, yaw_error = self.docking.error(pose)
+            self.dock_error = (round(distance, 3), round(yaw_error, 3))
+            self.get_logger().info(
+                f'docked {distance * 100:.1f} cm / {math.degrees(yaw_error):.1f} deg from the dock pose')
+        self.docking = None
+        if self.docking_timer is not None:
+            self.docking_timer.cancel()
+            self.destroy_timer(self.docking_timer)
+            self.docking_timer = None
+        self.docking_cmd.publish(Twist())
+
+    def _docked(self):
+        self.manual_dock_requested = False
+        self.current_location = None
+        self.current_stage = None
+        self.at_dock = True
+        if self.battery_return and (
+                self.battery_percentage is None
+                or self.battery_percentage < self.resume_percentage):
+            self.state = 'CHARGING'
+            self._publish_status('docked; charging until '
+                                 f'{self.resume_percentage:.0f}%')
+        else:
+            self.battery_return = False
+            self.state = 'IDLE'
+            self._publish_status('IDLE at first-floor dock')
 
     def _arrived_at_customer(self):
         location = self.current_location
@@ -931,6 +1020,7 @@ class DeliveryTaskManager(Node):
 
     def _fail(self, message):
         self._cancel_retry()
+        self._stop_docking()
         self.goal_attempts = 0
         self.current_goal_handle = None
         self.goal_request_pending = False
@@ -961,6 +1051,7 @@ class DeliveryTaskManager(Node):
             'last_rejection': self.last_rejection,
             'confirmation_timeout_sec': self.confirmation_timeout,
             'counters': dict(self.counters),
+            'dock_error': self.dock_error,
             'last_result': self.last_result,
             'battery_percentage': (
                 None if self.battery_percentage is None

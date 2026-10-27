@@ -1,6 +1,7 @@
 """Regression checks for manual-return arbitration, separate from real acceptance."""
 from collections import deque
 import json
+import math
 import os
 from types import SimpleNamespace
 
@@ -51,6 +52,10 @@ def manager():
     node.confirmation_timeout = 0.0   # deliver on arrival unless a test opts in
     node.progress = None
     node.order_log_file = os.devnull
+    node.precise_docking = False
+    node.docking = None
+    node.docking_timer = None
+    node.dock_error = None
     node.scheduled = []
     node.create_timer = lambda period, cb: node.scheduled.append(cb) or SimpleNamespace(
         cancel=lambda: None)
@@ -547,3 +552,49 @@ def test_orders_record_battery_and_navigation_is_counted():
     assert (done['battery_start'], done['battery_end']) == (91.0, 84.0)
     assert node.counters['nav_failures'] == 1 and node.counters['nav_retries'] == 1
     assert node._status_payload()['counters'] == node.counters
+
+
+def test_dock_arrival_runs_the_final_approach_before_reporting_idle():
+    node = manager()
+    node.precise_docking = True
+    node.docking_timeout = 30.0
+    node.locations = {'dock': {'x': 5.78, 'y': 15.5, 'yaw': 1.5708}}
+    pose = [5.95, 15.32, 1.40]   # inside Nav2's 0.25 m goal tolerance
+    commands = []
+
+    def drive(command):
+        commands.append(command)
+        pose[2] += command.angular.z * 0.1
+        pose[0] += command.linear.x * 0.1 * math.cos(pose[2])
+        pose[1] += command.linear.x * 0.1 * math.sin(pose[2])
+    node._robot_pose = lambda: tuple(pose)
+    node.docking_cmd = SimpleNamespace(publish=drive)
+    future = SimpleNamespace(result=lambda: SimpleNamespace(status=4))
+    node._goal_result_callback(future, 'dock', 'dock')
+    assert node.events[-1] == 'final docking approach'
+    assert not node.at_dock and node.state != 'IDLE'
+    node.docking_started -= 2.0   # past the settle delay
+    step = node.scheduled[-1]
+    for _ in range(300):
+        if node.docking is None:
+            break
+        step()
+    assert node.at_dock and node.state == 'IDLE'
+    assert node.dock_error[0] <= 0.05 and abs(node.dock_error[1]) <= 0.05
+    assert commands[-1].linear.x == 0.0 and commands[-1].angular.z == 0.0
+
+
+def test_battery_depletion_stops_the_final_approach():
+    node = manager()
+    node.precise_docking = True
+    node.docking_timeout = 30.0
+    node.locations = {'dock': {'x': 0.0, 'y': 0.0, 'yaw': 0.0}}
+    node._robot_pose = lambda: (0.2, 0.0, 0.0)
+    published = []
+    node.docking_cmd = SimpleNamespace(publish=published.append)
+    node._goal_result_callback(
+        SimpleNamespace(result=lambda: SimpleNamespace(status=4)), 'dock', 'dock')
+    assert node.docking is not None
+    node._battery_depleted()
+    assert node.docking is None and node.state == 'BATTERY_DEPLETED'
+    assert published[-1].linear.x == 0.0
