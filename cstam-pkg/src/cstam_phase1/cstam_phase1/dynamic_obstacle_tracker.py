@@ -49,6 +49,7 @@ from cstam_phase1.people_tracking import (
     cluster_scan_points,
     merge_detections,
     person_detections,
+    plausible_detections,
     remove_near,
     predicted_footprints,
 )
@@ -77,6 +78,12 @@ class DynamicObstacleTracker(Node):
         # people layers' per-update clearing area (and re-inflation) small.
         self.declare_parameter('max_range', 5.5)
         self.declare_parameter('static_margin', 0.20)
+        # No person's centre is this close to furniture or a wall (body
+        # radius plus estimation error); such detections are furniture edges.
+        self.declare_parameter('person_min_clearance', 0.30)
+        # Within this distance of the map a track must first move this far.
+        self.declare_parameter('furniture_distance', 0.50)
+        self.declare_parameter('furniture_min_travel', 0.40)
         self.declare_parameter('cluster_gap', 0.25)
         self.declare_parameter('association_gate', 0.7)
         self.declare_parameter('track_timeout', 0.8)
@@ -122,8 +129,13 @@ class DynamicObstacleTracker(Node):
             gate=float(get('association_gate')),
             max_age=float(get('track_timeout')),
             confirm_hits=int(get('confirm_hits')),
-            occluded_max_age=float(get('occluded_timeout')))
+            occluded_max_age=float(get('occluded_timeout')),
+            min_travel_near_static=float(get('furniture_min_travel')))
+        self.person_clearance = float(get('person_min_clearance'))
+        self.furniture_distance = float(get('furniture_distance'))
         self.static_map = None
+        self.too_close = None      # StaticMap with person_min_clearance
+        self.near_furniture = None  # StaticMap with furniture_distance
         self.aux = {}  # topic -> (stamp_sec, map-frame points, sensor xy)
         self.aux_max_age = float(get('aux_scan_max_age'))
         self.mask_radius = float(get('people_mask_radius'))
@@ -163,6 +175,9 @@ class DynamicObstacleTracker(Node):
             grid, message.info.resolution,
             message.info.origin.position.x, message.info.origin.position.y,
             self.static_margin)
+        origin = (message.info.origin.position.x, message.info.origin.position.y)
+        self.too_close = StaticMap(grid, message.info.resolution, *origin, self.person_clearance)
+        self.near_furniture = StaticMap(grid, message.info.resolution, *origin, self.furniture_distance)
         self.get_logger().info(
             f'Static map loaded ({message.info.width}x{message.info.height}); '
             f'ignoring returns within {self.static_margin:.2f} m of it.')
@@ -292,6 +307,7 @@ class DynamicObstacleTracker(Node):
                 fused = True
         if fused:
             detections = merge_detections(detections, 0.45)
+        detections = plausible_detections(detections, self.too_close.is_static)
         robot_xy, robot_yaw = self.robot_pose
 
         def in_blind_zone(position):
@@ -299,7 +315,8 @@ class DynamicObstacleTracker(Node):
             return (local[0] < self.blind_x
                     and float(np.hypot(local[0], local[1])) < self.blind_radius)
         tracks = self.tracker.update(
-            detections, stamp.nanoseconds * 1e-9, in_blind_zone)
+            detections, stamp.nanoseconds * 1e-9, in_blind_zone,
+            lambda position: bool(self.near_furniture.is_static(np.asarray([position]))[0]))
 
         current, future = predicted_footprints(
             tracks, self.horizon, self.prediction_step, self.person_radius,

@@ -9,6 +9,7 @@ from cstam_phase1.people_tracking import (
     disc_points,
     merge_detections,
     person_detections,
+    plausible_detections,
     predicted_footprints,
     remove_near,
     static_mask,
@@ -140,3 +141,41 @@ def test_standing_person_track_survives_short_detection_gaps():
     kept = tracker.update([], 2.0 + 2.0)   # 2 s without a detection
     assert len(kept) == 1
     assert tracker.update([], 2.0 + 3.5) == []
+
+
+def _wall_map():
+    # 10 m x 10 m at 0.05 m, one wall along x = 5 m.
+    grid = np.zeros((200, 200), dtype=np.int8)
+    grid[:, 100] = 100
+    return lambda margin: StaticMap(grid, 0.05, 0.0, 0.0, margin)
+
+
+def test_centres_a_body_cannot_reach_are_dropped():
+    too_close = _wall_map()(0.30)
+    detections = [np.array([4.80, 3.0]), np.array([4.55, 3.0]), np.array([3.0, 3.0])]
+    kept = plausible_detections(detections, too_close.is_static)
+    assert [d[0] for d in kept] == [4.55, 3.0]
+    assert plausible_detections([], too_close.is_static) == []
+
+
+def test_still_track_beside_furniture_is_not_a_person_until_it_moves():
+    near = _wall_map()(0.50)
+    near_static = lambda p: bool(near.is_static(np.asarray([p]))[0])  # noqa: E731
+    tracker = MultiTracker(confirm_hits=3)
+    # A furniture edge 0.4 m from the wall, seen every scan, never moving.
+    for k in range(20):
+        confirmed = tracker.update([np.array([4.55, 3.0 + 0.01 * (k % 2)])], k * 0.1,
+                                   near_static=near_static)
+    assert confirmed == []
+    # A person walking along the same wall is reported once they have moved.
+    tracker = MultiTracker(confirm_hits=3)
+    seen = []
+    for k in range(20):
+        seen.append(bool(tracker.update([np.array([4.55, 1.0 + 0.1 * k])], k * 0.1,
+                                        near_static=near_static)))
+    assert not seen[2] and seen[-1]
+    # Away from furniture a standing person is reported straight away.
+    tracker = MultiTracker(confirm_hits=3)
+    for k in range(3):
+        confirmed = tracker.update([np.array([2.0, 3.0])], k * 0.1, near_static=near_static)
+    assert len(confirmed) == 1
