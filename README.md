@@ -225,7 +225,8 @@ and re-run. "Found" names what failed before the fix.
 | 7 | Collision monitor slowdown vs controller ramp | robot pinned at 1.7 cm/s, progress failures | Absolute speed caps only; turning in place never limited |
 | 8 | Tracker output stalls | controller aborted on a stale costmap | People layers never abort navigation; the monitor stops the robot instead |
 | 9 | People blocking each other / waiting on the robot forever | gridlocks in the simulator | Patience detours with staggered retries; lanes checked against the map, the robot and other people |
-| 10 | First planner request after startup | goal unacknowledged within 20 ms | BT server timeout 200 ms; smaller people-layer update area |
+| 10 | Livelock: a detour picked but never walkable, or two people blocking each other with no robot near | robot stuck behind a guest until the battery ran out; waiter and guest frozen together | Lanes respect the same 3 cm contact margin as the walking check; anyone without real progress towards their waypoint for 12-16 s (staggered) gives way, robot or not |
+| 11 | First planner request after startup | goal unacknowledged within 20 ms | BT server timeout 200 ms; smaller people-layer update area |
 
 Measured on the final configuration, two consecutive recorded runs (tables 1,
 2 and 3 each): **6/6 deliveries, 0 contacts, 140 encounters within 1 m**,
