@@ -1,0 +1,30 @@
+# Service intervals for the delivery robot. metric is one of distance_m,
+# drive_s, operating_s, battery_cycles (integrated by cstam_ui/usage.py).
+# Intervals follow typical small indoor service robots; adjust for the
+# real hardware.
+items:
+  - id: wheels
+    name: Wheels and tyres
+    metric: distance_m
+    interval: 50000          # 50 km
+    task: Check tyre wear and wheel play, clean debris from the axles.
+  - id: drive
+    name: Motors and gearboxes
+    metric: drive_s
+    interval: 720000         # 200 h of driving
+    task: Inspect motors, gearboxes and encoder cables; tighten mounts.
+  - id: sensors
+    name: LiDAR and range sensors
+    metric: operating_s
+    interval: 360000         # 100 h powered on
+    task: Clean the LiDAR window, camera lens and ultrasonic sensors.
+  - id: battery
+    name: Battery pack
+    metric: battery_cycles
+    interval: 500            # full equivalent cycles
+    task: Replace the Li-ion pack; capacity falls noticeably after ~500 cycles.
+  - id: inspection
+    name: General inspection
+    metric: operating_s
+    interval: 1800000        # 500 h powered on
+    task: "Full safety check: bumpers, emergency stop, tray, fasteners."
