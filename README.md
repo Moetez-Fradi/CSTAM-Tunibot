@@ -374,14 +374,30 @@ the browser sends it as `X-Admin-Pin` (or `?pin=` for event streams).
 | Page | For |
 |---|---|
 | `/` | landing page: customer or staff |
-| `/table/<location>` (e.g. `/table/table_3`; `/table` lists them) | customers, phone first: menu, order, live tracking with ETA and a mini map, "I've got my order" at the table, cancel while queued. The order survives a page reload. |
-| `/admin` | staff dashboard. **Overview**: live floor plan (robot, planned route, tracked people, tables, doors), active delivery with its stages, battery with the 20/35/80% policy, queue with cancel, return to dock, battery chart for the last 30 minutes. **Orders**: delivered count, median time to table, confirmation rate, failures, full order log. **System**: node health, data freshness, people-safety metrics, task manager state. |
+| `/table/<location>` (e.g. `/table/table_3`; `/table` lists them) | customers, phone first: menu, order, live tracking with ETA and a mini map, "I've got my order" at the table, cancel while queued. The order survives a page reload. Guests can also say or type the order in their own words (see [Voice ordering](#voice-ordering)). |
+| `/admin` | staff dashboard. **Overview**: live floor plan (robot, planned route, tracked people, tables, doors), active delivery with its stages, battery with the 20/35/80% policy, queue with cancel, return to dock, battery chart for the last 30 minutes. **Orders**: delivered count, median time to table, confirmation rate, failures, full order log. **Insights**: deliveries per hour or day, revenue, time to table (median and 90th percentile), battery used per delivery and deliveries per charge, popular items, busiest tables, Nav2 goal/failure/retry counters (today, 7 days or all time). **Maintenance**: lifetime distance, driving time, operating time and battery cycles; a service schedule with a forecast of when each item falls due, and "Mark serviced". **System**: node health, data freshness, people-safety metrics, task manager state. |
 | `/qr` | printable QR card per table (staff, linked from the dashboard). Each code opens that table's page. |
 | `/console` | raw API console for development |
 
 Light and dark themes follow the system setting (toggle top right). The
 Geist fonts are bundled (`web/fonts`, SIL OFL 1.1), so the UI works without
 internet.
+
+**Voice ordering.** The customer page reads an order in the guest's own
+words, spoken or typed, in English or French: "two cappuccinos and a brik",
+"deux cafés et une citronnade pour la terrasse 2". `POST /api/voice`
+(`cstam_ui/voice.py`) finds menu items (names and the `aliases` in
+`menu.yaml`), quantities and a table, and the page adds them to the cart;
+the guest still presses Send. The microphone uses the browser's speech
+recognition, which browsers only allow on HTTPS or `localhost` (and Chrome's
+recognition needs internet). Phones opening the plain-HTTP table page
+therefore get the typed box only; for a spoken demo, use the laptop at
+`http://localhost:8080/table/table_2`.
+
+**Maintenance data.** Usage is integrated from `/odom` and `/battery/state`
+by the UI node and kept in `$ROS_HOME/cstam_robot_usage.json` (saved every
+30 s and on exit), so it accumulates across runs; intervals are in
+`cstam_ui/config/maintenance.yaml`. It is only tracked while the UI runs.
 
 **Table QR codes.** The codes point at this machine's network address,
 detected at startup and printed in the log (`CSTAM UI on http://…`). Phones
