@@ -50,6 +50,7 @@ class Catalog:
                 'id': str(item['id']), 'name': str(item['name']),
                 'category': str(item.get('category', 'Other')),
                 'price': round(float(item.get('price', 0.0)), 3),
+                'aliases': [str(a) for a in item.get('aliases') or []],
             })
         self.menu_by_id = {item['id']: item for item in self.menu}
 
