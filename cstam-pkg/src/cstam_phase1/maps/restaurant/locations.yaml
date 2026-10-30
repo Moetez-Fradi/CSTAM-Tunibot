@@ -1,6 +1,7 @@
-# All coordinates are in the saved first-floor map frame.
+# All coordinates are in the map frame, shared by both floors: floor 1 uses
+# restaurant.yaml, floor 2 (the upper dining room) floor2.yaml.
 # These are deliberately semantic names: task requests never contain x/y.
-supported_floors: [1]
+supported_floors: [1, 2]
 
 # Robot home: the 1.86 m service corridor north of the dining room (map
 # x 4.85..6.71, y 10.44..17.98, drawn by scripts/build_home.py). The robot
@@ -27,6 +28,7 @@ table_1:
   x: -5.60
   y: 4.15
   yaw: 0.0
+  table: [-4.11, 4.15]   # tabletop centre (VIP recognition)
 
 table_2:
   floor: 1
@@ -35,6 +37,7 @@ table_2:
   x: -5.60
   y: 1.96
   yaw: 0.0
+  table: [-4.09, 1.99]   # tabletop centre (VIP recognition)
 
 table_3:
   floor: 1
@@ -43,6 +46,25 @@ table_3:
   x: -5.60
   y: -2.30
   yaw: 0.0
+  table: [-4.14, -2.3]   # tabletop centre (VIP recognition)
+
+# Upper dining room (floor 2), reached by the elevator. Same layout as the
+# west column downstairs, so the same west-aisle approach, facing east.
+table_4:
+  floor: 2
+  # North table of the west column upstairs (centre -4.15, -17.02).
+  x: -5.64
+  y: -17.02
+  yaw: 0.0
+  table: [-4.15, -17.02]   # tabletop centre (VIP recognition)
+
+table_5:
+  floor: 2
+  # Next table south (centre -4.13, -19.18).
+  x: -5.62
+  y: -19.18
+  yaw: 0.0
+  table: [-4.13, -19.18]   # tabletop centre (VIP recognition)
 
 # Terrace, through the opened west doors (0.92 m clear leaf each).
 # Delivery poses face the table from the facade side: ~0.25 m to the
@@ -72,3 +94,15 @@ doors:
     y: 3.74
   door_b:
     y: 7.20
+
+# Elevator shaft south of the dining room (not a delivery target). The cabin
+# stands at (x, cabin_y). Its doorway faces the dining room (north) at floor 1
+# and the upper dining room (south) at floor 2, so the robot drives straight
+# through: in from a floor's lobby pose heading `enter_yaw`, out to the other
+# floor's lobby pose with the same heading.
+elevator:
+  x: 0.91
+  cabin_y: -11.68
+  floors:
+    1: {map: restaurant.yaml, height: 0.0, lobby_y: -9.40, enter_yaw: -1.5708}
+    2: {map: floor2.yaml, height: 2.56, lobby_y: -13.90, enter_yaw: 1.5708}

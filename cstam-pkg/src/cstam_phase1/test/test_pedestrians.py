@@ -101,8 +101,8 @@ def test_pedestrians_do_not_walk_into_each_other():
     assert math.hypot(p.position[0] - other[0], p.position[1] - other[1]) >= 0.5
 
 
-def _load_map():
-    meta = yaml.safe_load((PACKAGE / 'maps' / 'restaurant' / 'restaurant.yaml').read_text())
+def _load_map(name='restaurant.yaml'):
+    meta = yaml.safe_load((PACKAGE / 'maps' / 'restaurant' / name).read_text())
     raw = (PACKAGE / 'maps' / 'restaurant' / meta['image']).read_bytes()
     parts, index = [], 0
     while len(parts) < 4:  # P5 header: magic, width, height, maxval

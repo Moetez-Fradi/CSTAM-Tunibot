@@ -33,6 +33,16 @@ confirmation_timeout_sec passes. /delivery/cancel takes an order id or a
 location: a queued order is dropped, an active one sends the robot back to
 the dock. Finished orders are appended to order_log_file (JSON lines).
 
+Floors: locations carry a floor. A trip to another floor goes through the
+elevator (elevator.py): the floor's lobby pose, into the cabin, a ride on
+/elevator/to_floor_N, out to the other floor's lobby pose, then on as usual.
+A failed ride is retried like a failed Nav2 goal.
+
+VIP: when the camera recognised the VIP guest at a table in the last
+vip_memory_sec (vip_detector.py, /vip/status), that table's queued order
+moves to the front of the queue, behind an order that was already
+interrupted (that guest was promised to be served first).
+
 Docking: Nav2 accepts the dock goal within its 0.25 m goal tolerance; a slow
 final approach (docking.py) then drives onto the dock pose from the AMCL
 pose, through the collision monitor, before the robot reports IDLE/CHARGING.
@@ -46,6 +56,7 @@ import time
 import uuid
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from action_msgs.msg import GoalStatus
 from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import PoseStamped, Twist
@@ -61,6 +72,7 @@ from tf2_ros import Buffer, TransformException, TransformListener
 import yaml
 
 from cstam_phase1.docking import DockApproach
+from cstam_phase1.elevator import load_elevator, ride_legs
 
 
 DOOR_MEMORY_SEC = 180.0  # how long a blocked door is avoided
@@ -154,6 +166,7 @@ class DeliveryTaskManager(Node):
         self.declare_parameter('docking_cmd_topic', 'cmd_vel_smoothed')
         self.declare_parameter('docking_timeout_sec', 30.0)
         self.declare_parameter('base_frame', 'base_footprint')
+        self.declare_parameter('vip_memory_sec', 600.0)
 
         self.locations_file = str(self.get_parameter('locations_file').value)
         self.pickup_location = str(self.get_parameter('pickup_location').value)
@@ -180,6 +193,8 @@ class DeliveryTaskManager(Node):
         self.docking_timer = None
         self.docking_started = 0.0
         self.dock_error = None       # (metres, radians) left after the last docking
+        self.vip_memory = float(self.get_parameter('vip_memory_sec').value)
+        self.vip = None              # last VIP sighting from /vip/status
         self.orders = {}             # location -> open (queued or active) order
         self.history = deque(maxlen=max(1, int(self.get_parameter('history_size').value)))
         self.last_rejection = None
@@ -194,6 +209,9 @@ class DeliveryTaskManager(Node):
         self.counters = {'nav_goals': 0, 'nav_failures': 0, 'nav_retries': 0, 'door_reroutes': 0}
         self.locations = self._load_locations(self.locations_file)
         self.doors = self._load_doors(self.locations_file)
+        self.elevator = load_elevator(self.locations_file)
+        self.floor = 1               # the dock is on floor 1
+        self.riding = False          # an elevator ride is running
         self.zone = 'room'           # the robot starts at the dock, indoors
         self.last_terrace_y = 0.0
         self.legs = []               # remaining waypoint legs of this stage
@@ -237,6 +255,11 @@ class DeliveryTaskManager(Node):
         self.battery_subscription = self.create_subscription(
             BatteryState, '/battery/state', self._battery_callback, battery_qos)
         self.navigator = ActionClient(self, NavigateToPose, 'navigate_to_pose')
+        self.elevator_clients = {
+            floor: self.create_client(Trigger, f'/elevator/to_floor_{floor}')
+            for floor in (self.elevator or {}).get('floors', {})}
+        self.create_subscription(String, '/elevator/state', self._elevator_state_callback, status_qos)
+        self.create_subscription(String, '/vip/status', self._vip_callback, status_qos)
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.docking_cmd = self.create_publisher(
@@ -245,7 +268,7 @@ class DeliveryTaskManager(Node):
         self.create_timer(0.5, self._start_queued_task)
         self._publish_status('ready')
         self.get_logger().info(
-            f'Loaded first-floor locations: {sorted(self.locations)}')
+            f'Loaded locations: {sorted(self.locations)}')
 
     @staticmethod
     def _load_locations(path):
@@ -256,7 +279,7 @@ class DeliveryTaskManager(Node):
             raise RuntimeError(f'Cannot load locations file {path}: {error}') from error
         locations = {}
         for name, value in data.items():
-            if name in ('supported_floors', 'doors') or not isinstance(value, dict):
+            if name in ('supported_floors', 'doors', 'elevator') or not isinstance(value, dict):
                 continue
             try:
                 floor = int(value['floor'])
@@ -297,10 +320,28 @@ class DeliveryTaskManager(Node):
                 {'name': f'{door}_{"out" if outbound else "in"}_2', 'x': second, 'y': y, 'yaw': yaw}]
 
     def _plan_legs(self, location):
-        """Waypoint legs before `location`, choosing an untried door."""
+        """Waypoint legs before `location`: a door (untried first) and the elevator.
+
+        Planned from where the robot is now, so a reroute after a blocked
+        door or a ride keeps whatever is still ahead.
+        """
         target = self.locations[location]
+        floor = target.get('floor', 1)
+        if floor == self.floor:
+            return self._door_plan(target)
+        # Floor change: leave the terrace first, ride, then the target's door.
+        doors = self._door_plan({'x': 0.0, 'y': 0.0}) if self.floor == 1 else []
+        if doors is None:
+            return None
+        after = self._door_plan(target, zone='room') if floor == 1 else []
+        if after is None:
+            return None
+        return doors + ride_legs(self.elevator, self.floor, floor) + after
+
+    def _door_plan(self, target, zone=None):
+        """Door legs from `zone` (default: the robot's) to target's zone."""
         target_zone = self._zone_of(target)
-        if self.doors is None or target_zone == self.zone:
+        if self.doors is None or target_zone == (zone or self.zone):
             return []
         terrace_y = target['y'] if target_zone == 'terrace' else self.last_terrace_y
         # A door found blocked in the last few minutes (e.g. on the way out)
@@ -332,8 +373,10 @@ class DeliveryTaskManager(Node):
                 f'unknown location "{location}"; valid locations: '
                 f'{", ".join(self._delivery_locations())}')
             return
-        if self.locations[location]['floor'] != 1:
-            reject(f'location "{location}" is not on supported floor 1')
+        if self.locations[location]['floor'] != 1 and (
+                self.elevator is None or self.locations[location]['floor'] not in self.elevator['floors']):
+            reject(f'location "{location}" is on floor {self.locations[location]["floor"]}, '
+                   'which no elevator serves')
             return
         if location in self.queue or location == self.current_location:
             reject(f'duplicate request for "{location}"')
@@ -349,6 +392,7 @@ class DeliveryTaskManager(Node):
         self.orders[location] = order
         self.queue.append(location)
         self._publish_status(f'queued {location} (order {order["id"]})')
+        self._prioritise_vip()
         self.get_logger().info(
             f'Queued delivery to {location}; queue={list(self.queue)}')
         self._start_queued_task()
@@ -420,6 +464,10 @@ class DeliveryTaskManager(Node):
         if self.goal_request_pending:
             self.state = 'RETURNING_TO_DOCK'
             self._publish_status('return-to-dock requested; waiting for goal acknowledgement')
+        elif self.riding:
+            # The cabin is moving: return once it arrives (_ride_done).
+            self.state = 'RETURNING_TO_DOCK'
+            self._publish_status('return-to-dock requested; after the elevator ride')
         elif self.current_goal_handle is not None:
             self.get_logger().warn('Cancelling current navigation to return to dock.')
             self.current_goal_handle.cancel_goal_async()
@@ -541,6 +589,7 @@ class DeliveryTaskManager(Node):
     def _navigate(self, location, stage):
         """Start a stage towards `location`, through a door when needed."""
         self.door_tried = set()
+        self.door_in_use = None   # set again only if this stage uses a door
         self.goal_attempts = 0
         legs = self._plan_legs(location) if location in self.locations else []
         self.legs = (legs or []) + [location]
@@ -548,10 +597,102 @@ class DeliveryTaskManager(Node):
 
     def _send_next_leg(self, stage):
         leg = self.legs[0]
-        if isinstance(leg, dict):
+        if isinstance(leg, dict) and 'ride' in leg:
+            self._ride(leg, stage)
+        elif isinstance(leg, dict):
             self._send_pose_goal(leg['name'], leg, stage)
         else:
             self._send_navigation_goal(leg, stage)
+
+    # Elevator --------------------------------------------------------------------
+    def _ride(self, leg, stage):
+        floor = leg['ride']
+        client = self.elevator_clients.get(floor)
+        self.current_stage = stage
+        if client is None or not client.service_is_ready():
+            self._ride_failed(leg, stage, 'elevator service unavailable')
+            return
+        self.riding = True
+        self._publish_status(f'riding the elevator to floor {floor}')
+        client.call_async(Trigger.Request()).add_done_callback(
+            lambda future: self._ride_done(future, leg, stage))
+
+    def _ride_done(self, future, leg, stage):
+        self.riding = False
+        try:
+            response = future.result()
+            ok, message = bool(response.success), response.message
+        except Exception as error:
+            ok, message = False, str(error)
+        if ok:
+            self.floor = leg['ride']
+            self.goal_attempts = 0
+            if self.legs and self.legs[0] is leg:
+                self.legs.pop(0)
+        if self.state == 'BATTERY_DEPLETED':
+            return
+        if self.manual_dock_requested and stage != 'dock':
+            self._requeue_interrupted_order()
+            self._return_to_dock()
+            return
+        if not ok:
+            self._ride_failed(leg, stage, message)
+            return
+        self._publish_status(f'at floor {self.floor}')
+        self._send_next_leg(stage)
+
+    def _ride_failed(self, leg, stage, reason):
+        self.get_logger().warn(f'elevator ride to floor {leg["ride"]} failed: {reason}')
+        # Same budget and policy as a failed Nav2 goal (status 6 = aborted).
+        self._navigation_failed(leg['name'], stage, 6)
+
+    # VIP ------------------------------------------------------------------------------
+    def _vip_callback(self, message):
+        try:
+            sighting = json.loads(message.data)
+        except ValueError:
+            return
+        if sighting.get('table') and sighting.get('last_seen'):
+            first = self.vip is None or self.vip.get('table') != sighting['table']
+            self.vip = sighting
+            if first:
+                self.get_logger().info(f'VIP recognised at {sighting["table"]}')
+            self._prioritise_vip()
+
+    def _vip_table(self):
+        if not self.vip or not self.vip.get('table'):
+            return None
+        if time.time() - float(self.vip.get('last_seen') or 0.0) > self.vip_memory:
+            return None
+        return self.vip['table']
+
+    def _prioritise_vip(self):
+        table = self._vip_table()
+        if table is None or table not in self.orders:
+            return
+        order = self.orders[table]
+        newly = not order.get('vip')
+        order['vip'] = True
+        if table in self.queue:
+            front = 0
+            if self.queue and self.queue[0] != table and (
+                    self.orders.get(self.queue[0]) or {}).get('interruptions'):
+                front = 1
+            if list(self.queue).index(table) > front:
+                self.queue.remove(table)
+                self.queue.insert(front, table)
+                self._publish_status(f'VIP at {table}: their order goes first')
+                return
+        if newly:
+            self._publish_status(f'VIP at {table}')
+
+    def _elevator_state_callback(self, message):
+        try:
+            state = json.loads(message.data)
+        except ValueError:
+            return
+        if not self.riding and isinstance(state.get('floor'), int):
+            self.floor = state['floor']
 
     def _send_navigation_goal(self, location, stage):
         if location not in self.locations:
@@ -622,7 +763,7 @@ class DeliveryTaskManager(Node):
     def _remaining_leg_distance(self):
         poses = [leg if isinstance(leg, dict) else self.locations.get(leg)
                  for leg in self.legs]
-        poses = [p for p in poses if p is not None]
+        poses = [p for p in poses if p is not None and 'x' in p]
         return sum(math.hypot(b['x'] - a['x'], b['y'] - a['y'])
                    for a, b in zip(poses, poses[1:]))
 
@@ -989,6 +1130,7 @@ class DeliveryTaskManager(Node):
             'started_at': None, 'picked_up_at': None, 'arrived_at': None,
             'confirm_by': None, 'finished_at': None, 'confirmed': False,
             'interruptions': 0, 'reason': None, 'battery_start': None, 'battery_end': None,
+            'vip': False,
         }
 
     def _update_order(self, location, **fields):
@@ -1051,6 +1193,10 @@ class DeliveryTaskManager(Node):
             'last_rejection': self.last_rejection,
             'confirmation_timeout_sec': self.confirmation_timeout,
             'counters': dict(self.counters),
+            'floor': self.floor,
+            'vip': ({'table': self.vip.get('table'), 'last_seen': self.vip.get('last_seen'),
+                     'x': self.vip.get('x'), 'y': self.vip.get('y'), 'visible': self.vip.get('visible')}
+                    if self._vip_table() else None),
             'dock_error': self.dock_error,
             'last_result': self.last_result,
             'battery_percentage': (
@@ -1076,8 +1222,11 @@ def main(args=None):
     node = DeliveryTaskManager()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
+    except Exception:
+        if rclpy.ok():   # not just the launch's shutdown racing the executor
+            raise
     finally:
         node.destroy_node()
         if rclpy.ok():

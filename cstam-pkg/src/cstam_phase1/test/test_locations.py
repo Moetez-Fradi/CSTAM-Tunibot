@@ -3,10 +3,14 @@ import pathlib
 import yaml
 
 
-def test_locations_are_first_floor_and_complete():
+def test_locations_are_complete_and_on_served_floors():
     locations_file = pathlib.Path(__file__).parents[1] / 'maps' / 'restaurant' / 'locations.yaml'
     data = yaml.safe_load(locations_file.read_text(encoding='utf-8'))
-    assert data['supported_floors'] == [1]
+    assert data['supported_floors'] == [1, 2]
+    assert sorted(data['elevator']['floors']) == [1, 2]
+    for name, value in data.items():
+        if isinstance(value, dict) and 'floor' in value:
+            assert value['floor'] in data['supported_floors'], name
     for name in ('dock', 'kitchen', 'table_1'):
         assert name in data
         assert data[name]['floor'] == 1
@@ -43,7 +47,7 @@ def test_every_location_footprint_is_clear_of_the_map():
     locations_file = pathlib.Path(__file__).parents[1] / 'maps' / 'restaurant' / 'locations.yaml'
     data = yaml.safe_load(locations_file.read_text(encoding='utf-8'))
     poses = {name: pose for name, pose in data.items()
-             if isinstance(pose, dict) and name != 'doors'}
+             if isinstance(pose, dict) and name not in ('doors', 'elevator')}
     doors = data['doors']
     for door, spec in doors.items():
         if isinstance(spec, dict):  # staging poses, both directions
@@ -51,11 +55,19 @@ def test_every_location_footprint_is_clear_of_the_map():
                 for yaw in (0.0, 3.1416):
                     poses[f'terrace door {door} {side} yaw {yaw}'] = {
                         'x': doors[side], 'y': spec['y'], 'yaw': yaw}
+    floor2 = _load_map('floor2.yaml')
+    lift = data['elevator']
+    for floor, spec in lift['floors'].items():   # lobby, cabin and exit poses
+        for y in (spec['lobby_y'], lift['cabin_y']):
+            for yaw in (1.5708, -1.5708):
+                poses[f'elevator floor {floor} y {y} yaw {yaw}'] = {
+                    'x': lift['x'], 'y': y, 'yaw': yaw, 'floor': floor}
     for name, pose in poses.items():
-        clearance = _footprint_clearance_to_map(grid, meta, pose['x'], pose['y'], pose['yaw'])
+        g, m = floor2 if pose.get('floor', 1) == 2 else (grid, meta)
+        clearance = _footprint_clearance_to_map(g, m, pose['x'], pose['y'], pose['yaw'])
         # Terrace poses were placed with margin; the Phase 1 poses are the
         # accepted, measured ones and only need to be collision-free.
-        required = 0.15 if name.startswith('terrace') else 0.0  # incl. door poses
+        required = 0.15 if name.startswith(('terrace', 'elevator', 'table_4', 'table_5')) else 0.0
         assert clearance > required, f'{name}: footprint clearance {clearance:.2f} m'
 
 
@@ -78,3 +90,18 @@ def test_west_wall_has_exactly_the_two_terrace_door_openings():
     for (y0, y1), door in zip(openings, ((3.28, 4.20), (6.74, 7.66))):
         assert abs(y0 - door[0]) < 0.1 and abs(y1 - door[1]) < 0.1
         assert y1 - y0 > 0.85  # the 0.54 m robot fits with margin
+
+
+def test_shaft_is_open_from_the_dining_room_and_from_the_upper_room():
+    """Floor 1 enters the shaft from the north, floor 2 leaves it to the south."""
+    from test_pedestrians import _load_map
+    for name, y_door in (('restaurant.yaml', -10.75), ('floor2.yaml', -12.63)):
+        grid, meta = _load_map(name)
+        res, (ox, oy) = meta['resolution'], meta['origin'][:2]
+        row = int((y_door - oy) / res)
+        free = [grid[row, int((x - ox) / res)] == 0 for x in (0.5, 0.91, 1.3)]
+        assert all(free), (name, free)
+    # ...and closed on the other side at each floor
+    grid, meta = _load_map('restaurant.yaml')
+    res, (ox, oy) = meta['resolution'], meta['origin'][:2]
+    assert grid[int((-12.63 - oy) / res), int((0.91 - ox) / res)] >= 50

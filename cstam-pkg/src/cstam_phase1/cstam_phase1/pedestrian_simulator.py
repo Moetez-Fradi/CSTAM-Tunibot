@@ -17,6 +17,7 @@ import os
 
 import numpy as np
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import OccupancyGrid
@@ -38,16 +39,22 @@ from cstam_phase1.pedestrian_model import (
 from cstam_phase1.people_tracking import StaticMap
 
 
-def pedestrian_sdf(name, color):
+# The VIP's jacket: an emissive magenta that no other object in the scene
+# uses, so the camera sees the same colour under any lighting (vip_detector).
+VIP_RGBA = '1 0.1 0.75 1'
+
+
+def pedestrian_sdf(name, color, vip=False):
     r, g, b = color
     skin = '0.76 0.57 0.42 1'
     dark = '0.12 0.13 0.16 1'
-    shirt = f'{r} {g} {b} 1'
+    shirt = VIP_RGBA if vip else f'{r} {g} {b} 1'
 
     def visual(vname, pose, geometry, rgba):
+        glow = f'<emissive>{rgba}</emissive>' if vip and rgba == shirt else ''
         return (f'<visual name="{vname}"><pose>{pose}</pose><geometry>{geometry}'
                 f'</geometry><material><ambient>{rgba}</ambient><diffuse>{rgba}'
-                f'</diffuse></material></visual>')
+                f'</diffuse>{glow}</material></visual>')
     parts = [
         visual('left_leg', '0 0.09 0.43 0 0 0', '<box><size>0.14 0.13 0.86</size></box>', dark),
         visual('right_leg', '0 -0.09 0.43 0 0 0', '<box><size>0.14 0.13 0.86</size></box>', dark),
@@ -89,6 +96,8 @@ class PedestrianSimulator(Node):
             Pedestrian(PedestrianConfig.from_dict(item), params)
             for item in scenario.get('pedestrians', [])]
         self.close_pass = float(self.get_parameter('close_pass_clearance').value)
+        self.upstairs_z = 1.2
+        self.robot_upstairs = False
         world = str(self.get_parameter('world_name').value)
 
         self.spawn_client = self.create_client(SpawnEntity, f'/world/{world}/create')
@@ -138,6 +147,10 @@ class PedestrianSimulator(Node):
 
     # Inputs -------------------------------------------------------------
     def _map_callback(self, message):
+        # People live downstairs: keep the first (floor-1) map when the
+        # elevator switches the map server to the upper floor.
+        if self.static_map is not None:
+            return
         grid = np.array(message.data, dtype=np.int8).reshape(
             message.info.height, message.info.width)
         self.static_map = StaticMap(
@@ -153,6 +166,8 @@ class PedestrianSimulator(Node):
         q = message.pose.orientation
         yaw = math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
         pose = self._world_to_map(message.pose.position.x, message.pose.position.y, yaw)
+        # Upstairs (after the elevator) the robot is no obstacle for anyone here.
+        self.robot_upstairs = message.pose.position.z > self.upstairs_z
         now = self.get_clock().now().nanoseconds * 1e-9
         if self.last_robot is not None:
             dt = now - self.last_robot[0]
@@ -177,7 +192,7 @@ class PedestrianSimulator(Node):
             request.entity_factory.name = pedestrian.config.name
             request.entity_factory.allow_renaming = False
             request.entity_factory.sdf = pedestrian_sdf(
-                pedestrian.config.name, pedestrian.config.color)
+                pedestrian.config.name, pedestrian.config.color, pedestrian.config.vip)
             request.entity_factory.pose.position.x = wx
             request.entity_factory.pose.position.y = wy
             request.entity_factory.pose.orientation.z = math.sin(wyaw / 2.0)
@@ -221,7 +236,8 @@ class PedestrianSimulator(Node):
         for pedestrian in self.pedestrians:
             before = pedestrian.position
             others = [p.position for p in self.pedestrians if p is not pedestrian]
-            pedestrian.step(dt, self.robot_pose, others, self._is_free)
+            pedestrian.step(dt, None if self.robot_upstairs else self.robot_pose,
+                            others, self._is_free)
             after = pedestrian.position
             self.moved[pedestrian.config.name] = math.dist(before, after)
             if (before != after) or pedestrian.speed > 0.0:
@@ -249,7 +265,7 @@ class PedestrianSimulator(Node):
         return response
 
     def _update_metrics(self, now):
-        if self.robot_pose is None:
+        if self.robot_pose is None or self.robot_upstairs:
             return
         if self.metrics_start is None:
             self.metrics_start = now
@@ -292,7 +308,7 @@ class PedestrianSimulator(Node):
         if self.metrics_start is None:
             return
         current = None
-        if self.robot_pose is not None and self.pedestrians:
+        if self.robot_pose is not None and self.pedestrians and not self.robot_upstairs:
             current = min(footprint_clearance(self.robot_pose, p.position)
                           for p in self.pedestrians)
 
@@ -342,8 +358,11 @@ def main(args=None):
     node = PedestrianSimulator()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
+    except Exception:
+        if rclpy.ok():   # not just the launch's shutdown racing the executor
+            raise
     finally:
         node.destroy_node()
         if rclpy.ok():

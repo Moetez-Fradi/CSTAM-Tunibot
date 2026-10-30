@@ -33,6 +33,7 @@ setup(
     entry_points={
         'console_scripts': [
             'battery_simulator = cstam_phase1.battery_simulator:main',
+            'elevator = cstam_phase1.elevator:main',
             'phase2_report = cstam_phase1.phase2_report:main',
             'dynamic_obstacle_trial = cstam_phase1.dynamic_obstacle_trial:main',
             'dynamic_obstacle_tracker = cstam_phase1.dynamic_obstacle_tracker:main',
@@ -43,6 +44,7 @@ setup(
             'scan_self_filter = cstam_phase1.scan_self_filter:main',
             'pointcloud_navigation_filter = cstam_phase1.pointcloud_navigation_filter:main',
             'startup_health_check = cstam_phase1.startup_health_check:main',
+            'vip_detector = cstam_phase1.vip_detector:main',
         ],
     },
 )

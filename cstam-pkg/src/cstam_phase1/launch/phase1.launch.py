@@ -160,6 +160,27 @@ def generate_launch_description():
         condition=normal_condition,
     )
 
+    # Simulated elevator to the upper dining room (moves the cabin and the
+    # robot through the bridged set_pose service, switches the map).
+    elevator = Node(
+        package='cstam_phase1',
+        executable='elevator',
+        name='cstam_elevator',
+        output='screen',
+        parameters=[{'use_sim_time': True}],
+        condition=normal_condition,
+    )
+
+    # VIP recognition from the RGB-D camera (2 Hz colour + depth).
+    vip_detector = Node(
+        package='cstam_phase1',
+        executable='vip_detector',
+        name='cstam_vip_detector',
+        output='screen',
+        parameters=[{'use_sim_time': True}],
+        condition=normal_condition,
+    )
+
     pedestrian_simulator = Node(
         package='cstam_phase1',
         executable='pedestrian_simulator',
@@ -294,6 +315,8 @@ def generate_launch_description():
         battery,
         obstacle_tracker,
         simulation_bridge,
+        elevator,
+        vip_detector,
         pedestrian_simulator,
         task_manager,
         web_ui,

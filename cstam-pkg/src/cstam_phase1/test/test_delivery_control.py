@@ -53,6 +53,12 @@ def manager():
     node.progress = None
     node.order_log_file = os.devnull
     node.precise_docking = False
+    node.floor = 1
+    node.elevator = None
+    node.riding = False
+    node.elevator_clients = {}
+    node.vip = None
+    node.vip_memory = 600.0
     node.docking = None
     node.docking_timer = None
     node.dock_error = None
