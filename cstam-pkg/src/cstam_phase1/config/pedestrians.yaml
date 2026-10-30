@@ -47,3 +47,14 @@ pedestrians:
     speed: 0.7
     color: [0.15, 0.55, 0.35]
     route: [[0.3, 5.5, 30.0], [0.3, 1.8, 30.0]]
+
+  # The VIP (magenta jacket, recognised by the robot's camera): comes down
+  # the central aisle and stands on table 2's east side, across the table
+  # from where the robot serves it. Their table's orders go first.
+  - name: guest_vip
+    behavior: polite
+    speed: 0.6
+    start_delay: 15.0
+    vip: true
+    color: [1.0, 0.1, 0.75]
+    route: [[0.8, 6.6, 10.0], [0.8, 0.9], [-2.75, 0.9], [-2.75, 1.99, 90.0]]
