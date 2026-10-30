@@ -61,11 +61,15 @@ class UiServer:
 
     def __init__(self, hub, catalog, bridge, web_dir, map_png=None, map_meta=None,
                  admin_pin='', order_log_file=None, host='0.0.0.0', port=8080,
-                 public_url=''):
+                 public_url='', floor_maps=None):
         self.hub, self.catalog, self.bridge = hub, catalog, bridge
         # abspath, not realpath: --symlink-install links each file elsewhere.
         self.web_dir = os.path.abspath(web_dir)
         self.map_png, self.map_meta = map_png, map_meta
+        # {floor: (png, meta)}; floor 1 is map_png/map_meta.
+        self.floor_maps = dict(floor_maps or {})
+        if map_png is not None:
+            self.floor_maps.setdefault(1, (map_png, map_meta))
         self.admin_pin = admin_pin
         self.order_log_file = order_log_file
         self.public_url = public_url.rstrip('/')
@@ -305,6 +309,7 @@ class _Handler(BaseHTTPRequestHandler):
                 'ok': True, 'online': bool(app.hub.get('task_manager_online'))})),
             (r'/api/config', lambda: self._send(HTTPStatus.OK, {
                 **app.catalog.public_config(), 'map': app.map_meta,
+                'maps': {str(f): meta for f, (_png, meta) in sorted(app.floor_maps.items())},
                 'admin_pin_required': bool(app.admin_pin)})),
             (r'/api/map\.png', self._map),
             (r'/api/qr\.svg', self._qr),
@@ -340,9 +345,13 @@ class _Handler(BaseHTTPRequestHandler):
         raise ApiError(HTTPStatus.NOT_FOUND, 'not found')
 
     def _map(self):
-        if self.app.map_png is None:
-            raise ApiError(HTTPStatus.NOT_FOUND, 'no map loaded')
-        self._send(HTTPStatus.OK, self.app.map_png, 'image/png', cache=True)
+        try:
+            floor = int(self._query().get('floor', 1))
+        except ValueError:
+            raise ApiError(HTTPStatus.BAD_REQUEST, 'floor must be a number') from None
+        if floor not in self.app.floor_maps:
+            raise ApiError(HTTPStatus.NOT_FOUND, f'no map for floor {floor}')
+        self._send(HTTPStatus.OK, self.app.floor_maps[floor][0], 'image/png', cache=True)
 
     def _qr(self):
         text = self._query().get('text', '')

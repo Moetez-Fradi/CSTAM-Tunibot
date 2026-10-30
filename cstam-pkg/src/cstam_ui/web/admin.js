@@ -65,10 +65,29 @@
   function openDashboard() {
     $('#dashboard').hidden = false;
     $('.tabs').hidden = false;
-    map = new MapView($('#map'), config, { padding: 20 });
+    map = new MapView($('#map'), config, { padding: 20, floorName: (f) => (f === 1 ? 'Floor 1 · dining room' : `Floor ${f} · upstairs`) });
+    floorPicker();
     selectTab(location.hash.slice(1) || 'overview');
     live = stream(`/api/admin/events${pin ? `?pin=${encodeURIComponent(pin)}` : ''}`, render,
       (ok) => { $('#offline').hidden = ok; });
+  }
+
+  // The map follows the robot between floors; picking a floor pins the view
+  // there until the robot next changes floor.
+  let followFloor = true;
+  let lastRobotFloor = 1;
+  function floorPicker() {
+    const host = $('#floors');
+    if (map.floors.length < 2) return;
+    host.hidden = false;
+    host.replaceChildren(...map.floors.map((f) => el('button', {
+      type: 'button', role: 'radio', 'aria-checked': String(f === map.floor),
+      onclick: () => { followFloor = f === lastRobotFloor; showFloor(f); },
+    }, `Floor ${f}`)));
+  }
+  function showFloor(f) {
+    map.setFloor(f);
+    for (const button of $('#floors').children) button.setAttribute('aria-checked', String(button.textContent === `Floor ${f}`));
   }
 
   // ----- tabs ------------------------------------------------------------------
@@ -135,8 +154,13 @@
 
     const pose = state.pose;
     $('#pose').textContent = pose ? `x ${pose.x.toFixed(2)}  y ${pose.y.toFixed(2)}  ${Math.round(pose.yaw * 180 / Math.PI)}°` : 'No position yet';
-    map.update({ pose, plan: state.plan, people: state.people, moving: MOVING_STATES.has(status.state) });
+    const robotFloor = status.floor || 1;
+    if (robotFloor !== lastRobotFloor) { lastRobotFloor = robotFloor; followFloor = true; }
+    if (followFloor && map.floor !== robotFloor) showFloor(robotFloor);
+    map.update({ pose, plan: state.plan, people: state.people, moving: MOVING_STATES.has(status.state), robotFloor });
+    if (robotFloor > 1) $('#pose').textContent += `  · floor ${robotFloor}`;
 
+    renderVip(status, state.server_time);
     renderActive(status);
     renderBattery(state.battery, status);
     renderQueue(status);
@@ -215,6 +239,19 @@
     return 'normal';
   }
 
+  // The VIP guest recognised by the robot's camera (vip_detector).
+  function renderVip(status, now) {
+    const banner = $('#vip');
+    const vip = status.vip;
+    banner.hidden = !vip;
+    if (!vip) return;
+    const ago = now - vip.last_seen;
+    banner.replaceChildren(
+      el('span', { class: 'vip-tag', style: 'margin:0' }, 'VIP'),
+      el('span', {}, el('strong', {}, `VIP guest at ${label(vip.table)}`),
+        ` · seen by the robot's camera ${vip.visible ? 'now' : `${duration(ago)} ago`}. Their orders go first.`));
+  }
+
   function renderQueue(status) {
     const panel = $('#queue');
     const orders = status.orders || [];
@@ -224,7 +261,8 @@
         ? el('ol', { class: 'list' }, orders.map((order, i) => el('li', {},
           el('span', { class: 'pos' }, i + 1),
           el('div', { style: 'min-width:0' },
-            el('div', { class: 'title' }, label(order.location), order.interruptions ? el('span', { class: 'muted', style: 'font-weight:400' }, '  requeued') : null),
+            el('div', { class: 'title' }, label(order.location), order.vip ? el('span', { class: 'vip-tag' }, 'VIP') : null,
+              order.interruptions ? el('span', { class: 'muted', style: 'font-weight:400' }, '  requeued') : null),
             el('div', { class: 'sub' }, `${clock(order.created_at)}  ${itemsText(order.items) || 'no items'}`)),
           el('button', { class: 'btn btn-sm btn-danger', type: 'button', onclick: (e) => cancelOrder(order, e.currentTarget) }, 'Cancel'))))
         : el('div', { class: 'empty' }, 'No orders waiting.'));

@@ -17,6 +17,7 @@ import threading
 from ament_index_python.packages import get_package_share_directory
 from nav_msgs.msg import Odometry, Path
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile, QoSReliabilityPolicy
 from rclpy.time import Time
@@ -264,20 +265,31 @@ def main(args=None):
     except (OSError, ValueError, KeyError) as error:
         node.get_logger().warn(f'map unavailable for the UI: {error}')
         map_png, map_meta = None, None
+    floor_maps = {}
+    for floor, name in catalog.floor_maps.items():
+        if floor == 1:
+            continue
+        try:
+            floor_maps[floor] = load_map(os.path.join(os.path.dirname(locations_file), name))
+        except (OSError, ValueError, KeyError) as error:
+            node.get_logger().warn(f'floor {floor} map unavailable for the UI: {error}')
     # Printed QR cards point here; override when the address is not the one
     # phones should use (e.g. several networks, or a hostname).
     public_url = get('public_url', '') or f'http://{lan_address()}:{port}'
     server = UiServer(hub, catalog, node, web_dir, map_png, map_meta,
                       admin_pin=str(get('admin_pin', '0000')), order_log_file=order_log,
-                      host=host, port=port, public_url=public_url)
+                      host=host, port=port, public_url=public_url, floor_maps=floor_maps)
     server.start()
     node.get_logger().info(
         f'CSTAM UI on {public_url}/ (admin: /admin'
         f'{", PIN required" if server.admin_pin else ""}; table QR codes: /qr)')
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
+    except Exception:
+        if rclpy.ok():   # not just the launch's shutdown racing the executor
+            raise
     finally:
         server.stop()
         node.save_usage()

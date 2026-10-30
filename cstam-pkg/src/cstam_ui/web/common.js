@@ -143,27 +143,42 @@ const CSTAM = (() => {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   class MapView {
-    constructor(canvas, config, { focus = null, labels = true, padding = 16 } = {}) {
+    // floor: which floor's map to show; the robot, its route and the people
+    // it tracks are drawn only while it is on that floor (update robotFloor).
+    constructor(canvas, config, { focus = null, labels = true, padding = 16, floor = 1, floorName = null } = {}) {
       this.canvas = canvas;
       this.ctx = canvas.getContext('2d');
       this.config = config;
-      this.meta = config.map;
       this.focus = focus;
       this.labels = labels;
       this.padding = padding;
-      this.data = { pose: null, plan: null, people: [], moving: false };
+      this.floorName = floorName;
+      this.data = { pose: null, plan: null, people: [], moving: false, robotFloor: 1 };
       this.shown = null;         // interpolated pose
       this.walls = null;
       this.ready = false;
-      if (!this.meta) return;
-      const image = new Image();
-      image.onload = () => { this.image = image; this._prepare(); this.ready = true; this.resize(); };
-      image.src = '/api/map.png';
+      this.floor = null;
+      if (!config.map) return;
+      this.setFloor(floor);
       new ResizeObserver(() => this.resize()).observe(canvas);
       window.addEventListener('cstam-theme', () => { this._prepare(); this.draw(); });
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { this._prepare(); this.draw(); });
       this._tick = this._tick.bind(this);
       requestAnimationFrame(this._tick);
+    }
+
+    get floors() { return Object.keys(this.config.maps || { 1: this.config.map }).map(Number); }
+
+    setFloor(floor) {
+      if (floor === this.floor) return;
+      this.floor = floor;
+      this.meta = (this.config.maps || {})[floor] || this.config.map;
+      const image = new Image();
+      image.onload = () => {
+        if (floor !== this.floor) return;   // switched again meanwhile
+        this.image = image; this._prepare(); this.ready = true; this.resize();
+      };
+      image.src = `/api/map.png?floor=${floor}`;
     }
 
     // Recolour the occupancy image: walls in ink, known floor in the floor
@@ -205,7 +220,8 @@ const CSTAM = (() => {
       this.draw();
     }
 
-    update({ pose, plan, people, moving }) {
+    update({ pose, plan, people, moving, robotFloor }) {
+      if (robotFloor !== undefined && robotFloor !== null) this.data.robotFloor = robotFloor;
       if (pose !== undefined) this.data.pose = pose;
       if (plan !== undefined) this.data.plan = plan;
       if (people !== undefined) this.data.people = people || [];
@@ -287,9 +303,20 @@ const CSTAM = (() => {
       ctx.font = `500 ${11 * r}px ${css('--mono') || 'monospace'}`;
       ctx.textBaseline = 'middle';
 
-      // terrace doors
+      const here = this.data.robotFloor === this.floor;
+      const onThisFloor = (p) => (p.floor || 1) === this.floor;
+
+      // floor name, when there is more than one
+      if (this.floors.length > 1 && this.floorName) {
+        ctx.font = `600 ${12 * r}px ${css('--sans') || 'sans-serif'}`;
+        ctx.fillStyle = muted;
+        ctx.fillText(this.floorName(this.floor), 10 * r, 14 * r);
+        ctx.font = `500 ${11 * r}px ${css('--mono') || 'monospace'}`;
+      }
+
+      // terrace doors (floor 1)
       ctx.strokeStyle = muted; ctx.lineWidth = 2 * r; ctx.setLineDash([3 * r, 3 * r]);
-      for (const door of this.config.doors || []) {
+      for (const door of this.floor === 1 ? this.config.doors || [] : []) {
         const mid = (door.inside_x + door.outside_x) / 2;
         ctx.beginPath(); ctx.moveTo(...t.pt(mid, door.y - 0.46)); ctx.lineTo(...t.pt(mid, door.y + 0.46)); ctx.stroke();
       }
@@ -326,17 +353,19 @@ const CSTAM = (() => {
         }
       };
       for (const p of this.config.locations || []) {
-        if (!this.labels && p.name !== this.focus) continue;
+        if ((!this.labels && p.name !== this.focus) || !onThisFloor(p)) continue;
         pin(p, p.label, p.name === this.focus);
       }
       if (this.labels) {
-        if (this.config.pickup) pin(this.config.pickup, 'Kitchen', false);
-        if (this.config.dock) pin(this.config.dock, 'Dock', false);
+        if (this.config.pickup && onThisFloor(this.config.pickup)) pin(this.config.pickup, 'Kitchen', false);
+        if (this.config.dock && onThisFloor(this.config.dock)) pin(this.config.dock, 'Dock', false);
+        const lift = this.config.elevator;
+        if (lift) pin({ x: lift.x, y: lift.cabin_y, zone: 'room' }, 'Elevator', false);
       }
 
       // planned route
       const plan = this.data.plan;
-      if (plan && plan.length > 1 && this.data.moving) {
+      if (here && plan && plan.length > 1 && this.data.moving) {
         ctx.strokeStyle = accent; ctx.lineWidth = 2 * r; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
         ctx.beginPath();
         plan.forEach(([x, y], i) => (i ? ctx.lineTo(...t.pt(x, y)) : ctx.moveTo(...t.pt(x, y))));
@@ -346,7 +375,7 @@ const CSTAM = (() => {
       }
 
       // people (tracked by the robot's own sensors)
-      for (const person of this.data.people || []) {
+      for (const person of here ? this.data.people || [] : []) {
         const [x, y] = t.pt(person.x, person.y);
         if (person.moving) {
           ctx.strokeStyle = css('--person'); ctx.lineWidth = 1.5 * r;
@@ -358,7 +387,7 @@ const CSTAM = (() => {
 
       // robot
       const pose = this.shown;
-      if (pose) {
+      if (pose && here) {
         const [x, y] = t.pt(pose.x, pose.y);
         const radius = Math.max(t.m(ROBOT_RADIUS), 7 * r);
         if (this.data.moving && !reducedMotion.matches) {

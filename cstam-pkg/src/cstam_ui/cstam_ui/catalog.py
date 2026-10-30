@@ -30,15 +30,22 @@ class Catalog:
         terrace_x = doors.get('terrace_x')
         self.points = {}
         for name, value in data.items():
-            if name in ('supported_floors', 'doors') or not isinstance(value, dict):
+            if name in ('supported_floors', 'doors', 'elevator') or not isinstance(value, dict):
                 continue
             self.points[name] = {
                 'name': name, 'label': _label(name), 'floor': int(value['floor']),
                 'x': float(value['x']), 'y': float(value['y']), 'yaw': float(value['yaw']),
-                'zone': ('terrace' if terrace_x is not None and value['x'] < terrace_x
+                'zone': ('upstairs' if int(value['floor']) > 1
+                         else 'terrace' if terrace_x is not None and value['x'] < terrace_x
                          else 'dining room'),
             }
         self.dock, self.pickup = dock, pickup
+        # Floors the robot can reach: 1, plus every floor the elevator serves.
+        elevator = data.get('elevator') or {}
+        self.floors = {1} | {int(f) for f in (elevator.get('floors') or {})}
+        self.floor_maps = {int(f): str(v['map']) for f, v in (elevator.get('floors') or {}).items()}
+        self.elevator = ({'x': float(elevator['x']), 'cabin_y': float(elevator['cabin_y'])}
+                         if elevator else None)
         self.doors = [
             {'name': name, 'label': _label(name), 'y': float(value['y']),
              'inside_x': float(doors['inside_x']), 'outside_x': float(doors['outside_x'])}
@@ -59,7 +66,7 @@ class Catalog:
 
     def delivery_locations(self):
         return [p for name, p in sorted(self.points.items())
-                if name not in (self.dock, self.pickup) and p['floor'] == 1]
+                if name not in (self.dock, self.pickup) and p['floor'] in self.floors]
 
     def public_config(self):
         return {
@@ -67,6 +74,7 @@ class Catalog:
             'dock': self.points.get(self.dock),
             'pickup': self.points.get(self.pickup),
             'doors': self.doors,
+            'elevator': self.elevator,
             'menu': self.menu,
             'categories': self.categories,
             'currency': self.currency,

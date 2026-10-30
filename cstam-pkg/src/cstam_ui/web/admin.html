@@ -89,6 +89,9 @@
   .health .state { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); flex: none; }
   .message { font: 12px/1.6 var(--mono); padding: 12px 16px; background: var(--bg-2); border-top: 1px solid var(--line); word-break: break-word; color: var(--ink-2); }
 
+  .vip-banner { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; padding: 10px 14px; border: 1px solid var(--vip); border-radius: 10px; background: color-mix(in srgb, var(--vip) 10%, var(--bg)); font-size: 13px; }
+  .vip-banner strong { font-weight: 600; }
+  .vip-tag { display: inline-block; margin-inline-start: 6px; padding: 0 6px; border-radius: 999px; background: var(--vip); color: #fff; font: 600 10.5px/18px var(--sans); letter-spacing: 0.02em; vertical-align: 1px; }
   .segmented { display: inline-flex; padding: 3px; gap: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
   .segmented button { height: 28px; padding: 0 12px; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; font-size: 13px; }
   .segmented button[aria-checked="true"] { background: var(--bg-hover); color: var(--ink); font-weight: 500; }
@@ -181,12 +184,14 @@
         </div>
         <button class="btn" id="dock" type="button">Return to dock</button>
       </div>
+      <div class="vip-banner" id="vip" role="status" hidden></div>
       <div class="overview">
         <div class="main-col">
         <div class="panel map-panel">
           <div class="panel-head">
             <h2>Floor plan</h2>
             <span class="muted mono" id="pose" style="font-size:12px"></span>
+            <div class="segmented" role="radiogroup" aria-label="Floor shown" id="floors" hidden></div>
           </div>
           <div class="map-wrap">
             <canvas id="map" aria-label="Live map with the robot, its planned route, tables and people"></canvas>

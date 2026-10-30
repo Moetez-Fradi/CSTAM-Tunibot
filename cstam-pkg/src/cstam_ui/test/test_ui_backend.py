@@ -42,6 +42,15 @@ def test_catalog_offers_tables_and_terrace_but_not_dock_or_kitchen(catalog):
     assert {d['name'] for d in catalog.doors} == {'door_a', 'door_b'}
 
 
+def test_catalog_offers_the_upstairs_tables_and_the_elevator(catalog):
+    places = {p['name']: p for p in catalog.delivery_locations()}
+    assert places['table_4']['floor'] == 2 and places['table_4']['zone'] == 'upstairs'
+    assert places['table_4']['label'] == 'Table 4'
+    config = catalog.public_config()
+    assert config['elevator']['x'] == 0.91 and catalog.floors == {1, 2}
+    assert catalog.floor_maps == {1: 'restaurant.yaml', 2: 'floor2.yaml'}
+
+
 def test_build_order_merges_lines_and_prices_them(catalog):
     order, total = catalog.build_order({'location': 'Table_2', 'items': [
         {'id': 'espresso', 'qty': 2}, {'id': 'brik', 'qty': 1}, {'id': 'espresso', 'qty': 1}],
@@ -83,7 +92,7 @@ def test_saved_map_converts_to_a_valid_png():
     assert png.startswith(b'\x89PNG\r\n\x1a\n')
     assert struct.unpack('>II', png[16:24]) == (width, height)
     assert meta == {'width': width, 'height': height, 'resolution': 0.05,
-                    'origin': [-14.204, -10.732]}
+                    'origin': [-14.204, -12.882]}
     # Decode IDAT back and compare the first row with the PGM.
     length = struct.unpack('>I', png[33:37])[0]
     raw = zlib.decompress(png[41:41 + length])
@@ -194,7 +203,8 @@ def api(catalog, tmp_path):
     png, meta = load_map(os.path.join(RESTAURANT, 'restaurant.yaml'))
     server = UiServer(hub, catalog, robot, str(web), png, meta, admin_pin='4321',
                       order_log_file=str(log), host='127.0.0.1', port=0,
-                      public_url='http://10.0.0.7:8080/')
+                      public_url='http://10.0.0.7:8080/',
+                      floor_maps={2: load_map(os.path.join(RESTAURANT, 'floor2.yaml'))})
     server.start()
     base = f'http://127.0.0.1:{server.port}'
 
@@ -412,3 +422,14 @@ def test_page_wording_has_every_key_in_every_language():
     page = open(os.path.join(PACKAGE, 'web', 'table.js'), encoding='utf-8').read()
     for used in set(re.findall(r"\bt\('(\w+)'", page)):
         assert used in keys['en'], used
+
+
+def test_each_floor_has_its_map(api):
+    call, _, _ = api
+    status, config = call('GET', '/api/config')
+    assert set(config['maps']) == {'1', '2'} and config['maps']['1'] == config['map']
+    assert config['maps']['2']['origin'] != config['maps']['1']['origin']
+    one, two = call('GET', '/api/map.png')[1], call('GET', '/api/map.png?floor=2')[1]
+    assert one.startswith(b'\x89PNG') and two.startswith(b'\x89PNG') and one != two
+    assert call('GET', '/api/map.png?floor=3')[0] == 404
+    assert call('GET', '/api/map.png?floor=x')[0] == 400

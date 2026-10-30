@@ -80,6 +80,7 @@ class StateHub:
                 'robot': {
                     'state': status.get('state'),
                     'stage': status.get('current_stage'),
+                    'floor': status.get('floor', 1),
                     'message': status.get('message'),
                     'progress': status.get('progress'),
                     'pose': self._data.get('pose'),

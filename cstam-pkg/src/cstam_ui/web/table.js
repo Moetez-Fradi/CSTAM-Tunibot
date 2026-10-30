@@ -34,6 +34,9 @@
     return m ? `${m} ${t('min')} ${String(sec % 60).padStart(2, '0')} ${t('sec')}` : `${sec} ${t('sec')}`;
   }
   const menuItem = (name) => config.menu.find((m) => m.name === name);
+  const ZONE_KEYS = { terrace: 'zone_terrace', 'dining room': 'zone_room', upstairs: 'zone_upstairs' };
+  const INTRO_KEYS = { terrace: 'intro_terrace', 'dining room': 'intro_room', upstairs: 'intro_upstairs' };
+  const tableFloor = () => ((config.locations.find((l) => l.name === table) || {}).floor || 1);
   const category = (name) => ((config.categories || {})[name] || {})[I18N.lang()] || name;
   const failed = (error) => toast(I18N.server(error.message), 'err');
 
@@ -90,7 +93,7 @@
       el('nav', { class: 'tables', 'aria-label': t('tables') },
         config.locations.map((l) => el('a', { href: `/table/${l.name}` }, place(l.name),
           el('span', { class: 'muted', style: 'font-weight:400' },
-            t(l.zone === 'terrace' ? 'zone_terrace' : 'zone_room'))))));
+            t(ZONE_KEYS[l.zone] || 'zone_room'))))));
   }
 
   // ----- menu ----------------------------------------------------------------
@@ -163,7 +166,7 @@
     app.replaceChildren(...[
       el('section', { class: 'hello' },
         el('h1', {}, place(spot.name)),
-        el('p', { class: 'muted' }, t(spot.zone === 'terrace' ? 'intro_terrace' : 'intro_room'))),
+        el('p', { class: 'muted' }, t(INTRO_KEYS[spot.zone] || 'intro_room'))),
       voiceBox(spot, addHeard),
       categories.map((name) => el('section', { class: 'category', 'aria-label': category(name) },
         el('h2', {}, category(name)),
@@ -307,7 +310,8 @@
     app.replaceChildren(track.head, track.eta, track.map,
       el('div', { class: 'panel', style: 'margin-bottom:20px' }, el('div', { class: 'panel-body' }, track.steps)),
       track.receipt, track.actions);
-    track.view = new CSTAM.MapView(canvas, config, { focus: table, labels: false, padding: 12 });
+    track.view = new CSTAM.MapView(canvas, config, {
+      focus: table, labels: false, padding: 12, floor: tableFloor(), floorName: (n) => t('floor_name', { n }) });
     live && live.close();
     live = stream(`/api/events?order=${encodeURIComponent(orderId)}`, (state) => {
       latest = state;
@@ -320,7 +324,8 @@
     if (!track || !latest) return;
     const { order, queue_position: position, robot } = latest;
     const moving = CSTAM.MOVING_STATES.has(robot.state);
-    track.view.update({ pose: robot.pose, plan: order && order.status === 'in_progress' ? latest.plan : null, moving });
+    track.view.update({ pose: robot.pose, plan: order && order.status === 'in_progress' ? latest.plan : null, moving,
+      robotFloor: robot.floor || 1 });
 
     if (!order) {
       track.title = null;
@@ -385,10 +390,12 @@
         const title = ahead > 0 ? t('ahead', { n: ahead }) : t('next');
         if (charging) return [title, t('charging')];
         if (order.interruptions) return [title, t('interrupted')];
+        if (order.vip) return [title, t('vip_first')];
         return [title, t('preparing')];
       }
       case 'in_progress':
-        return order.picked_up_at ? [t('on_way'), t('keep_clear')] : [t('collecting'), t('at_hatch')];
+        if (!order.picked_up_at) return [t('collecting'), t('at_hatch')];
+        return [t('on_way'), (robot.floor || 1) !== tableFloor() ? t('elevator_way') : t('keep_clear')];
       case 'awaiting_confirmation':
         return [t('arrived'), t('take_items')];
       case 'delivered':
