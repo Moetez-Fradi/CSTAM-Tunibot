@@ -7224,69 +7224,101 @@
           </friction>
         </surface>
       </collision>
-      <collision name="box_451_wall_15_86">
-        <pose>26.1698 0.0000 20.8450 0 0 0</pose>
+      <collision name="box_451_wall_15_86_doorway_0">
+        <pose>21.7713 0.0000 20.8450 0 0 0</pose>
         <geometry>
           <box>
-            <size>15.8246 0.0200 0.0381</size>
+            <size>7.0275 0.0200 0.0381</size>
           </box>
         </geometry>
-        <surface>
-          <friction>
-            <ode>
-              <mu>1.0</mu>
-              <mu2>1.0</mu2>
-            </ode>
-          </friction>
-        </surface>
       </collision>
-      <collision name="box_452_wall_15_87">
-        <pose>26.1889 0.0000 20.8069 0 0 0</pose>
+      <collision name="box_451_wall_15_86_doorway_1">
+        <pose>30.6335 0.0000 20.8450 0 0 0</pose>
         <geometry>
           <box>
-            <size>15.8627 0.0200 0.0381</size>
+            <size>6.8971 0.0200 0.0381</size>
           </box>
         </geometry>
-        <surface>
-          <friction>
-            <ode>
-              <mu>1.0</mu>
-              <mu2>1.0</mu2>
-            </ode>
-          </friction>
-        </surface>
       </collision>
-      <collision name="box_453_wall_15_88">
-        <pose>26.1698 1.2197 20.8450 0 0 0</pose>
+      <collision name="box_451_wall_15_86_doorway_2">
+        <pose>26.2350 -0.0050 20.8450 0 0 0</pose>
         <geometry>
           <box>
-            <size>15.8246 2.4394 0.0381</size>
+            <size>1.9000 0.0100 0.0381</size>
           </box>
         </geometry>
-        <surface>
-          <friction>
-            <ode>
-              <mu>1.0</mu>
-              <mu2>1.0</mu2>
-            </ode>
-          </friction>
-        </surface>
       </collision>
-      <collision name="box_454_wall_15_89">
-        <pose>26.1889 1.2197 20.8069 0 0 0</pose>
+      <collision name="box_452_wall_15_87_doorway_0">
+        <pose>21.7713 0.0000 20.8069 0 0 0</pose>
         <geometry>
           <box>
-            <size>15.8627 2.4394 0.0381</size>
+            <size>7.0275 0.0200 0.0381</size>
           </box>
         </geometry>
-        <surface>
-          <friction>
-            <ode>
-              <mu>1.0</mu>
-              <mu2>1.0</mu2>
-            </ode>
-          </friction>
-        </surface>
+      </collision>
+      <collision name="box_452_wall_15_87_doorway_1">
+        <pose>30.6526 0.0000 20.8069 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>6.9352 0.0200 0.0381</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_452_wall_15_87_doorway_2">
+        <pose>26.2350 -0.0050 20.8069 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>1.9000 0.0100 0.0381</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_453_wall_15_88_doorway_0">
+        <pose>21.7713 1.2197 20.8450 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>7.0275 2.4394 0.0381</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_453_wall_15_88_doorway_1">
+        <pose>30.6335 1.2197 20.8450 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>6.8971 2.4394 0.0381</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_453_wall_15_88_doorway_2">
+        <pose>26.2350 2.2347 20.8450 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>1.9000 0.4094 0.0381</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_454_wall_15_89_doorway_0">
+        <pose>21.7713 1.2197 20.8069 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>7.0275 2.4394 0.0381</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_454_wall_15_89_doorway_1">
+        <pose>30.6526 1.2197 20.8069 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>6.9352 2.4394 0.0381</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_454_wall_15_89_doorway_2">
+        <pose>26.2350 2.2347 20.8069 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>1.9000 0.4094 0.0381</size>
+          </box>
+        </geometry>
       </collision>
       <collision name="box_455_wall_15_90">
         <pose>26.1698 2.4394 20.8450 0 0 0</pose>
@@ -7352,37 +7384,45 @@
           </friction>
         </surface>
       </collision>
-      <collision name="box_459_wall_16_94">
-        <pose>25.2359 3.7186 21.7306 0 0 0</pose>
+      <collision name="box_459_wall_16_94_doorway_0">
+        <pose>25.2359 2.4997 21.7306 0 0 0</pose>
         <geometry>
           <box>
-            <size>0.0381 2.5584 1.9050</size>
+            <size>0.0381 0.1206 1.9050</size>
           </box>
         </geometry>
-        <surface>
-          <friction>
-            <ode>
-              <mu>1.0</mu>
-              <mu2>1.0</mu2>
-            </ode>
-          </friction>
-        </surface>
       </collision>
-      <collision name="box_460_wall_16_95">
-        <pose>25.1978 3.7186 21.7496 0 0 0</pose>
+      <collision name="box_459_wall_16_94_doorway_1">
+        <pose>25.2359 4.7989 21.7306 0 0 0</pose>
         <geometry>
           <box>
-            <size>0.0381 2.5584 1.9431</size>
+            <size>0.0381 0.3978 1.9050</size>
           </box>
         </geometry>
-        <surface>
-          <friction>
-            <ode>
-              <mu>1.0</mu>
-              <mu2>1.0</mu2>
-            </ode>
-          </friction>
-        </surface>
+      </collision>
+      <collision name="box_460_wall_16_95_doorway_0">
+        <pose>25.1969 3.7186 21.7496 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.0363 2.5584 1.9431</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_460_wall_16_95_doorway_1">
+        <pose>25.2159 2.4997 21.7496 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.0019 0.1206 1.9431</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_460_wall_16_95_doorway_2">
+        <pose>25.2159 4.7989 21.7496 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.0019 0.3978 1.9431</size>
+          </box>
+        </geometry>
       </collision>
       <collision name="box_461_wall_16_96">
         <pose>25.2359 4.9978 21.7306 0 0 0</pose>
@@ -7416,37 +7456,61 @@
           </friction>
         </surface>
       </collision>
-      <collision name="box_463_wall_17_100">
-        <pose>26.2455 3.7186 22.6640 0 0 0</pose>
+      <collision name="box_463_wall_17_100_doorway_0">
+        <pose>27.1546 3.7186 22.6640 0 0 0</pose>
         <geometry>
           <box>
-            <size>2.0574 2.5584 0.0381</size>
+            <size>0.2392 2.5584 0.0381</size>
           </box>
         </geometry>
-        <surface>
-          <friction>
-            <ode>
-              <mu>1.0</mu>
-              <mu2>1.0</mu2>
-            </ode>
-          </friction>
-        </surface>
       </collision>
-      <collision name="box_464_wall_17_101">
-        <pose>26.2455 3.7186 22.7021 0 0 0</pose>
+      <collision name="box_463_wall_17_100_doorway_1">
+        <pose>26.1259 2.4997 22.6640 0 0 0</pose>
         <geometry>
           <box>
-            <size>2.1336 2.5584 0.0381</size>
+            <size>1.8182 0.1206 0.0381</size>
           </box>
         </geometry>
-        <surface>
-          <friction>
-            <ode>
-              <mu>1.0</mu>
-              <mu2>1.0</mu2>
-            </ode>
-          </friction>
-        </surface>
+      </collision>
+      <collision name="box_463_wall_17_100_doorway_2">
+        <pose>26.1259 4.7989 22.6640 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>1.8182 0.3978 0.0381</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_464_wall_17_101_doorway_0">
+        <pose>25.1968 3.7186 22.7021 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.0363 2.5584 0.0381</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_464_wall_17_101_doorway_1">
+        <pose>27.1737 3.7186 22.7021 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2773 2.5584 0.0381</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_464_wall_17_101_doorway_2">
+        <pose>26.1250 2.4997 22.7021 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>1.8200 0.1206 0.0381</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_464_wall_17_101_doorway_3">
+        <pose>26.1250 4.7989 22.7021 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>1.8200 0.3978 0.0381</size>
+          </box>
+        </geometry>
       </collision>
       <collision name="box_465_wall_17_102">
         <pose>26.2455 4.9978 22.6640 0 0 0</pose>
@@ -8154,37 +8218,53 @@
           </friction>
         </surface>
       </collision>
-      <collision name="box_505_wall_2_10">
-        <pose>26.1911 1.2197 20.7602 0 0 0</pose>
+      <collision name="box_505_wall_2_10_doorway_0">
+        <pose>21.7901 1.2197 20.7602 0 0 0</pose>
         <geometry>
           <box>
-            <size>15.7917 2.4394 0.0403</size>
+            <size>6.9898 2.4394 0.0403</size>
           </box>
         </geometry>
-        <surface>
-          <friction>
-            <ode>
-              <mu>1.0</mu>
-              <mu2>1.0</mu2>
-            </ode>
-          </friction>
-        </surface>
       </collision>
-      <collision name="box_506_wall_2_11">
-        <pose>26.1910 1.2197 20.7983 0 0 0</pose>
+      <collision name="box_505_wall_2_10_doorway_1">
+        <pose>30.6360 1.2197 20.7602 0 0 0</pose>
         <geometry>
           <box>
-            <size>15.8678 2.4394 0.0404</size>
+            <size>6.9019 2.4394 0.0403</size>
           </box>
         </geometry>
-        <surface>
-          <friction>
-            <ode>
-              <mu>1.0</mu>
-              <mu2>1.0</mu2>
-            </ode>
-          </friction>
-        </surface>
+      </collision>
+      <collision name="box_505_wall_2_10_doorway_2">
+        <pose>26.2350 2.2347 20.7602 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>1.9000 0.4094 0.0403</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_506_wall_2_11_doorway_0">
+        <pose>21.7711 1.2197 20.7983 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>7.0279 2.4394 0.0404</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_506_wall_2_11_doorway_1">
+        <pose>30.6549 1.2197 20.7983 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>6.9399 2.4394 0.0404</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_506_wall_2_11_doorway_2">
+        <pose>26.2350 2.2347 20.7983 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>1.9000 0.4094 0.0404</size>
+          </box>
+        </geometry>
       </collision>
       <collision name="box_507_wall_2_12">
         <pose>26.1911 2.4394 20.7602 0 0 0</pose>
@@ -8218,37 +8298,53 @@
           </friction>
         </surface>
       </collision>
-      <collision name="box_509_wall_2_8">
-        <pose>26.1911 0.0000 20.7602 0 0 0</pose>
+      <collision name="box_509_wall_2_8_doorway_0">
+        <pose>21.7901 0.0000 20.7602 0 0 0</pose>
         <geometry>
           <box>
-            <size>15.7917 0.0200 0.0403</size>
+            <size>6.9898 0.0200 0.0403</size>
           </box>
         </geometry>
-        <surface>
-          <friction>
-            <ode>
-              <mu>1.0</mu>
-              <mu2>1.0</mu2>
-            </ode>
-          </friction>
-        </surface>
       </collision>
-      <collision name="box_510_wall_2_9">
-        <pose>26.1910 0.0000 20.7983 0 0 0</pose>
+      <collision name="box_509_wall_2_8_doorway_1">
+        <pose>30.6360 0.0000 20.7602 0 0 0</pose>
         <geometry>
           <box>
-            <size>15.8678 0.0200 0.0404</size>
+            <size>6.9019 0.0200 0.0403</size>
           </box>
         </geometry>
-        <surface>
-          <friction>
-            <ode>
-              <mu>1.0</mu>
-              <mu2>1.0</mu2>
-            </ode>
-          </friction>
-        </surface>
+      </collision>
+      <collision name="box_509_wall_2_8_doorway_2">
+        <pose>26.2350 -0.0050 20.7602 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>1.9000 0.0100 0.0403</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_510_wall_2_9_doorway_0">
+        <pose>21.7711 0.0000 20.7983 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>7.0279 0.0200 0.0404</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_510_wall_2_9_doorway_1">
+        <pose>30.6549 0.0000 20.7983 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>6.9399 0.0200 0.0404</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="box_510_wall_2_9_doorway_2">
+        <pose>26.2350 -0.0050 20.7983 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>1.9000 0.0100 0.0404</size>
+          </box>
+        </geometry>
       </collision>
       <collision name="box_511_wall_3_14">
         <pose>34.0843 0.0000 10.2112 0 0 0</pose>

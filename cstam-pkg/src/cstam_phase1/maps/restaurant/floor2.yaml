@@ -1,0 +1,10 @@
+# Upper dining room (floor 2), drawn by scripts/build_upper_floor.py from
+# the collision walls and the floor-2 furniture of the restaurant mesh.
+# Same map frame as restaurant.yaml; the elevator switches between them.
+image: floor2.pgm
+mode: trinary
+resolution: 0.050
+origin: [-7.600, -32.300, 0]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196

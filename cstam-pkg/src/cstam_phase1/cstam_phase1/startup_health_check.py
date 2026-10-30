@@ -179,9 +179,9 @@ class StartupHealthCheck(Node):
             map_msg is not None
             and map_msg.header.frame_id == 'map'
             and map_msg.info.width == 465
-            and map_msg.info.height == 581
+            and map_msg.info.height == 624
             and math.isclose(map_msg.info.resolution, 0.05, abs_tol=1e-6),
-            'expected map frame, 465x581 cells at 0.05 m (with terrace and home corridor)')
+            'expected map frame, 465x624 cells at 0.05 m (with terrace, home corridor and elevator shaft)')
 
         points = self.messages.get('points')
         add(
