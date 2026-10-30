@@ -1,0 +1,110 @@
+{
+  "what": "Bonus features end to end (scripts/bonus_test.sh): VIP recognition with queue priority, and a delivery upstairs by the elevator; headless Gazebo, six scenario pedestrians incl. the VIP, web API only",
+  "date": "2026-10-30",
+  "pass": true,
+  "failures": [],
+  "checks": [
+    {
+      "check": "robot online",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "table 2 delivered",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "VIP recognised at table 2 by the camera",
+      "ok": true,
+      "detail": {
+        "table": "table_2",
+        "last_seen": 1793378365.9489305,
+        "x": -2.67,
+        "y": 2.04,
+        "visible": true
+      }
+    },
+    {
+      "check": "VIP sightings scored against ground truth",
+      "ok": true,
+      "detail": 10
+    },
+    {
+      "check": "VIP position within 0.5 m of ground truth (median)",
+      "ok": true,
+      "detail": "median 0.17 m over 10 samples"
+    },
+    {
+      "check": "three orders accepted",
+      "ok": true,
+      "detail": {
+        "table_1": "b78359",
+        "table_3": "9d02a3",
+        "table_2": "98a602"
+      }
+    },
+    {
+      "check": "VIP table queued ahead of table 3",
+      "ok": true,
+      "detail": [
+        "table_2",
+        "table_1",
+        "table_3"
+      ]
+    },
+    {
+      "check": "all three delivered",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "VIP order served before table 3",
+      "ok": true,
+      "detail": {
+        "table_1": 1793378467.3513288,
+        "table_3": 1793378547.622473,
+        "table_2": 1793378419.723014
+      }
+    },
+    {
+      "check": "VIP order marked VIP",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "table 4 (upstairs) delivered",
+      "ok": true,
+      "detail": "170 s order to delivered"
+    },
+    {
+      "check": "robot rode to floor 2",
+      "ok": true,
+      "detail": [
+        1,
+        2
+      ]
+    },
+    {
+      "check": "back at the dock on floor 1",
+      "ok": true,
+      "detail": "IDLE floor 1, dock error [0.039, -0.002]"
+    }
+  ],
+  "elapsed_sec": 627.2,
+  "regression_same_build": {
+    "deliveries": "table_1, table_3, terrace_2, table_2: 4/4",
+    "contacts": 0,
+    "nav2_failures": 0,
+    "delivery_sec": [
+      95.9,
+      120.7,
+      136.3,
+      121.4
+    ],
+    "longest_stall_sec": 6.0,
+    "false_track_seconds": 60.5,
+    "people_within_2m_tracked": 0.987
+  },
+  "pedestrian_soak": "329 parked-robot poses x 300 s, VIP included: 0 stalls, overlaps or jumps"
+}

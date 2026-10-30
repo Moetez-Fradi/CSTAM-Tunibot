@@ -1,6 +1,6 @@
 # CSTAM Tunibot — autonomous restaurant delivery robot
 
-First-floor restaurant service robot using **ROS 2 Jazzy / Gazebo Harmonic**.
+Two-floor restaurant service robot using **ROS 2 Jazzy / Gazebo Harmonic**.
 Real simulated 3D LiDAR, SLAM Toolbox, AMCL, Nav2, semantic delivery requests,
 FIFO queue, and autonomous return to a defined dock pose.
 
@@ -14,6 +14,10 @@ Phase 3 adds [orders and a web UI backend](#orders-and-the-web-ui): menu
 orders with IDs, cancellation, a customer confirmation at the table, ETAs,
 an order history log, and a dependency-free HTTP/Server-Sent Events API for
 the customer and admin pages.
+
+Bonus features: an [elevator to the upper dining room](#elevator-and-the-upper-dining-room),
+[VIP recognition](#vip-recognition) with the RGB-D camera, voice ordering,
+three languages, and analytics with predictive maintenance (see the web UI).
 
 The robot lives in its [home corridor](#robot-home-corridor): it charges
 there and is loaded through the kitchen service hatch at the corridor's end.
@@ -334,6 +338,74 @@ a person standing in a doorway flickered as a track and the plan flipped
 between doors. Evidence:
 [layout and recovery acceptance data](docs/phase2_layout_recovery_acceptance.json).
 
+## Elevator and the upper dining room
+
+The restaurant model has an elevator shaft south of the dining room (map x
+-0.10..1.92, y -12.64..-10.73) with a doorway to the dining room at floor 1
+and one to an upper dining room at floor 2 (16 tables, floor at 2.56 m).
+The exported collision model closed both doorways and had no upstairs
+floor, so `cstam_phase1/scripts/build_upper_floor.py` (idempotent):
+
+- splits the wall collision boxes around both shaft doorways;
+- adds `andino_gz/models/upper_floor_collision`, the floor-2 slab;
+- extends the floor-1 map over the shaft, and fills the parts SLAM left
+  unknown in the south of the dining room from the mesh (free floor, mesh
+  furniture occupied), leaving every cell SLAM saw unchanged;
+- draws `maps/restaurant/floor2.yaml` in the same map frame from the
+  collision walls and the floor-2 furniture.
+
+`table_4` and `table_5` are upstairs (same west-aisle approach as tables
+1-3). A trip to another floor is planned as legs: that floor's lobby pose,
+into the cabin, a ride, out to the other floor's lobby pose, then on (with
+terrace door legs before or after when needed). The doorways face opposite
+ways, so the robot drives straight through: in facing south, out facing
+south; back down in facing north.
+
+`elevator` (`cstam_phase1/elevator.py`) serves `/elevator/to_floor_1` and
+`/elevator/to_floor_2` (Trigger): it checks the robot is in the cabin, moves
+the visual cabin, then moves the robot to the other floor at the same x, y
+and heading (a vertical move, so wheel odometry and AMCL stay valid), loads
+that floor's map in the map server, re-seeds AMCL and clears both costmaps.
+`/elevator/state` reports the floor. A failed ride is retried like a failed
+Nav2 goal; a return to dock requested during a ride waits for the cabin.
+People stay downstairs: the pedestrian simulator keeps the floor-1 map and
+ignores the robot while it is upstairs. The dashboard map follows the robot
+between floors (or pick a floor), and a guest at an upstairs table sees
+"the robot is taking the elevator up to you".
+
+## VIP recognition
+
+One scenario guest, `guest_vip`, is the VIP: a magenta jacket that nothing
+else in the restaurant wears, emissive so lighting does not change it. They
+come down the central aisle and stand on table 2's east side, across the
+table from where the robot serves it.
+
+`vip_detector` (`cstam_phase1/vip_detector.py`) reads the RGB-D camera twice
+a second: it thresholds the colour image for that magenta, takes the median
+depth of those pixels, back-projects their centre through the camera
+intrinsics and adds half a body width, transforms the point to the map and
+matches it to the nearest tabletop centre (`table:` in `locations.yaml`,
+within 1.6 m). `/vip/status` carries the sighting. For 10 minutes after a
+sighting (`vip_memory_sec`), the task manager moves that table's queued
+order to the front of the queue, behind an order that was already
+interrupted (that guest was promised to be served first). The dashboard
+shows "VIP guest at Table 2" and tags the order; the guest page welcomes
+them.
+
+**End-to-end test of both features** (headless, web API only):
+
+```bash
+bash "$(ros2 pkg prefix --share cstam_phase1)/scripts/bonus_test.sh" ~/runs/bonus
+```
+
+Measured (13/13 checks, `docs/bonus_acceptance.json`): the VIP was
+recognised at table 2, placed within 0.17 m of ground truth (median of 10
+sightings); ordered after table 1 and table 3, their order was served
+before table 3; table 4 upstairs was delivered 170 s after the order (ride
+up and down included), and the robot docked 3.9 cm from the dock pose. No
+Nav2 failures, no contacts. The same build passed the standard run (tables
+1, 3, terrace 2, table 2: 4/4, 0 contacts, 96-136 s per delivery).
+
 ## Orders and the web UI
 
 `/delivery/request` accepts either a bare location (`table_1`, as before) or
@@ -522,7 +594,10 @@ copy was built for portability; a pristine second machine was not tested.
 
 ## Limits
 
-First floor only; no elevator. Pedestrians are kinematic visuals: they do
+The elevator ride is simulated: the robot is moved with the cabin, not
+carried by it, and the upstairs map is drawn from the model, not SLAM.
+Only the colour of the VIP's jacket identifies them; a real system would
+need face or badge recognition. Pedestrians are kinematic visuals: they do
 not physically push the robot, so contacts are measured geometrically from
 ground truth rather than by contact sensors. The rear and side range
 sensors emulate ultrasonics with narrow lidar beams. The terrace part of the

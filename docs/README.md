@@ -21,3 +21,4 @@ summaries of recorded runs; the scripts that produce them are in
 | `CSTAM_Phase2_Test_Cases.html`, `Selecao-test-cases-documentation.pdf` | Phase 2 test-case documentation |
 | `phase3_ui_acceptance.json` | end-to-end web order (`phase3_ui_test.sh`): 18/18 checks, physical dock error 0.062 m |
 | `phase3_tracker_false_tracks.json` | false people tracks before/after the furniture filters |
+| `bonus_acceptance.json` | VIP recognition and priority, elevator delivery upstairs (`bonus_test.sh`): 13/13 |
