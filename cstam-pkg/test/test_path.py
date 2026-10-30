@@ -1,1 +1,0 @@
-import rclpy; from std_msgs.msg import String; rclpy.init(); node = rclpy.create_node('test_pub'); pub = node.create_publisher(String, '/robot/mission_path', 10); msg = String(); msg.data = '/tmp/test_mission_evidence'; pub.publish(msg); rclpy.spin_once(node, timeout_sec=1); node.get_logger().info('Published mock path'); node.destroy_node(); rclpy.shutdown()
