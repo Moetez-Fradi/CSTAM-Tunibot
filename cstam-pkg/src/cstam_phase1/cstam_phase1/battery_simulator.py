@@ -12,6 +12,7 @@ import math
 import os
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
@@ -180,8 +181,11 @@ def main(args=None):
     node = BatterySimulator()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
+    except Exception:
+        if rclpy.ok():   # not just the launch's shutdown racing the executor
+            raise
     finally:
         node.destroy_node()
         if rclpy.ok():

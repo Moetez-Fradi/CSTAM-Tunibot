@@ -15,6 +15,7 @@ in the robot's collision height blocks the ray.
 import math
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan, PointCloud2
 from sensor_msgs_py import point_cloud2
@@ -161,8 +162,11 @@ def main(args=None):
     node = PointCloudNavigationFilter()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
+    except Exception:
+        if rclpy.ok():   # not just the launch's shutdown racing the executor
+            raise
     finally:
         node.destroy_node()
         if rclpy.ok():

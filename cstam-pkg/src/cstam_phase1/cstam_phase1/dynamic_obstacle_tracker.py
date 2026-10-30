@@ -30,6 +30,7 @@ import time
 
 import numpy as np
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from builtin_interfaces.msg import Duration
 from geometry_msgs.msg import Point
 from nav_msgs.msg import OccupancyGrid
@@ -417,8 +418,11 @@ def main(args=None):
     node = DynamicObstacleTracker()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
+    except Exception:
+        if rclpy.ok():   # not just the launch's shutdown racing the executor
+            raise
     finally:
         node.destroy_node()
         if rclpy.ok():

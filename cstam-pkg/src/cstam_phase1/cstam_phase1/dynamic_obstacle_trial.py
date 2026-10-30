@@ -21,6 +21,7 @@ import time
 from geometry_msgs.msg import PoseStamped, Twist
 from nav2_msgs.msg import CollisionMonitorState
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile, QoSReliabilityPolicy
 from std_msgs.msg import String
@@ -205,8 +206,11 @@ def main(args=None):
     node = DynamicObstacleTrial()
     try:
         node.run()
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
+    except Exception:
+        if rclpy.ok():   # not just the launch's shutdown racing the executor
+            raise
     finally:
         node.destroy_node()
         if rclpy.ok():
