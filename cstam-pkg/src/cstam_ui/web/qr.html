@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Table QR Codes</title>
+<link rel="icon" href="/logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
 <style>
   body { background: var(--bg-2); }
   .nav { background: var(--bg); border-bottom: 1px solid var(--line); }
   .nav-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 56px; padding: 0 24px; max-width: 1100px; margin: 0 auto; }
   .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; letter-spacing: -0.02em; text-decoration: none; }
-  .brand-mark { width: 22px; height: 22px; border-radius: 50%; background: var(--ink); position: relative; flex: none; }
-  .brand-mark::after { content: ''; position: absolute; left: 50%; top: 50%; width: 8px; height: 2px; margin-top: -1px; background: var(--bg); border-radius: 1px; }
+  .brand-mark { width: 22px; height: 22px; }
   main { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
   .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
   .page-head p { margin-top: 6px; color: var(--muted); max-width: 60ch; }
@@ -28,7 +28,10 @@
   .card h2 { font-size: 26px; letter-spacing: -0.03em; }
   .card .zone { font-size: 13px; color: #666; }
   .card img { width: 100%; max-width: 200px; aspect-ratio: 1; margin: 10px 0 6px; image-rendering: pixelated; }
+  .card .card-brand { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; letter-spacing: -0.01em; margin-bottom: 4px; }
+  .card .brand-mark { width: 18px; height: 18px; background: #171717; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .card .cta { font-weight: 500; font-size: 15px; }
+  .card .how { font-size: 12px; color: #666; max-width: 26ch; }
   .card .url { font: 11px var(--mono); color: #8f8f8f; word-break: break-all; }
 
   @media print {
@@ -68,6 +71,7 @@
   const pin = storage.get('sessionStorage', 'cstam.pin') || '';
   let links = null;
 
+  const ZONES = { terrace: 'Terrace', 'dining room': 'Dining room', upstairs: 'Upstairs dining room' };
   const isLocal = (url) => /^https?:\/\/(localhost|127\.|\[::1\])/i.test(url);
 
   function render(base) {
@@ -84,10 +88,13 @@
     $('#cards').replaceChildren(...links.tables.map((t) => {
       const url = `${clean}/table/${t.name}`;
       return el('article', { class: 'card' },
+        // The card is always printed light, so the logo keeps its dark fill.
+        el('div', { class: 'card-brand' }, el('span', { class: 'brand-mark', 'aria-hidden': 'true' }), 'Tunibot'),
         el('h2', {}, t.label),
-        el('div', { class: 'zone' }, t.zone === 'terrace' ? 'Terrace' : 'Dining room'),
+        el('div', { class: 'zone' }, ZONES[t.zone] || 'Dining room'),
         valid ? el('img', { src: `/api/qr.svg?text=${encodeURIComponent(url)}`, alt: `QR code for ${url}` }) : null,
-        el('div', { class: 'cta' }, 'Scan to order to this table'),
+        el('div', { class: 'cta' }, 'Scan to order from your phone'),
+        el('div', { class: 'how' }, 'The robot brings your order to this table. English, français, العربية.'),
         el('div', { class: 'url' }, url));
     }));
   }

@@ -183,6 +183,12 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .swatch-line { width: 14px; height: 2px; border-radius: 1px; display: inline-block; background: var(--accent); }
 
+/* ----- brand mark: logo.svg used as a mask, so it follows the theme colour ----- */
+.brand-mark {
+  display: inline-block; flex: none; background: var(--ink);
+  -webkit-mask: url('/logo.svg') center / contain no-repeat; mask: url('/logo.svg') center / contain no-repeat;
+}
+
 /* ----- banners & toasts ----- */
 .banner {
   display: flex; align-items: center; gap: 10px; padding: 10px 16px; font-size: 13px;
