@@ -2,7 +2,7 @@
 'use strict';
 (() => {
   const {
-    $, el, api, stream, toast, initTheme, storage, label, robotSummary, stateBadge,
+    $, el, api, stream, toast, chime, initTheme, storage, label, robotSummary, stateBadge,
     orderStatus, orderStep, clock, clockSec, duration, itemsText, MapView, MOVING_STATES,
   } = CSTAM;
 
@@ -27,6 +27,20 @@
   let live = null;
 
   initTheme($('#theme'));
+
+  // ----- sound: new orders and alerts ------------------------------------------
+  let soundOn = storage.get('localStorage', 'cstam.admin.sound') !== 'off';
+  function syncSound() {
+    $('#sound').textContent = soundOn ? 'Sound on' : 'Sound off';
+    $('#sound').setAttribute('aria-pressed', String(soundOn));
+  }
+  syncSound();
+  $('#sound').addEventListener('click', () => {
+    soundOn = !soundOn;
+    storage.set('localStorage', 'cstam.admin.sound', soundOn ? 'on' : 'off');
+    syncSound();
+    if (soundOn) chime('order');   // preview, and proves the browser allows sound
+  });
 
   // ----- start & sign-in -------------------------------------------------------
   async function start() {
@@ -160,6 +174,8 @@
     map.update({ pose, plan: state.plan, people: state.people, moving: MOVING_STATES.has(status.state), robotFloor });
     if (robotFloor > 1) $('#pose').textContent += `  · floor ${robotFloor}`;
 
+    renderAlerts(state);
+    notifyNewOrders(status);
     renderVip(status, state.server_time);
     renderActive(status);
     renderBattery(state.battery, status);
@@ -170,6 +186,78 @@
     if (!$('#insights').hidden) renderCounters(status.counters);
     const key = (status.history || []).map((o) => o.id + o.status).join();
     if (key !== historyKey) { historyKey = key; loadHistory(false); if (!$('#insights').hidden) loadInsights(); }
+  }
+
+  // ----- alerts: everything staff must act on, shown on every tab ---------------
+  // The pedestrian simulator is a test aid and may be switched off on purpose.
+  const OPTIONAL_NODES = new Set(['cstam_pedestrian_simulator']);
+  const dismissed = new Set();
+  let shownAlerts = new Set();
+  let alertSig = '';
+
+  function alertsFor(state) {
+    const status = state.status || {};
+    if (!state.online) {
+      return [{ key: 'offline', tone: 'err', title: 'Robot offline', text: 'The task manager is not running, so no orders can be served.' }];
+    }
+    const list = [];
+    if (status.state === 'ERROR') {
+      list.push({ key: `error:${status.message || ''}`, tone: 'err', title: 'Robot needs attention',
+        text: status.message || 'Navigation failed. See the System tab.' });
+    }
+    if (status.state === 'BATTERY_DEPLETED') {
+      list.push({ key: 'depleted', tone: 'err', title: 'Battery empty', text: 'The robot has stopped. Bring it back to the dock to charge.' });
+    }
+    const battery = state.battery;
+    if (battery && !battery.charging && battery.percentage <= 20 && status.state !== 'BATTERY_DEPLETED') {
+      list.push({ key: 'low', tone: 'warn', title: `Battery low (${Math.round(battery.percentage)}%)`,
+        text: 'The robot is going back to the dock to charge. Orders wait in the queue.' });
+    }
+    const failed = status.failed_orders || [];
+    if (failed.length) {
+      list.push({ key: `failed:${failed.length}`, tone: 'err',
+        title: failed.length === 1 ? 'An order could not be delivered' : `${failed.length} orders could not be delivered`,
+        text: `The robot could not reach ${[...new Set(failed)].map(label).join(', ')}. Bring ${failed.length === 1 ? 'it' : 'them'} by hand.` });
+    }
+    const nodes = state.nodes || {};
+    const down = Object.keys(nodes).filter((name) => !nodes[name] && !OPTIONAL_NODES.has(name));
+    if (down.length) {
+      list.push({ key: `nodes:${down.join()}`, tone: 'err',
+        title: `${down.length} robot program${down.length > 1 ? 's' : ''} not running`, text: `${down.join(', ')}. See the System tab.` });
+    }
+    return list;
+  }
+
+  function renderAlerts(state) {
+    const all = alertsFor(state);
+    // A dismissed alert comes back if it clears and happens again.
+    const active = new Set(all.map((a) => a.key));
+    for (const key of dismissed) if (!active.has(key)) dismissed.delete(key);
+    const list = all.filter((a) => !dismissed.has(a.key));
+    const sig = list.map((a) => `${a.key}${a.title}`).join('|');
+    if (sig === alertSig) return;
+    alertSig = sig;
+    if (soundOn && list.some((a) => a.tone === 'err' && !shownAlerts.has(a.key))) chime('alert');
+    shownAlerts = new Set(list.map((a) => a.key));
+    const host = $('#alerts');
+    host.hidden = !list.length;
+    host.replaceChildren(...list.map((a) => el('div', { class: `alert tone-${a.tone}` },
+      el('span', { class: `dot tone-${a.tone}`, 'aria-hidden': 'true' }),
+      el('div', { class: 'text' }, el('strong', {}, a.title), ` · ${a.text}`),
+      el('button', { class: 'btn btn-sm btn-ghost', type: 'button', onclick: () => {
+        dismissed.add(a.key); alertSig = ''; renderAlerts(latest);
+      } }, 'Dismiss'))));
+  }
+
+  // A short sound when a guest places an order (not for orders already
+  // there when the dashboard opened).
+  let knownOrders = null;
+  function notifyNewOrders(status) {
+    const ids = [status.active_order, ...(status.orders || [])].filter(Boolean).map((o) => o.id);
+    if (knownOrders === null) { knownOrders = new Set(ids); return; }
+    const fresh = ids.filter((id) => !knownOrders.has(id));
+    ids.forEach((id) => knownOrders.add(id));
+    if (fresh.length && soundOn) chime('order');
   }
 
   const STEPS = ['Queued', 'Kitchen pickup', 'On the way', 'At the table', 'Delivered'];
