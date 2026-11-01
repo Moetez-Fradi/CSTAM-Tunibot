@@ -9,6 +9,7 @@ Public (customer) endpoints:
   GET  /api/events[?order=ID]          SSE stream of the public view
   POST /api/orders                     {location, items:[{id, qty}], note}
   GET  /api/orders/ID
+  GET  /api/wait                       orders ahead and an estimated time to a new order's table
   POST /api/orders/ID/cancel           only while the order is still queued
   POST /api/orders/ID/confirm          customer received the order
   POST /api/orders/ID/rate             {stars: 1-5, comment} once, after delivery
@@ -50,6 +51,7 @@ ANSWER_TIMEOUT_SEC = 3.0   # wait for the task manager to accept or reject
 SSE_PERIOD_SEC = 0.25      # at most 4 updates per second per client
 SSE_KEEPALIVE_SEC = 15.0
 MAX_COMMENT = 300
+WAIT_SAMPLE = 30           # recent deliveries the wait estimate is based on
 ORDER_PATH = re.compile(
     r'^/api/(admin/)?orders/([A-Za-z0-9_-]{1,32})(?:/(cancel|confirm|rate))?$')
 
@@ -187,6 +189,28 @@ class UiServer:
                     except json.JSONDecodeError:
                         continue
         return orders
+
+    def wait_info(self):
+        """What a guest can expect before ordering: orders ahead and a time.
+
+        The estimate uses the median of recent deliveries: each order ahead
+        keeps the robot busy from start to customer confirmation, then the new
+        order needs its own trip from start to arrival at the table. None
+        until there is history to base it on.
+        """
+        status = self._status(self.hub.admin_view()) or {}
+        ahead = len(status.get('orders') or []) + (1 if status.get('active_order') else 0)
+        recent = [o for o in self._finished_orders() if o.get('status') == 'delivered'
+                  and o.get('started_at') and o.get('arrived_at') and o.get('finished_at')]
+        recent = recent[-WAIT_SAMPLE:]
+        estimate = None
+        if recent:
+            busy = analytics._quantile([o['finished_at'] - o['started_at'] for o in recent], 0.5)
+            trip = analytics._quantile([o['arrived_at'] - o['started_at'] for o in recent], 0.5)
+            estimate = round(ahead * busy + trip)
+        return {'online': bool(self.hub.get('task_manager_online')), 'ahead': ahead,
+                'robot_state': status.get('state'), 'estimate_sec': estimate,
+                'based_on': len(recent)}
 
     def history(self, limit):
         orders = self._finished_orders()[::-1]
@@ -378,6 +402,7 @@ class _Handler(BaseHTTPRequestHandler):
                 lambda: app.hub.public_view(self._query().get('order')))),
             (r'/api/orders/([A-Za-z0-9_-]{1,32})',
              lambda oid: self._send(HTTPStatus.OK, app.order_info(oid))),
+            (r'/api/wait', lambda: self._send(HTTPStatus.OK, app.wait_info())),
             (r'/api/admin/state', self._admin(lambda: self._send(
                 HTTPStatus.OK, app.hub.admin_view()))),
             (r'/api/admin/events', self._admin(lambda: self._events(app.hub.admin_view))),

@@ -272,6 +272,36 @@ def test_guest_rates_a_delivered_order_once(api):
     assert history['ratings']['h1']['stars'] == 2
 
 
+def test_wait_estimate_counts_orders_ahead_and_recent_deliveries(catalog, tmp_path):
+    hub = StateHub()
+    robot = FakeRobot(hub)
+    log = tmp_path / 'orders.jsonl'
+    server = UiServer(hub, catalog, robot, str(tmp_path), order_log_file=str(log),
+                      host='127.0.0.1', port=0)
+    try:
+        # No history yet: the count is known, the time is not.
+        assert server.wait_info() == {'online': True, 'ahead': 0, 'robot_state': 'IDLE',
+                                      'estimate_sec': None, 'based_on': 0}
+        # Busy 200 s per order (start to confirmation), 120 s from start to the table.
+        log.write_text(''.join(json.dumps({
+            'id': f'w{i}', 'status': 'delivered', 'created_at': 0, 'started_at': 10,
+            'arrived_at': 130, 'finished_at': 210}) + '\n' for i in range(3)))
+        assert server.wait_info()['estimate_sec'] == 120
+        robot.send_order({'id': 'a1', 'location': 'table_1', 'items': []})
+        robot.send_order({'id': 'a2', 'location': 'table_2', 'items': []})
+        robot.start_next()                                   # one active, one queued
+        info = server.wait_info()
+        assert info['ahead'] == 2 and info['estimate_sec'] == 2 * 200 + 120 and info['based_on'] == 3
+    finally:
+        server.httpd.server_close()
+
+
+def test_wait_endpoint_is_public(api):
+    call, _, _ = api
+    status, body = call('GET', '/api/wait')
+    assert status == 200 and body['ahead'] == 0 and body['online'] is True
+
+
 def test_invalid_order_and_offline_robot(api):
     call, robot, _ = api
     status, body = call('POST', '/api/orders', {'location': 'kitchen', 'items': [{'id': 'water'}]})
