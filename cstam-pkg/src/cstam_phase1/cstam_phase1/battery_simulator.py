@@ -1,8 +1,11 @@
 """Simulated robot battery published as sensor_msgs/BatteryState.
 
 Drain is integrated from the real wheel odometry twist on simulated time.
-The robot charges only while it is stationary within dock_radius_m of the
-semantic dock, as estimated by AMCL; the task manager never fakes charging.
+The robot charges only while its contacts touch the dock's charging pads:
+the real robot (Gazebo ground truth, the charger's own view of it) stands
+within contact_tolerance_m and contact_tolerance_rad of the dock pose, and
+is stationary. Being near the dock is not enough; the task manager re-docks
+when it should be charging but is not, and never fakes charging.
 
 The level can be overridden at runtime for testing and demonstrations:
     ros2 param set /cstam_battery_simulator percentage 22.0
@@ -14,7 +17,7 @@ import os
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from ament_index_python.packages import get_package_share_directory
-from geometry_msgs.msg import PoseWithCovarianceStamped
+from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Odometry
 from rcl_interfaces.msg import SetParametersResult
 from rclpy.node import Node
@@ -25,6 +28,7 @@ import yaml
 from cstam_phase1.battery_model import (
     BatteryParams,
     net_power_w,
+    on_charger,
     open_circuit_voltage,
     step_energy_wh,
 )
@@ -42,7 +46,10 @@ class BatterySimulator(Node):
         self.declare_parameter('dock_location', 'dock')
         self.declare_parameter('percentage', 100.0)
         self.declare_parameter('publish_rate_hz', 2.0)
-        self.declare_parameter('dock_radius_m', 0.5)
+        self.declare_parameter('contact_tolerance_m', 0.10)
+        self.declare_parameter('contact_tolerance_rad', 0.15)
+        self.declare_parameter('alignment_file', os.path.join(
+            get_package_share_directory('cstam_phase1'), 'maps', 'restaurant', 'world_alignment.yaml'))
         self.declare_parameter('charge_max_linear_mps', 0.02)
         self.declare_parameter('charge_max_angular_radps', 0.05)
         for name in BatteryParams.__dataclass_fields__:
@@ -54,7 +61,11 @@ class BatterySimulator(Node):
         self.dock = self._load_dock(
             str(self.get_parameter('locations_file').value),
             str(self.get_parameter('dock_location').value))
-        self.dock_radius = float(self.get_parameter('dock_radius_m').value)
+        self.contact_m = float(self.get_parameter('contact_tolerance_m').value)
+        self.contact_rad = float(self.get_parameter('contact_tolerance_rad').value)
+        with open(str(self.get_parameter('alignment_file').value), encoding='utf-8') as stream:
+            a = yaml.safe_load(stream)['world_from_map']
+        self.world_from_map = (float(a['x']), float(a['y']), float(a['yaw']))
         self.charge_max_linear = float(
             self.get_parameter('charge_max_linear_mps').value)
         self.charge_max_angular = float(
@@ -73,25 +84,22 @@ class BatterySimulator(Node):
         state_qos.reliability = QoSReliabilityPolicy.RELIABLE
         self.publisher = self.create_publisher(BatteryState, '/battery/state', state_qos)
         self.create_subscription(Odometry, '/odom', self._odom_callback, 10)
-        pose_qos = QoSProfile(depth=1)
-        pose_qos.durability = QoSDurabilityPolicy.TRANSIENT_LOCAL
-        pose_qos.reliability = QoSReliabilityPolicy.RELIABLE
-        self.create_subscription(
-            PoseWithCovarianceStamped, '/amcl_pose', self._pose_callback, pose_qos)
+        self.create_subscription(PoseStamped, '/model/cstam/pose', self._pose_callback, 10)
         self.add_on_set_parameters_callback(self._on_set_parameters)
         rate = float(self.get_parameter('publish_rate_hz').value)
         self.create_timer(1.0 / max(0.1, rate), self._update)
         self.get_logger().info(
             f'Battery simulator: {self.params.capacity_wh:.1f} Wh, '
             f'start {self.percentage:.1f}%, time_scale {self.params.time_scale:g}, '
-            f'dock ({self.dock[0]:.2f}, {self.dock[1]:.2f}) r={self.dock_radius:.2f} m')
+            f'charger at dock ({self.dock[0]:.2f}, {self.dock[1]:.2f}), contacts within '
+            f'{self.contact_m:.2f} m / {self.contact_rad:.2f} rad')
 
     @staticmethod
     def _load_dock(path, name):
         with open(path, encoding='utf-8') as stream:
             data = yaml.safe_load(stream) or {}
         try:
-            return float(data[name]['x']), float(data[name]['y'])
+            return float(data[name]['x']), float(data[name]['y']), float(data[name]['yaw'])
         except (KeyError, TypeError, ValueError) as error:
             raise RuntimeError(f'Invalid dock location {name} in {path}: {error}') from error
 
@@ -115,14 +123,15 @@ class BatterySimulator(Node):
         self.angular = message.twist.twist.angular.z
 
     def _pose_callback(self, message):
-        position = message.pose.pose.position
-        self.pose = (position.x, position.y)
+        p, q = message.pose.position, message.pose.orientation
+        wx, wy, wyaw = self.world_from_map
+        c, s = math.cos(wyaw), math.sin(wyaw)
+        dx, dy = p.x - wx, p.y - wy
+        yaw = math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
+        self.pose = (c * dx + s * dy, -s * dx + c * dy, yaw - wyaw)
 
     def _at_dock(self):
-        if self.pose is None:
-            return False
-        distance = math.hypot(self.pose[0] - self.dock[0], self.pose[1] - self.dock[1])
-        return distance <= self.dock_radius
+        return on_charger(self.pose, self.dock, self.contact_m, self.contact_rad)
 
     def _update(self):
         now = self.get_clock().now()

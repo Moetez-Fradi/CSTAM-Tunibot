@@ -1,14 +1,12 @@
 """VIP recognition: colour, position, table, and queue priority."""
 import json
-import math
 import pathlib
 import time
 from types import SimpleNamespace
 
 import numpy as np
-import yaml
 
-from cstam_phase1.vip_detector import load_tables, locate, nearest_table, vip_mask
+from cstam_phase1.vip_detector import find_badges, load_tables, locate, nearest_table
 
 PACKAGE = pathlib.Path(__file__).parents[1]
 LOCATIONS = PACKAGE / 'maps' / 'restaurant' / 'locations.yaml'
@@ -16,31 +14,47 @@ FX = FY = 554.3   # 640 px over 1.047 rad
 CX, CY = 320.0, 240.0
 
 
-def test_only_the_vip_jacket_matches():
-    scenario = yaml.safe_load((PACKAGE / 'config' / 'pedestrians.yaml').read_text())
-    vip = [p for p in scenario['pedestrians'] if p.get('vip')]
-    assert len(vip) == 1
-    others = [p['color'] for p in scenario['pedestrians'] if not p.get('vip')]
-    # Rendered shirts at full and at half light, plus the table plaque colours.
-    plaques = [(1, 0.78, 0.18), (0.25, 0.85, 1), (1, 0.36, 0.30), (0.35, 1, 0.5), (1, 0.92, 0.6)]
-    samples = [tuple(int(255 * c * k) for c in col) for col in others + plaques for k in (1.0, 0.5)]
-    image = np.array([samples], dtype=np.uint8)
-    assert not vip_mask(image).any()
-    jacket = np.array([[[255, 26, 191]]], dtype=np.uint8)
-    assert vip_mask(jacket).all()
+def _scene(marker_id=7, side=80, at=(400, 200), mirror=False):
+    """A grey camera image with one ArUco badge (white quiet zone) pasted in."""
+    import cv2
+    image = np.full((480, 640), 120, dtype=np.uint8)
+    marker = cv2.aruco.drawMarker(cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50), marker_id, side)
+    if mirror:
+        marker = marker[:, ::-1]
+    q = side // 6
+    badge = np.full((side + 2 * q, side + 2 * q), 255, dtype=np.uint8)
+    badge[q:-q, q:-q] = marker
+    u, v = at
+    image[v:v + badge.shape[0], u:u + badge.shape[1]] = badge
+    return image, (u + q + side / 2, v + q + side / 2)
 
 
-def test_vip_is_located_from_mask_and_depth():
-    mask = np.zeros((480, 640), dtype=bool)
+def test_only_the_vip_badge_is_recognised():
+    image, centre = _scene()
+    badges = find_badges(image, 7)
+    assert len(badges) == 1
+    assert np.allclose(badges[0].mean(axis=0), centre, atol=1.5)
+    assert find_badges(_scene(marker_id=9)[0], 7) == []         # someone else's badge
+    assert find_badges(_scene(mirror=True)[0], 7) == []          # not a valid id-7 badge
+    assert find_badges(_scene(side=12)[0], 7, min_side_px=14) == []   # too far to trust
+    assert find_badges(np.full((480, 640), 120, dtype=np.uint8), 7) == []
+    # The badge image the simulator puts on the VIP decodes as their id.
+    import cv2
+    badge = cv2.imread(str(PACKAGE / 'config' / 'vip_badge.png'), cv2.IMREAD_GRAYSCALE)
+    canvas = np.full((480, 640), 120, dtype=np.uint8)
+    canvas[100:100 + badge.shape[0], 100:100 + badge.shape[1]] = badge
+    assert len(find_badges(canvas, 7)) == 1
+
+
+def test_vip_is_located_from_badge_and_depth():
+    image, (u, v) = _scene()
+    quad = find_badges(image, 7)[0]
     depth = np.full((480, 640), np.inf, dtype=np.float32)
-    mask[200:280, 400:440] = True      # torso right of the image centre
-    depth[200:280, 400:440] = 3.0
-    x, y, z = locate(mask, depth, FX, FY, CX, CY)
-    u = 419.5
+    depth[150:320, 380:520] = 3.0
+    x, y, z = locate(quad, depth, FX, FY, CX, CY)
     assert abs(z - 3.0 - 0.19) < 0.01                 # pushed to the body centre
     assert abs(x - (u - CX) / FX * z) < 0.02 and x > 0   # to the right in the optical frame
-    assert locate(mask & False, depth, FX, FY, CX, CY) is None
-    assert locate(mask, np.full_like(depth, np.nan), FX, FY, CX, CY) is None
+    assert locate(quad, np.full_like(depth, np.nan), FX, FY, CX, CY) is None
 
 
 def test_sighting_is_matched_to_the_nearest_table():

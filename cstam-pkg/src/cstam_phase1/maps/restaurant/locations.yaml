@@ -102,7 +102,7 @@ doors:
 # floor's lobby pose with the same heading.
 elevator:
   x: 0.91
-  cabin_y: -11.68
+  cabin_y: -11.70
   floors:
     1: {map: restaurant.yaml, height: 0.0, lobby_y: -9.40, enter_yaw: -1.5708}
     2: {map: floor2.yaml, height: 2.56, lobby_y: -13.90, enter_yaw: 1.5708}

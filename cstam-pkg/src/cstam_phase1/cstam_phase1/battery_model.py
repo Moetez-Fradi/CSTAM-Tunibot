@@ -7,6 +7,7 @@ linearly, like the constant-current/constant-voltage phase of a Li-ion pack.
 """
 
 from dataclasses import dataclass
+import math
 
 
 @dataclass(frozen=True)
@@ -68,3 +69,16 @@ def open_circuit_voltage(state_of_charge, params):
             ratio = (soc - soc_a) / (soc_b - soc_a)
             return params.empty_voltage + span * (v_a + ratio * (v_b - v_a))
     return params.full_voltage
+
+
+def on_charger(robot_pose, dock_pose, tolerance_m, tolerance_rad):
+    """True when the robot's contacts touch the dock's charging pads.
+
+    Poses are (x, y, yaw) in the map frame; the pads conduct only when the
+    robot stands within tolerance of the dock pose, as docked.
+    """
+    if robot_pose is None:
+        return False
+    dx, dy = robot_pose[0] - dock_pose[0], robot_pose[1] - dock_pose[1]
+    heading = math.atan2(math.sin(robot_pose[2] - dock_pose[2]), math.cos(robot_pose[2] - dock_pose[2]))
+    return math.hypot(dx, dy) <= tolerance_m and abs(heading) <= tolerance_rad

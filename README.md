@@ -27,7 +27,8 @@ queued table 1 then table 2, invalid/duplicate rejection, and manual dock return
 passed. Physical arrival errors and recorded results are in the
 [application acceptance data](docs/phase1_application_acceptance.json).
 Docking ends with a slow final approach onto the dock pose (see
-[Docking](#docking)); charging is simulated by proximity, not charger contact.
+[Docking](#docking)); it charges only while standing on the dock's charging
+pads.
 
 ## Prerequisites and focused build
 
@@ -135,8 +136,13 @@ restores the old behaviour. Measured against Gazebo ground truth: 0.06 m and
 It integrates a 10 Wh Li-ion model on simulated time: a fixed 4 W electronics
 load, plus extra power proportional to the real `/odom` linear and angular
 speed. One delivery uses about 10% of the charge. The robot charges at 60 W,
-tapering above 80%, but only while it is stationary within 0.5 m of the dock
-(AMCL pose). The task manager reads the battery and decides:
+tapering above 80%, but only while its contacts touch the charging pads at
+the dock: the real robot (Gazebo ground truth, the charger's view of it)
+stationary within 10 cm and 0.15 rad of the dock pose. Being near the dock
+is not enough; if the robot is docked to charge but not charging for 8 s,
+the task manager runs the final docking approach again (up to 3 times,
+then reports that it needs attention). The task manager reads the battery
+and decides:
 
 | Battery | Behavior |
 |---|---|
@@ -348,12 +354,19 @@ The exported collision model closed both doorways and had no upstairs
 floor, so `cstam_phase1/scripts/build_upper_floor.py` (idempotent):
 
 - splits the wall collision boxes around both shaft doorways;
-- adds `andino_gz/models/upper_floor_collision`, the floor-2 slab;
+- adds `andino_gz/models/upper_floor_collision`, the floor-2 slab, with
+  the hole the cabin rides through;
 - extends the floor-1 map over the shaft, and fills the parts SLAM left
   unknown in the south of the dining room from the mesh (free floor, mesh
   furniture occupied), leaving every cell SLAM saw unchanged;
-- draws `maps/restaurant/floor2.yaml` in the same map frame from the
-  collision walls and the floor-2 furniture.
+- with `--draw-floor2`, draws a floor-2 map from the model (a fallback and
+  cross-check only).
+
+Floor 2 is mapped with SLAM Toolbox like floor 1:
+`scripts/map_floor2.sh` spawns the robot upstairs, drives the mapping
+patrol round the aisles, saves the map and aligns it into the shared map
+frame (`scripts/align_floor2_map.py`: SLAM's frame starts at the spawn
+pose). FLOOR2_RESULTS
 
 `table_4` and `table_5` are upstairs (same west-aisle approach as tables
 1-3). A trip to another floor is planned as legs: that floor's lobby pose,
@@ -362,11 +375,17 @@ terrace door legs before or after when needed). The doorways face opposite
 ways, so the robot drives straight through: in facing south, out facing
 south; back down in facing north.
 
-`elevator` (`cstam_phase1/elevator.py`) serves `/elevator/to_floor_1` and
-`/elevator/to_floor_2` (Trigger): it checks the robot is in the cabin, moves
-the visual cabin, then moves the robot to the other floor at the same x, y
-and heading (a vertical move, so wheel odometry and AMCL stay valid), loads
-that floor's map in the map server, re-seeds AMCL and clears both costmaps.
+The cabin (`elevator_cabin` in the world) is a platform on a prismatic
+joint that physically carries the robot; its top is flush with each floor at
+the stops, and it does not collide with the ground plane it sits in. A
+velocity controller drives the joint and a joint-state publisher reports
+its height. `elevator` (`cstam_phase1/elevator.py`) serves
+`/elevator/to_floor_1` and `/elevator/to_floor_2` (Trigger): it checks the
+cabin is at the robot's floor and the robot stands still inside it, drives
+the lift with a smooth profile (0.35 m/s, 0.25 m/s^2 up, braking at most
+0.5 m/s^2), confirms the robot arrived on the platform, then loads that
+floor's map in the map server, re-seeds AMCL and clears both costmaps. The
+ride is vertical, so wheel odometry and AMCL's x/y stay valid.
 `/elevator/state` reports the floor. A failed ride is retried like a failed
 Nav2 goal; a return to dock requested during a ride waits for the cabin.
 People stay downstairs: the pedestrian simulator keeps the floor-1 map and
@@ -376,14 +395,15 @@ between floors (or pick a floor), and a guest at an upstairs table sees
 
 ## VIP recognition
 
-One scenario guest, `guest_vip`, is the VIP: a magenta jacket that nothing
-else in the restaurant wears, emissive so lighting does not change it. They
-come down the central aisle and stand on table 2's east side, across the
-table from where the robot serves it.
+One scenario guest, `guest_vip`, is the VIP. They wear an ID badge, ArUco
+marker 7 (`config/vip_badge.png`, `scripts/make_vip_badge.py`), on the chest,
+back and both sleeves; identity comes from the marker's id alone, as with a
+badge reader. They come down the central aisle and stand on table 2's east
+side, across the table from where the robot serves it.
 
 `vip_detector` (`cstam_phase1/vip_detector.py`) reads the RGB-D camera twice
-a second: it thresholds the colour image for that magenta, takes the median
-depth of those pixels, back-projects their centre through the camera
+a second: it finds ArUco markers (OpenCV) and keeps id 7, takes the median
+depth inside the marker, back-projects its centre through the camera
 intrinsics and adds half a body width, transforms the point to the map and
 matches it to the nearest tabletop centre (`table:` in `locations.yaml`,
 within 1.6 m). `/vip/status` carries the sighting. For 10 minutes after a
@@ -616,10 +636,7 @@ copy was built for portability; a pristine second machine was not tested.
 
 ## Limits
 
-The elevator ride is simulated: the robot is moved with the cabin, not
-carried by it, and the upstairs map is drawn from the model, not SLAM.
-Only the colour of the VIP's jacket identifies them; a real system would
-need face or badge recognition. Pedestrians are kinematic visuals: they do
+The VIP is recognised by a badge marker, not by face. Pedestrians are kinematic visuals: they do
 not physically push the robot, so contacts are measured geometrically from
 ground truth rather than by contact sensors. The rear and side range
 sensors emulate ultrasonics with narrow lidar beams. The terrace part of the
@@ -632,8 +649,8 @@ move 0.4 m.
 On the development laptop, long runs rendering on the integrated
 AMD GPU froze the machine three times (amdgpu `flip_done timed out`); the
 RGB-D camera, unused by navigation, now renders at 5 Hz to reduce that load.
-Charging is simulated by proximity to the dock pose, not by charger contact
-or alignment. Static global
+The charger's contact is modelled from the robot's true pose (10 cm, 0.15 rad),
+not by a contact sensor. Static global
 map and real rolling local obstacles. Sparse 16-ring sensing and simulated
 friction limit real-hardware conclusions. Dock and table 3 are safe at their
 configured headings, not at every possible rotation. Physical dock error is

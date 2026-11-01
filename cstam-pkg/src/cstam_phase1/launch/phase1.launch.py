@@ -154,6 +154,9 @@ def generate_launch_description():
             '/world/restaurant/create@ros_gz_interfaces/srv/SpawnEntity',
             '/world/restaurant/set_pose@ros_gz_interfaces/srv/SetEntityPose',
             '/model/cstam/pose@geometry_msgs/msg/PoseStamped[gz.msgs.Pose',
+            # The elevator's motor and position sensor (elevator node).
+            '/elevator/lift/cmd_vel@std_msgs/msg/Float64]gz.msgs.Double',
+            '/elevator/joint_state@sensor_msgs/msg/JointState[gz.msgs.Model',
         ],
         parameters=[{'use_sim_time': True}],
         output='screen',

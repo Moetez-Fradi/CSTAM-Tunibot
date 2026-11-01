@@ -59,6 +59,9 @@ def manager():
     node.elevator_clients = {}
     node.vip = None
     node.vip_memory = 600.0
+    node.not_charging_since = None
+    node.redock_attempts = 0
+    node.redock_after = 8.0
     node.docking = None
     node.docking_timer = None
     node.dock_error = None
@@ -604,3 +607,22 @@ def test_battery_depletion_stops_the_final_approach():
     node._battery_depleted()
     assert node.docking is None and node.state == 'BATTERY_DEPLETED'
     assert published[-1].linear.x == 0.0
+
+
+def test_charging_robot_off_the_pads_docks_again():
+    node = manager()
+    node.state = 'CHARGING'
+    node.at_dock = True
+    node.battery_return = True
+    node.redock_after = 0.0
+    starts = []
+    node._start_docking = lambda: starts.append(1) or True
+    discharging = battery(50.0, BatteryState.POWER_SUPPLY_STATUS_DISCHARGING)
+    node._battery_callback(discharging)          # starts the clock
+    node._battery_callback(discharging)          # still not charging: re-dock
+    assert starts == [1] and node.events[-1] == 'not on the charger; re-docking (1/3)'
+    node._battery_callback(battery(51.0, BatteryState.POWER_SUPPLY_STATUS_CHARGING))
+    assert node.redock_attempts == 0 and node.not_charging_since is None
+    for _ in range(8):
+        node._battery_callback(discharging)
+    assert len(starts) == 4 and 'needs attention' in node.events[-1]

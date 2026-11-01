@@ -195,6 +195,9 @@ class DeliveryTaskManager(Node):
         self.dock_error = None       # (metres, radians) left after the last docking
         self.vip_memory = float(self.get_parameter('vip_memory_sec').value)
         self.vip = None              # last VIP sighting from /vip/status
+        self.not_charging_since = None   # docked to charge, pads not conducting
+        self.redock_attempts = 0
+        self.redock_after = 8.0          # s
         self.orders = {}             # location -> open (queued or active) order
         self.history = deque(maxlen=max(1, int(self.get_parameter('history_size').value)))
         self.last_rejection = None
@@ -510,6 +513,8 @@ class DeliveryTaskManager(Node):
                 self.state = 'IDLE'
                 self._publish_status(f'charged to {percentage:.0f}%; resuming')
                 self._start_queued_task()
+            else:
+                self._check_charger_contact()
             return
         if (percentage <= self.low_battery_percentage
                 and self.state in self.DELIVERY_STATES
@@ -518,6 +523,25 @@ class DeliveryTaskManager(Node):
             self._publish_status(
                 f'low battery {percentage:.0f}%; returning to dock to charge')
             self._request_dock_return('low battery')
+
+    def _check_charger_contact(self):
+        """Docked to charge but the pads do not conduct: dock again."""
+        if self.battery_charging or self.docking is not None or not self.at_dock:
+            self.not_charging_since = None
+            if self.battery_charging:
+                self.redock_attempts = 0
+            return
+        now = time.monotonic()
+        if self.not_charging_since is None:
+            self.not_charging_since = now
+        elif now - self.not_charging_since > self.redock_after:
+            self.not_charging_since = None
+            if self.redock_attempts >= 3:
+                self._publish_status('not on the charger after 3 re-docks; needs attention')
+                return
+            self.redock_attempts += 1
+            self._publish_status(f'not on the charger; re-docking ({self.redock_attempts}/3)')
+            self._start_docking()
 
     def _battery_depleted(self):
         self._stop_docking()

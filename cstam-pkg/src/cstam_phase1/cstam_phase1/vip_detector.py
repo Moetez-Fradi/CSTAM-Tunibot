@@ -1,13 +1,14 @@
 """Recognise the VIP guest with the robot's RGB-D camera.
 
-The VIP is simulated as a guest in a magenta jacket that nothing else in
-the restaurant wears (pedestrian_simulator.VIP_RGBA, emissive so lighting
-does not change it). Twice a second the detector
+The VIP wears an ID badge: ArUco marker vip_marker_id (DICT_4X4_50,
+config/vip_badge.png) on the chest, back and both sleeves. Identity comes
+from the marker's id alone, as with a badge reader: anyone else, whatever
+they wear, is not the VIP. Twice a second the detector
 
-1. thresholds the colour image for that magenta,
-2. takes the median depth of those pixels and back-projects their centre
+1. finds ArUco markers in the colour image and keeps the VIP's id,
+2. takes the median depth inside the marker and back-projects its centre
    through the camera intrinsics (camera_optical_frame), adding half a body
-   width so the point is the person's centre, not their jacket,
+   width so the point is the person's centre, not their badge,
 3. transforms it to the map frame and finds the table they are at
    (nearest tabletop centre within table_radius).
 
@@ -22,6 +23,7 @@ import os
 import time
 
 from ament_index_python.packages import get_package_share_directory
+import cv2
 import numpy as np
 import rclpy
 from rclpy.executors import ExternalShutdownException
@@ -34,31 +36,38 @@ from tf2_ros import Buffer, TransformException, TransformListener
 import yaml
 
 
-# Rendered VIP magenta is about (255, 26, 191); purple, red and the table
-# plaques all fail at least one of these.
-def vip_mask(rgb):
-    """Boolean mask of VIP-coloured pixels in an HxWx3 uint8 image."""
-    r = rgb[..., 0].astype(np.int16)
-    g = rgb[..., 1].astype(np.int16)
-    b = rgb[..., 2].astype(np.int16)
-    return (r >= 200) & (b >= 130) & (g <= 100) & (r - g >= 120)
+ARUCO = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
 
 
-def locate(mask, depth, fx, fy, cx, cy, min_pixels=80, body_radius=0.19):
-    """(x, y, z) of the VIP's centre in the optical frame, or None.
+def find_badges(gray, marker_id, min_side_px=12):
+    """Pixel corners (4x2 arrays) of every visible marker with marker_id."""
+    corners, ids, _rejected = cv2.aruco.detectMarkers(
+        gray, ARUCO, parameters=cv2.aruco.DetectorParameters_create())
+    if ids is None:
+        return []
+    found = []
+    for quad, mid in zip(corners, ids.flatten()):
+        quad = quad.reshape(4, 2)
+        side = float(np.mean(np.linalg.norm(quad - np.roll(quad, 1, axis=0), axis=1)))
+        if int(mid) == marker_id and side >= min_side_px:
+            found.append(quad)
+    return found
 
-    Median depth over the masked pixels with a finite reading; the centre is
+
+def locate(quad, depth, fx, fy, cx, cy, body_radius=0.19):
+    """(x, y, z) of the badge wearer's centre in the optical frame, or None.
+
+    Median depth over the marker's box with a finite reading; the centre is
     pushed body_radius further along the viewing ray.
     """
-    vs, us = np.nonzero(mask)
-    if len(us) < min_pixels:
-        return None
-    d = depth[vs, us]
-    d = d[np.isfinite(d) & (d > 0.1)]
-    if len(d) < min_pixels // 2:
+    (u0, v0), (u1, v1) = quad.min(axis=0), quad.max(axis=0)
+    h, w = depth.shape
+    patch = depth[max(0, int(v0)):min(h, int(v1) + 1), max(0, int(u0)):min(w, int(u1) + 1)]
+    d = patch[np.isfinite(patch) & (patch > 0.1)]
+    if len(d) < 4:
         return None
     z = float(np.median(d))
-    u, v = float(np.mean(us)), float(np.mean(vs))
+    u, v = quad.mean(axis=0)
     ray = np.array([(u - cx) / fx, (v - cy) / fy, 1.0])
     point = ray * z
     return tuple(point + ray / np.linalg.norm(ray) * body_radius)
@@ -93,13 +102,15 @@ class VipDetector(Node):
         self.declare_parameter('depth_topic', '/camera/rgbd/depth_image')
         self.declare_parameter('info_topic', '/camera/rgbd/camera_info')
         self.declare_parameter('rate_hz', 2.0)
-        self.declare_parameter('min_pixels', 80)
+        self.declare_parameter('vip_marker_id', 7)
+        self.declare_parameter('min_marker_px', 12)
         self.declare_parameter('max_range', 8.0)
         self.declare_parameter('table_radius', 1.6)
         get = lambda name: self.get_parameter(name).value  # noqa: E731
         # Only floor-1 guests are simulated; upstairs the camera sees no VIP.
         self.tables = load_tables(str(get('locations_file')))
-        self.min_pixels = int(get('min_pixels'))
+        self.marker_id = int(get('vip_marker_id'))
+        self.min_marker_px = int(get('min_marker_px'))
         self.max_range = float(get('max_range'))
         self.table_radius = float(get('table_radius'))
         self.period = 1.0 / max(0.1, float(get('rate_hz')))
@@ -146,8 +157,10 @@ class VipDetector(Node):
         if depth.shape != rgb.shape[:2]:
             return
         k = self.info.k
-        mask = vip_mask(rgb)
-        point = locate(mask, depth, k[0], k[4], k[2], k[5], self.min_pixels)
+        badges = find_badges(cv2.cvtColor(np.ascontiguousarray(rgb), cv2.COLOR_RGB2GRAY),
+                             self.marker_id, self.min_marker_px)
+        points = [p for p in (locate(q, depth, k[0], k[4], k[2], k[5]) for q in badges) if p]
+        point = min(points, key=lambda p: p[2]) if points else None
         visible = point is not None and point[2] <= self.max_range
         if visible:
             mapped = self._to_map(point, image.header.frame_id)
@@ -157,7 +170,7 @@ class VipDetector(Node):
             self.sighting = {
                 'visible': True, 'last_seen': time.time(), 'x': round(x, 2), 'y': round(y, 2),
                 'table': nearest_table(self.tables, x, y, self.table_radius),
-                'range_m': round(float(point[2]), 2), 'pixels': int(mask.sum())}
+                'range_m': round(float(point[2]), 2), 'badges': len(badges)}
             self.status_pub.publish(String(data=json.dumps(self.sighting)))
         elif self.sighting and self.sighting['visible']:
             self.sighting = {**self.sighting, 'visible': False}

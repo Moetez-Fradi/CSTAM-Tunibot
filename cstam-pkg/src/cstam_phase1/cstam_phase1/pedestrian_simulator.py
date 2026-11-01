@@ -39,22 +39,30 @@ from cstam_phase1.pedestrian_model import (
 from cstam_phase1.people_tracking import StaticMap
 
 
-# The VIP's jacket: an emissive magenta that no other object in the scene
-# uses, so the camera sees the same colour under any lighting (vip_detector).
-VIP_RGBA = '1 0.1 0.75 1'
+def badge_visuals(texture):
+    """The VIP's ID badge (config/vip_badge.png, ArUco marker) on all four sides."""
+    material = ('<material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse>'
+                '<pbr><metal><albedo_map>' + texture + '</albedo_map>'
+                '<roughness>1</roughness><metalness>0</metalness></metal></pbr></material>')
+    sides = [('front', '0.20 0 1.22 0 0 0', '0.01 0.22 0.22'),
+             ('back', '-0.20 0 1.22 0 0 3.14159', '0.01 0.22 0.22'),
+             ('left', '0 0.30 1.15 0 0 1.5708', '0.01 0.20 0.20'),
+             ('right', '0 -0.30 1.15 0 0 -1.5708', '0.01 0.20 0.20')]
+    return ''.join(
+        f'<visual name="badge_{name}"><pose>{pose}</pose><geometry><box><size>{size}</size></box>'
+        f'</geometry>{material}</visual>' for name, pose, size in sides)
 
 
-def pedestrian_sdf(name, color, vip=False):
+def pedestrian_sdf(name, color, badge_texture=None):
     r, g, b = color
     skin = '0.76 0.57 0.42 1'
     dark = '0.12 0.13 0.16 1'
-    shirt = VIP_RGBA if vip else f'{r} {g} {b} 1'
+    shirt = f'{r} {g} {b} 1'
 
     def visual(vname, pose, geometry, rgba):
-        glow = f'<emissive>{rgba}</emissive>' if vip and rgba == shirt else ''
         return (f'<visual name="{vname}"><pose>{pose}</pose><geometry>{geometry}'
                 f'</geometry><material><ambient>{rgba}</ambient><diffuse>{rgba}'
-                f'</diffuse>{glow}</material></visual>')
+                f'</diffuse></material></visual>')
     parts = [
         visual('left_leg', '0 0.09 0.43 0 0 0', '<box><size>0.14 0.13 0.86</size></box>', dark),
         visual('right_leg', '0 -0.09 0.43 0 0 0', '<box><size>0.14 0.13 0.86</size></box>', dark),
@@ -64,6 +72,8 @@ def pedestrian_sdf(name, color, vip=False):
         visual('right_arm', '0 -0.24 1.12 0 0 0', '<box><size>0.10 0.09 0.58</size></box>', shirt),
         visual('head', '0.02 0 1.62 0 0 0', '<sphere><radius>0.13</radius></sphere>', skin),
     ]
+    if badge_texture:
+        parts.append(badge_visuals(badge_texture))
     # Visual-only: a static collision would stay at the spawn pose forever,
     # because set_pose does not move static collision geometry.
     return (f'<sdf version="1.9"><model name="{name}"><static>true</static>'
@@ -97,6 +107,8 @@ class PedestrianSimulator(Node):
             for item in scenario.get('pedestrians', [])]
         self.close_pass = float(self.get_parameter('close_pass_clearance').value)
         self.upstairs_z = 1.2
+        # The VIP wears an ID badge (ArUco marker) that vip_detector reads.
+        self.badge_texture = os.path.join(share, 'config', 'vip_badge.png')
         self.robot_upstairs = False
         world = str(self.get_parameter('world_name').value)
 
@@ -192,7 +204,8 @@ class PedestrianSimulator(Node):
             request.entity_factory.name = pedestrian.config.name
             request.entity_factory.allow_renaming = False
             request.entity_factory.sdf = pedestrian_sdf(
-                pedestrian.config.name, pedestrian.config.color, pedestrian.config.vip)
+                pedestrian.config.name, pedestrian.config.color,
+                self.badge_texture if pedestrian.config.vip else None)
             request.entity_factory.pose.position.x = wx
             request.entity_factory.pose.position.y = wy
             request.entity_factory.pose.orientation.z = math.sin(wyaw / 2.0)

@@ -54,7 +54,11 @@
       <link name="ground_link">
         <collision name="ground_collision">
           <geometry><plane><normal>0 0 1</normal><size>60 60</size></plane></geometry>
-          <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction></surface>
+          <!-- 0x01: everything but the elevator platform (0x02), which sits flush in it. -->
+          <surface>
+            <friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction>
+            <contact><collide_bitmask>0x01</collide_bitmask></contact>
+          </surface>
         </collision>
       </link>
     </model>
@@ -131,19 +135,64 @@
     </model>
 
     <!--
+      Charging pads at the dock (map 5.78, 15.50, facing the hatch). Visual only
+      and 6 mm thin, below the LiDAR floor filter. cstam_phase1's battery
+      simulator charges only while the robot stands on them as docked.
+    -->
+    <model name="charging_pads">
+      <static>true</static>
+      <pose>17.00 22.45 0.003 0 0 1.5708</pose>
+      <link name="pads">
+        <visual name="base"><geometry><box><size>0.70 0.62 0.006</size></box></geometry><material><ambient>0.10 0.11 0.13 1</ambient><diffuse>0.10 0.11 0.13 1</diffuse></material></visual>
+        <visual name="left_contact"><pose>0.20 0.12 0.001 0 0 0</pose><geometry><box><size>0.20 0.05 0.006</size></box></geometry><material><emissive>0.30 0.90 0.45 1</emissive><diffuse>0.30 0.90 0.45 1</diffuse></material></visual>
+        <visual name="right_contact"><pose>0.20 -0.12 0.001 0 0 0</pose><geometry><box><size>0.20 0.05 0.006</size></box></geometry><material><emissive>0.30 0.90 0.45 1</emissive><diffuse>0.30 0.90 0.45 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!--
       Elevator cabin in the restaurant's shaft (map x -0.10..1.92, y -12.64..-10.73;
-      doorway north at floor 1, south at floor 2). Visual only: the floors carry
-      the robot. cstam_phase1's elevator node moves it between z 0 and 2.56
-      with set_pose and moves the robot with it. Pose in world coordinates.
+      doorway north at floor 1, south at floor 2). The platform rides a prismatic
+      joint and physically carries the robot: its top is flush with floor 1 at
+      lift = 0 and with floor 2 at lift = 2.56. cstam_phase1's elevator node
+      drives the joint's velocity (/elevator/lift/cmd_vel) and reads its
+      position (/elevator/joint_state). It does not collide with the ground
+      plane (collide_bitmask), so it can sit flush in it. World coordinates.
     -->
     <model name="elevator_cabin">
-      <static>true</static>
-      <pose>12.13 -4.73 0 0 0 0</pose>
+      <pose>12.13 -4.75 0 0 0 0</pose>
       <link name="cabin">
-        <visual name="platform"><pose>0 0 0.01 0 0 0</pose><geometry><box><size>1.80 1.70 0.02</size></box></geometry><material><ambient>0.22 0.24 0.29 1</ambient><diffuse>0.22 0.24 0.29 1</diffuse></material></visual>
-        <visual name="west_panel"><pose>-0.85 0 0.55 0 0 0</pose><geometry><box><size>0.04 1.60 1.06</size></box></geometry><material><ambient>0.52 0.56 0.63 1</ambient><diffuse>0.52 0.56 0.63 1</diffuse></material></visual>
-        <visual name="east_panel"><pose>0.85 0 0.55 0 0 0</pose><geometry><box><size>0.04 1.60 1.06</size></box></geometry><material><ambient>0.52 0.56 0.63 1</ambient><diffuse>0.52 0.56 0.63 1</diffuse></material></visual>
+        <inertial><mass>200</mass><inertia><ixx>60</ixx><iyy>60</iyy><izz>100</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+        <collision name="platform">
+          <pose>0 0 -0.03 0 0 0</pose>
+          <geometry><box><size>1.86 1.74 0.06</size></box></geometry>
+          <surface>
+            <friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction>
+            <contact><collide_bitmask>0x02</collide_bitmask></contact>
+          </surface>
+        </collision>
+        <visual name="platform"><pose>0 0 -0.03 0 0 0</pose><geometry><box><size>1.86 1.74 0.06</size></box></geometry><material><ambient>0.22 0.24 0.29 1</ambient><diffuse>0.22 0.24 0.29 1</diffuse></material></visual>
+        <visual name="west_panel"><pose>-0.89 0 0.53 0 0 0</pose><geometry><box><size>0.04 1.60 1.06</size></box></geometry><material><ambient>0.52 0.56 0.63 1</ambient><diffuse>0.52 0.56 0.63 1</diffuse></material></visual>
+        <visual name="east_panel"><pose>0.89 0 0.53 0 0 0</pose><geometry><box><size>0.04 1.60 1.06</size></box></geometry><material><ambient>0.52 0.56 0.63 1</ambient><diffuse>0.52 0.56 0.63 1</diffuse></material></visual>
       </link>
+      <joint name="lift" type="prismatic">
+        <parent>world</parent>
+        <child>cabin</child>
+        <axis>
+          <xyz>0 0 1</xyz>
+          <!-- Margins past both floors: a velocity command at exactly a limit
+               does nothing in DART. The elevator node stops at the floors. -->
+          <limit><lower>-0.05</lower><upper>2.65</upper><effort>1e6</effort><velocity>1.0</velocity></limit>
+        </axis>
+      </joint>
+      <plugin filename="gz-sim-joint-controller-system" name="gz::sim::systems::JointController">
+        <joint_name>lift</joint_name>
+        <topic>/elevator/lift/cmd_vel</topic>
+        <initial_velocity>0.0</initial_velocity>
+      </plugin>
+      <plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher">
+        <topic>/elevator/joint_state</topic>
+        <joint_name>lift</joint_name>
+      </plugin>
     </model>
 
     <!-- Diners are no longer scripted actors here. cstam_phase1's

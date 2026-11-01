@@ -1,19 +1,21 @@
-"""Simulated elevator between the dining room (floor 1) and the upper room (floor 2).
+"""Elevator between the dining room (floor 1) and the upper room (floor 2).
 
-The restaurant's real shaft holds a visual-only cabin. A ride is called by
-the task manager once the robot stands in the cabin
+The restaurant's shaft holds a cabin whose platform rides a prismatic joint
+in Gazebo (world: elevator_cabin) and physically carries the robot. A ride
+is called by the task manager once the robot stands in the cabin
 (/elevator/to_floor_1, /elevator/to_floor_2, std_srvs/Trigger):
 
-1. check, from ground truth, that the robot is inside the cabin;
-2. "close the doors", then move the cabin to the other floor (set_pose);
-3. move the robot onto the other floor at the same x, y and heading. The
-   move is purely vertical, so wheel odometry and AMCL's x/y stay valid;
+1. check that the cabin is at the robot's floor and the robot is inside it
+   and standing still (ground truth: the cabin's presence sensor);
+2. "close the doors", then drive the lift joint (/elevator/lift/cmd_vel)
+   with a smooth speed profile, reading its position (/elevator/joint_state);
+3. confirm the robot arrived with the platform. The ride is vertical, so
+   wheel odometry and AMCL's x/y stay valid;
 4. load that floor's map in the map server, re-seed AMCL at the robot's
    current estimate and clear both costmaps of the floor left behind.
 
-/elevator/state (JSON, latched) reports the floor, the cabin and whether a
-ride is running. Ground truth is used only for the cabin's presence sensor
-and to move bodies, as a real elevator's sensors and motor would.
+/elevator/state (JSON, latched) reports the floor, the cabin height and
+whether a ride is running.
 """
 
 import json
@@ -31,9 +33,8 @@ from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile, QoSReliabilityPolicy
 from rclpy.time import Time
-from ros_gz_interfaces.msg import Entity
-from ros_gz_interfaces.srv import SetEntityPose
-from std_msgs.msg import String
+from sensor_msgs.msg import JointState
+from std_msgs.msg import Float64, String
 from std_srvs.srv import Trigger
 from tf2_ros import Buffer, TransformException, TransformListener
 import yaml
@@ -67,6 +68,21 @@ def in_cabin(elevator, x, y, tolerance=0.45):
     return abs(x - elevator['x']) <= tolerance and abs(y - elevator['cabin_y']) <= tolerance
 
 
+def lift_command(position, target, velocity, dt, max_speed=0.35, accel=0.25,
+                 tolerance=0.003, creep=0.02):
+    """Next lift velocity: ramp up by accel, brake so as to stop at target.
+
+    Braking follows the stopping-distance curve but never sheds more than
+    2 * accel per second, so a robot on the platform feels no jolt.
+    """
+    remaining = target - position
+    if abs(remaining) <= tolerance:
+        return 0.0
+    speed = min(max_speed, math.sqrt(2.0 * accel * abs(remaining)), abs(velocity) + accel * dt)
+    speed = max(speed, abs(velocity) - 2.0 * accel * dt)
+    return math.copysign(max(speed, creep), remaining)
+
+
 def floor_of_height(elevator, z):
     """Floor whose height is closest to a ground-truth z."""
     return min(elevator['floors'], key=lambda f: abs(elevator['floors'][f]['height'] - z))
@@ -84,12 +100,11 @@ class Elevator(Node):
         maps = os.path.join(share, 'maps', 'restaurant')
         self.declare_parameter('locations_file', os.path.join(maps, 'locations.yaml'))
         self.declare_parameter('alignment_file', os.path.join(maps, 'world_alignment.yaml'))
-        self.declare_parameter('world_name', 'restaurant')
         self.declare_parameter('robot_model', 'cstam')
-        self.declare_parameter('cabin_model', 'elevator_cabin')
-        self.declare_parameter('robot_spawn_z', 0.02)   # spawn height above a floor
         self.declare_parameter('door_sec', 1.5)
-        self.declare_parameter('travel_sec', 5.0)
+        self.declare_parameter('max_speed', 0.35)     # m/s
+        self.declare_parameter('acceleration', 0.25)  # m/s^2
+        self.declare_parameter('ride_timeout_sec', 30.0)
         get = lambda name: self.get_parameter(name).value  # noqa: E731
         self.maps_dir = os.path.dirname(str(get('locations_file')))
         self.elevator = load_elevator(str(get('locations_file')))
@@ -97,20 +112,22 @@ class Elevator(Node):
             a = yaml.safe_load(stream)['world_from_map']
         self.world_from_map = (float(a['x']), float(a['y']), float(a['yaw']))
         self.robot_model = str(get('robot_model'))
-        self.cabin_model = str(get('cabin_model'))
-        self.spawn_z = float(get('robot_spawn_z'))
         self.door_sec = float(get('door_sec'))
-        self.travel_sec = float(get('travel_sec'))
-        world = str(get('world_name'))
+        self.max_speed = float(get('max_speed'))
+        self.accel = float(get('acceleration'))
+        self.ride_timeout = float(get('ride_timeout_sec'))
 
         group = ReentrantCallbackGroup()
         self.floor = 1
         self.busy = False
         self.message = 'ready at floor 1'
         self.truth = None   # (x, y, z, yaw) in the map frame, z absolute
+        self.truth_at = 0.0
+        self.lift = None    # cabin height (lift joint position)
         self.lock = threading.Lock()
-        self.pose_client = self.create_client(
-            SetEntityPose, f'/world/{world}/set_pose', callback_group=group)
+        self.lift_pub = self.create_publisher(Float64, '/elevator/lift/cmd_vel', 10)
+        self.create_subscription(JointState, '/elevator/joint_state', self._joint_callback, 10,
+                                 callback_group=group)
         self.map_client = self.create_client(
             LoadMap, '/map_server/load_map', callback_group=group)
         self.clear_clients = [self.create_client(ClearEntireCostmap, name, callback_group=group)
@@ -136,11 +153,10 @@ class Elevator(Node):
             f'elevator ready: floors {sorted(self.elevator["floors"])}, cabin at '
             f'({self.elevator["x"]:.2f}, {self.elevator["cabin_y"]:.2f})')
 
-    # Frames ----------------------------------------------------------------
-    def _map_to_world(self, x, y, yaw=0.0):
-        wx, wy, wyaw = self.world_from_map
-        c, s = math.cos(wyaw), math.sin(wyaw)
-        return wx + c * x - s * y, wy + s * x + c * y, yaw + wyaw
+    # Inputs ----------------------------------------------------------------
+    def _joint_callback(self, message):
+        if 'lift' in message.name:
+            self.lift = float(message.position[list(message.name).index('lift')])
 
     def _truth_callback(self, message):
         p = message.pose.position
@@ -148,6 +164,7 @@ class Elevator(Node):
         c, s = math.cos(wyaw), math.sin(wyaw)
         dx, dy = p.x - wx, p.y - wy
         self.truth = (c * dx + s * dy, -s * dx + c * dy, p.z, _yaw(message.pose.orientation) - wyaw)
+        self.truth_at = time.monotonic()
         if not self.busy:
             floor = floor_of_height(self.elevator, p.z)
             if floor != self.floor:   # e.g. a simulator reset
@@ -157,6 +174,7 @@ class Elevator(Node):
     def _publish_state(self):
         self.state_pub.publish(String(data=json.dumps({
             'floor': self.floor, 'busy': self.busy, 'message': self.message,
+            'cabin_height': None if self.lift is None else round(self.lift, 3),
             'floors': sorted(self.elevator['floors'])})))
 
     # Ride ---------------------------------------------------------------------
@@ -182,19 +200,30 @@ class Elevator(Node):
             time.sleep(0.02)
         return future.result() if future.done() else None
 
-    def _set_pose(self, name, x, y, z, yaw, wait=True):
-        wx, wy, wyaw = self._map_to_world(x, y, yaw)
-        request = SetEntityPose.Request()
-        request.entity.name = name
-        request.entity.type = Entity.MODEL
-        request.pose.position.x, request.pose.position.y, request.pose.position.z = wx, wy, z
-        request.pose.orientation.z = math.sin(wyaw / 2.0)
-        request.pose.orientation.w = math.cos(wyaw / 2.0)
-        future = self.pose_client.call_async(request)
-        if not wait:
-            return True
-        result = self._wait(future, 3.0)
-        return bool(result and result.success)
+    def _robot_still(self, wait=6.0, window=0.6, tolerance=0.01):
+        """True once the robot stays put for `window` s (within `wait` s)."""
+        end = time.monotonic() + wait
+        while self.truth is not None and time.monotonic() < end:
+            before = self.truth
+            time.sleep(window)
+            if math.hypot(self.truth[0] - before[0], self.truth[1] - before[1]) < tolerance:
+                return True
+        return False
+
+    def _drive_lift(self, target):
+        """Run the lift to `target` height; True once there."""
+        velocity, dt = 0.0, 0.05
+        end = time.monotonic() + self.ride_timeout
+        while time.monotonic() < end:
+            if self.lift is None:
+                return False
+            velocity = lift_command(self.lift, target, velocity, dt, self.max_speed, self.accel)
+            self.lift_pub.publish(Float64(data=velocity))
+            if velocity == 0.0:
+                return True
+            time.sleep(dt)
+        self.lift_pub.publish(Float64(data=0.0))
+        return False
 
     def _ride(self, target):
         floors = self.elevator['floors']
@@ -202,27 +231,29 @@ class Elevator(Node):
             return False, f'no floor {target}'
         if target == self.floor:
             return True, f'already at floor {target}'
-        if self.truth is None or not self.pose_client.wait_for_service(timeout_sec=2.0):
+        if self.truth is None or self.lift is None or time.monotonic() - self.truth_at > 2.0:
             return False, 'simulation not ready'
-        x, y, _z, yaw = self.truth
+        start = self.floor
+        h0, h1 = floors[start]['height'], floors[target]['height']
+        if abs(self.lift - h0) > 0.05:
+            # The cabin is elsewhere (e.g. after a reset): call it to this floor first.
+            self.message = f'calling the cabin to floor {start}'
+            self._publish_state()
+            if not self._drive_lift(h0):
+                return False, 'the cabin did not come'
+        x, y, _z, _yaw = self.truth
         if not in_cabin(self.elevator, x, y):
             return False, f'robot is not in the cabin ({x:.2f}, {y:.2f})'
-        start = self.floor
+        if not self._robot_still():
+            return False, 'robot is still moving'
         self.message = f'going to floor {target}'
         self._publish_state()
         time.sleep(self.door_sec)   # doors close
-        cx, cy = self.elevator['x'], self.elevator['cabin_y']
-        h0, h1 = floors[start]['height'], floors[target]['height']
-        steps = max(1, int(self.travel_sec * 10))
-        for k in range(1, steps + 1):
-            self._set_pose(self.cabin_model, cx, cy, h0 + (h1 - h0) * k / steps, 0.0, wait=False)
-            time.sleep(self.travel_sec / steps)
-        x, y, _z, yaw = self.truth   # the latest, in case it settled
-        if not self._set_pose(self.robot_model, x, y, h1 + self.spawn_z, yaw):
-            return False, 'could not move the robot'
+        if not self._drive_lift(h1):
+            return False, f'the lift stopped at {self.lift:.2f} m'
         time.sleep(0.5)
-        if abs(self.truth[2] - h1) > 0.3:
-            return False, f'robot did not arrive (z {self.truth[2]:.2f})'
+        if abs(self.truth[2] - h1) > 0.15:
+            return False, f'robot did not ride with the cabin (z {self.truth[2]:.2f})'
         self.floor = target
         map_ok = self._load_map(floors[target]['map'])
         self._reseed_amcl()

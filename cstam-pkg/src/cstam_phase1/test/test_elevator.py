@@ -2,7 +2,7 @@
 import math
 import pathlib
 
-from cstam_phase1.elevator import floor_of_height, in_cabin, load_elevator, ride_legs
+from cstam_phase1.elevator import floor_of_height, in_cabin, lift_command, load_elevator, ride_legs
 
 LOCATIONS = pathlib.Path(__file__).parents[1] / 'maps' / 'restaurant' / 'locations.yaml'
 LIFT = load_elevator(str(LOCATIONS))
@@ -107,3 +107,28 @@ def test_dock_return_requested_during_a_ride_waits_for_the_cabin():
     ok, _ = node._request_dock_return('manual')
     assert ok and node.manual_dock_requested and node.state == 'RETURNING_TO_DOCK'
     assert not any(isinstance(e, tuple) for e in node.events)   # no goal sent mid-ride
+
+
+def test_lift_profile_is_smooth_and_stops_at_the_floor():
+    position, velocity, dt, peak, top_accel = 0.0, 0.0, 0.05, 0.0, 0.0
+    for _ in range(int(30 / dt)):
+        command = lift_command(position, 2.56, velocity, dt)
+        if command != 0.0:
+            top_accel = max(top_accel, abs(command - velocity) / dt)
+        velocity = command
+        peak = max(peak, velocity)
+        if velocity == 0.0:
+            break
+        position += velocity * dt
+    assert abs(position - 2.56) <= 0.004 and velocity == 0.0
+    assert peak <= 0.35 + 1e-9
+    assert top_accel <= 2 * 0.25 + 1e-9   # gentle ramp and braking (the final 2 cm/s stop aside)
+    # and back down, never overshooting the floor
+    lowest = position
+    for _ in range(int(30 / dt)):
+        velocity = lift_command(position, 0.0, velocity, dt)
+        if velocity == 0.0:
+            break
+        position += velocity * dt
+        lowest = min(lowest, position)
+    assert abs(position) <= 0.004 and lowest >= -0.004

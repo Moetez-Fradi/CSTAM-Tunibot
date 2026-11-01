@@ -53,7 +53,7 @@ class PedestrianConfig:
     mode: str = 'pingpong'  # 'pingpong' or 'loop'
     start_delay: float = 0.0
     color: tuple = (0.2, 0.4, 0.8)
-    vip: bool = False      # wears the VIP colour the robot's camera looks for
+    vip: bool = False      # wears the VIP ID badge the robot's camera reads
 
     @classmethod
     def from_dict(cls, data):

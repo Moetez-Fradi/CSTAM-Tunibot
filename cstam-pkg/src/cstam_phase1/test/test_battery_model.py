@@ -50,3 +50,13 @@ def test_voltage_is_monotonic_between_empty_and_full():
     assert values[0] == PARAMS.empty_voltage
     assert math.isclose(values[-1], PARAMS.full_voltage)
     assert all(a < b for a, b in zip(values, values[1:]))
+
+
+def test_charger_conducts_only_when_docked_on_the_pads():
+    import math
+    from cstam_phase1.battery_model import on_charger
+    dock = (5.78, 15.50, math.pi / 2)
+    assert on_charger((5.80, 15.46, math.pi / 2 + 0.05), dock, 0.10, 0.15)
+    assert not on_charger((5.78, 15.30, math.pi / 2), dock, 0.10, 0.15)   # 20 cm short
+    assert not on_charger((5.78, 15.50, 0.0), dock, 0.10, 0.15)           # turned away
+    assert not on_charger(None, dock, 0.10, 0.15)
