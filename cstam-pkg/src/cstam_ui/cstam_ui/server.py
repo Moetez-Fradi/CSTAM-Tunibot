@@ -11,10 +11,12 @@ Public (customer) endpoints:
   GET  /api/orders/ID
   POST /api/orders/ID/cancel           only while the order is still queued
   POST /api/orders/ID/confirm          customer received the order
+  POST /api/orders/ID/rate             {stars: 1-5, comment} once, after delivery
   GET  /api/qr.svg?text=URL            QR code (black on white) for a page URL
   POST /api/voice                      {text} -> menu items, quantities, table heard
 Admin endpoints (PIN in X-Admin-Pin header or ?pin=, when admin_pin is set):
   GET  /api/admin/state, /api/admin/events, /api/admin/history[?limit=N]
+                                       (history includes the guests' ratings)
   GET  /api/admin/qr                   table page URLs for printed QR cards
   GET  /api/admin/analytics?range=today|7d|all   order statistics
   GET  /api/admin/maintenance          lifetime usage and service forecast
@@ -31,6 +33,7 @@ import mimetypes
 import os
 import re
 import threading
+import time
 import traceback
 from urllib.parse import parse_qs, urlparse
 
@@ -46,7 +49,9 @@ MAX_BODY = 16 * 1024
 ANSWER_TIMEOUT_SEC = 3.0   # wait for the task manager to accept or reject
 SSE_PERIOD_SEC = 0.25      # at most 4 updates per second per client
 SSE_KEEPALIVE_SEC = 15.0
-ORDER_PATH = re.compile(r'^/api/(admin/)?orders/([A-Za-z0-9_-]{1,32})(?:/(cancel|confirm))?$')
+MAX_COMMENT = 300
+ORDER_PATH = re.compile(
+    r'^/api/(admin/)?orders/([A-Za-z0-9_-]{1,32})(?:/(cancel|confirm|rate))?$')
 
 
 class ApiError(Exception):
@@ -72,6 +77,10 @@ class UiServer:
             self.floor_maps.setdefault(1, (map_png, map_meta))
         self.admin_pin = admin_pin
         self.order_log_file = order_log_file
+        # Guest ratings live next to the order log, one JSON object per line.
+        self.ratings_file = (os.path.join(os.path.dirname(order_log_file), 'cstam_ratings.jsonl')
+                             if order_log_file else None)
+        self.ratings_lock = threading.Lock()
         self.public_url = public_url.rstrip('/')
         self.voice = OrderParser(catalog.menu, [p['name'] for p in catalog.delivery_locations()])
         self.stopping = threading.Event()
@@ -181,7 +190,57 @@ class UiServer:
 
     def history(self, limit):
         orders = self._finished_orders()[::-1]
-        return {'orders': orders[:limit], 'total': len(orders)}
+        ratings = self._ratings()
+        stars = [r['stars'] for r in ratings.values()]
+        return {'orders': orders[:limit], 'total': len(orders),
+                'ratings': {o['id']: ratings[o['id']] for o in orders[:limit]
+                            if o.get('id') in ratings},
+                'rating': {'count': len(stars),
+                           'average': round(sum(stars) / len(stars), 2) if stars else None}}
+
+    def _ratings(self):
+        """order id -> rating record, from the ratings log."""
+        ratings = {}
+        if self.ratings_file and os.path.exists(self.ratings_file):
+            with open(self.ratings_file, encoding='utf-8') as stream:
+                for line in stream:
+                    try:
+                        record = json.loads(line)
+                        ratings[record['id']] = record
+                    except (json.JSONDecodeError, KeyError, TypeError):
+                        continue
+        return ratings
+
+    def rate_order(self, order_id, body):
+        """Record a guest's 1-5 star rating of a delivered order, once."""
+        body = body if isinstance(body, dict) else {}
+        try:
+            stars = int(body.get('stars'))
+        except (TypeError, ValueError):
+            stars = 0
+        if not 1 <= stars <= 5:
+            raise ApiError(HTTPStatus.BAD_REQUEST, 'stars must be 1-5')
+        comment = str(body.get('comment') or '').strip()
+        if len(comment) > MAX_COMMENT:
+            raise ApiError(HTTPStatus.BAD_REQUEST, f'comment is limited to {MAX_COMMENT} characters')
+        order, _ = find_order(self._status(self.hub.admin_view()), order_id)
+        if order is None:   # older than the task manager's short history
+            order = next((o for o in reversed(self._finished_orders())
+                          if o.get('id') == order_id), None)
+        if order is None:
+            raise ApiError(HTTPStatus.NOT_FOUND, 'unknown order')
+        if order.get('status') != 'delivered':
+            raise ApiError(HTTPStatus.CONFLICT, 'only a delivered order can be rated')
+        if not self.ratings_file:
+            raise ApiError(HTTPStatus.SERVICE_UNAVAILABLE, 'ratings are not recorded')
+        record = {'id': order_id, 'location': order.get('location'), 'stars': stars,
+                  'comment': comment, 'rated_at': time.time()}
+        with self.ratings_lock:
+            if order_id in self._ratings():
+                raise ApiError(HTTPStatus.CONFLICT, 'this order is already rated')
+            with open(self.ratings_file, 'a', encoding='utf-8') as stream:
+                stream.write(json.dumps(record) + '\n')
+        return {'rating': record}
 
     def analytics(self, range_name):
         prices = {item['name']: item['price'] for item in self.catalog.menu}
@@ -417,6 +476,8 @@ class _Handler(BaseHTTPRequestHandler):
                 return self._send(HTTPStatus.OK, app.cancel_order(order_id, bool(admin)))
             if action == 'confirm' and not admin:
                 return self._send(HTTPStatus.OK, app.confirm_order(order_id))
+            if action == 'rate' and not admin:
+                return self._send(HTTPStatus.CREATED, app.rate_order(order_id, self._body()))
             raise ApiError(HTTPStatus.NOT_FOUND, 'not found')
 
         def admin_dock():

@@ -333,6 +333,7 @@
       track.head.replaceChildren(el('h1', {}, t('lost_title')), el('p', { class: 'muted' }, t('lost_text')));
       track.eta.replaceChildren(); track.steps.replaceChildren(); track.receipt.replaceChildren();
       track.actions.replaceChildren(newOrderButton());
+      track.actionsKey = null;
       return;
     }
 
@@ -388,7 +389,13 @@
         el('span', {}, t('total')), el('span', {}, money(total))),
       el('div', { class: 'receipt-row faint', style: 'font-size:12px' }, el('span', {}, t('order_id', { id: order.id })))].filter(Boolean));
 
-    track.actions.replaceChildren(...actionsFor(order));
+    // Rebuild the buttons only when they change, so live updates do not
+    // interrupt a guest choosing stars or typing a comment.
+    const actionsKey = `${order.id}|${order.status}|${cancelArmed}|${Boolean(order.finished_at)}|${I18N.lang()}`;
+    if (track.actionsKey !== actionsKey) {
+      track.actionsKey = actionsKey;
+      track.actions.replaceChildren(...actionsFor(order));
+    }
   }
 
   function headline(order, position, robot) {
@@ -426,8 +433,51 @@
       return [el('button', { class: 'btn btn-lg btn-danger', type: 'button', onclick: cancel },
         cancelArmed ? t('cancel_again') : t('cancel'))];
     }
+    if (order.status === 'delivered') return [ratingBox(order), newOrderButton()];
     if (order.finished_at) return [newOrderButton()];
     return [];
+  }
+
+  // 1-5 stars and an optional comment, once per order (remembered on the phone
+  // and enforced by the server).
+  function ratingBox(order) {
+    const key = `cstam.rated.${order.id}`;
+    const box = el('section', { class: 'rating', 'aria-label': t('rate_title') });
+    const thanks = () => box.replaceChildren(el('p', { class: 'rating-thanks' }, t('rate_thanks')));
+    if (storage.get('localStorage', key)) { thanks(); return box; }
+    let stars = 0;
+    const comment = el('textarea', { class: 'input', rows: 2, maxlength: 300, dir: 'auto',
+      placeholder: t('rate_comment'), 'aria-label': t('rate_comment') });
+    const send = el('button', { class: 'btn btn-primary', type: 'button', disabled: true }, t('rate_send'));
+    const buttons = [1, 2, 3, 4, 5].map((n) => el('button', {
+      type: 'button', class: 'star', 'aria-label': t('rate_star', { n }), 'aria-pressed': 'false',
+      onclick: () => {
+        stars = n;
+        buttons.forEach((b, i) => b.setAttribute('aria-pressed', String(i < n)));
+        send.disabled = false;
+      },
+    }, starIcon()));
+    send.addEventListener('click', async () => {
+      send.disabled = true;
+      try {
+        await api(`/api/orders/${order.id}/rate`, { method: 'POST', body: { stars, comment: comment.value } });
+      } catch (error) {
+        if (error.status !== 409) { failed(error); send.disabled = false; return; }   // 409: already rated
+      }
+      storage.set('localStorage', key, String(stars));
+      thanks();
+    });
+    box.append(el('h2', {}, t('rate_title')),
+      el('div', { class: 'stars', role: 'group', 'aria-label': t('rate_group') }, buttons), comment, send);
+    return box;
+  }
+
+  function starIcon() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.innerHTML = '<path fill="currentColor" d="M12 2.5l2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.52l-5.88 3.09 1.12-6.55L2.48 9.42l6.58-.96L12 2.5Z"/>';
+    return svg;
   }
 
   function newOrderButton() {

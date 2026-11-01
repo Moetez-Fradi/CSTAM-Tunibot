@@ -451,13 +451,13 @@
     historyLoading = true;
     try {
       const data = await api('/api/admin/history?limit=500', { pin });
-      renderHistory(data.orders, data.total);
+      renderHistory(data.orders, data.total, data.ratings || {}, data.rating);
     } catch (error) {
       $('#history').replaceChildren(el('div', { class: 'empty' }, error.message));
     } finally { historyLoading = false; }
   }
 
-  function renderHistory(orders, total) {
+  function renderHistory(orders, total, ratings, rating) {
     const delivered = orders.filter((o) => o.status === 'delivered');
     const toTable = delivered.filter((o) => o.arrived_at).map((o) => o.arrived_at - o.created_at).sort((a, b) => a - b);
     const median = toTable.length ? toTable[Math.floor(toTable.length / 2)] : null;
@@ -470,21 +470,25 @@
       stat('Delivered', delivered.length, `of ${total} finished orders`),
       stat('Median time to table', median === null ? '—' : duration(median), 'from order to arrival'),
       stat('Confirmed by customer', delivered.length ? `${Math.round((100 * confirmed) / delivered.length)}%` : '—', 'the rest timed out at the table'),
-      stat('Not delivered', failed + cancelled, `${failed} unreachable, ${cancelled} cancelled`));
+      stat('Not delivered', failed + cancelled, `${failed} unreachable, ${cancelled} cancelled`),
+      stat('Guest rating', rating && rating.average !== null ? `${rating.average.toFixed(1)} / 5` : '—',
+        rating && rating.count ? `from ${rating.count} rating${rating.count > 1 ? 's' : ''}` : 'no ratings yet'));
 
     if (!orders.length) {
       $('#history').replaceChildren(el('div', { class: 'empty' }, 'No finished orders yet. They appear here as soon as the robot completes one.'));
       return;
     }
     $('#history').replaceChildren(el('table', {},
-      el('thead', {}, el('tr', {}, ['Order', 'Table', 'Items', 'Status', 'Placed', 'Time to table', 'Total time'].map((h, i) =>
-        el('th', { class: i >= 4 ? 'num' : '' }, h)))),
+      el('thead', {}, el('tr', {}, ['Order', 'Table', 'Items', 'Status', 'Rating', 'Placed', 'Time to table', 'Total time'].map((h, i) =>
+        el('th', { class: i >= 5 ? 'num' : '' }, h)))),
       el('tbody', {}, orders.map((o) => el('tr', {},
         el('td', { class: 'mono' }, o.id),
         el('td', {}, label(o.location)),
         el('td', { class: 'items' }, itemsText(o.items) || '—', o.note ? el('div', { class: 'faint' }, `“${o.note}”`) : null),
         el('td', {}, badgeFor(o.status), o.status === 'delivered' && !o.confirmed ? el('div', { class: 'faint', style: 'font-size:12px;margin-top:4px' }, 'not confirmed') : null,
           o.reason ? el('div', { class: 'faint', style: 'font-size:12px;margin-top:4px' }, o.reason) : null),
+        el('td', {}, ratings[o.id] ? el('span', { class: 'mono' }, `${ratings[o.id].stars}/5`) : el('span', { class: 'faint' }, '—'),
+          ratings[o.id] && ratings[o.id].comment ? el('div', { class: 'faint', dir: 'auto', style: 'font-size:12px;margin-top:4px' }, `“${ratings[o.id].comment}”`) : null),
         el('td', { class: 'num' }, clock(o.created_at)),
         el('td', { class: 'num' }, o.arrived_at ? duration(o.arrived_at - o.created_at) : '—'),
         el('td', { class: 'num' }, o.finished_at ? duration(o.finished_at - o.created_at) : '—'))))));

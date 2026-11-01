@@ -249,6 +249,29 @@ def test_order_round_trip_with_cancel_and_confirm(api):
     assert call('GET', '/api/orders/nope')[0] == 404
 
 
+def test_guest_rates_a_delivered_order_once(api):
+    call, robot, _ = api
+    order = call('POST', '/api/orders', {'location': 'table_3', 'items': [{'id': 'water'}]})[1]['order']
+    assert call('POST', f'/api/orders/{order["id"]}/rate', {'stars': 5})[0] == 409   # not delivered yet
+    robot.start_next()
+    call('POST', f'/api/orders/{order["id"]}/confirm')
+
+    assert call('POST', f'/api/orders/{order["id"]}/rate', {'stars': 0})[0] == 400
+    assert call('POST', f'/api/orders/{order["id"]}/rate', {'stars': 'x'})[0] == 400
+    assert call('POST', f'/api/orders/{order["id"]}/rate', {'stars': 4, 'comment': 'x' * 301})[0] == 400
+    status, body = call('POST', f'/api/orders/{order["id"]}/rate', {'stars': 4, 'comment': ' quick '})
+    assert status == 201 and body['rating']['stars'] == 4 and body['rating']['comment'] == 'quick'
+    status, body = call('POST', f'/api/orders/{order["id"]}/rate', {'stars': 1})
+    assert status == 409 and 'already rated' in body['error']
+    # An order only in the log (older than the task manager's history) can be rated too.
+    assert call('POST', '/api/orders/h1/rate', {'stars': 2})[0] == 201
+    assert call('POST', '/api/orders/nope/rate', {'stars': 2})[0] == 404
+
+    status, history = call('GET', '/api/admin/history', pin='4321')
+    assert status == 200 and history['rating'] == {'count': 2, 'average': 3.0}
+    assert history['ratings']['h1']['stars'] == 2
+
+
 def test_invalid_order_and_offline_robot(api):
     call, robot, _ = api
     status, body = call('POST', '/api/orders', {'location': 'kitchen', 'items': [{'id': 'water'}]})

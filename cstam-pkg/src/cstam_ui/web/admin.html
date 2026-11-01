@@ -68,6 +68,7 @@
   .chart .tip strong { font: 500 14px var(--mono); display: block; }
 
   .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+  .stats.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .stat { padding: 16px; }
   .stat .label { font-size: 13px; color: var(--muted); }
   .stat .value { font: 500 28px/1.3 var(--mono); letter-spacing: -0.03em; margin-top: 4px; }
@@ -121,7 +122,7 @@
   @media (max-width: 1100px) {
     .overview { grid-template-columns: minmax(0, 1fr); }
     .side { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .stats, .stats.five { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .system { grid-template-columns: minmax(0, 1fr); }
     .pair { grid-template-columns: minmax(0, 1fr); }
   }
@@ -135,7 +136,7 @@
     .crumbs .hide-sm { display: none; }
     .health { grid-template-columns: minmax(0, 1fr); }
     .health div:nth-child(odd) { border-right: 0; }
-    .stats { grid-template-columns: minmax(0, 1fr); }
+    .stats, .stats.five { grid-template-columns: minmax(0, 1fr); }
     h1 { font-size: 24px; }
   }
 </style>
@@ -224,7 +225,7 @@
 
     <section id="orders" role="tabpanel" aria-labelledby="tab-orders" hidden>
       <div class="page-head"><div><h1>Orders</h1><p>Every finished order, newest first, from the robot’s order log.</p></div></div>
-      <div class="stats" id="stats"></div>
+      <div class="stats five" id="stats"></div>
       <div class="panel"><div class="table-wrap" id="history"></div></div>
     </section>
 
