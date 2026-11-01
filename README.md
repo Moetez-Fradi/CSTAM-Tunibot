@@ -453,8 +453,9 @@ the browser sends it as `X-Admin-Pin` (or `?pin=` for event streams).
 | `POST /api/orders` | `{location, items: [{id, qty}], note}`; answers with the accepted order or the robot's reason |
 | `GET /api/orders/ID` | one order and its queue position |
 | `POST /api/orders/ID/cancel`, `/confirm` | customer cancel (only while queued) and confirmation |
+| `POST /api/orders/ID/rate` | `{stars: 1-5, comment}`, once per delivered order; appended to `$ROS_HOME/cstam_ratings.jsonl` |
 | `GET /api/admin/events`, `/api/admin/state` | everything: status, battery history, tracked people, safety metrics, node health |
-| `GET /api/admin/history?limit=N` | finished orders from the log, newest first |
+| `GET /api/admin/history?limit=N` | finished orders from the log, newest first, with their guest ratings and the average |
 | `POST /api/admin/orders/ID/cancel`, `/api/admin/return_to_dock` | staff controls |
 
 ### Pages
@@ -462,8 +463,8 @@ the browser sends it as `X-Admin-Pin` (or `?pin=` for event streams).
 | Page | For |
 |---|---|
 | `/` | landing page: customer or staff |
-| `/table/<location>` (e.g. `/table/table_3`; `/table` lists them) | customers, phone first: menu, order, live tracking with ETA and a mini map, "I've got my order" at the table, cancel while queued. The order survives a page reload. Guests can also say or type the order in their own words (see [Voice ordering](#voice-ordering)). English, French or Arabic (right to left), see [Languages](#languages). |
-| `/admin` | staff dashboard. **Overview**: live floor plan (robot, planned route, tracked people, tables, doors), active delivery with its stages, battery with the 20/35/80% policy, queue with cancel, return to dock, battery chart for the last 30 minutes. **Orders**: delivered count, median time to table, confirmation rate, failures, full order log. **Insights**: deliveries per hour or day, revenue, time to table (median and 90th percentile), battery used per delivery and deliveries per charge, popular items, busiest tables, Nav2 goal/failure/retry counters (today, 7 days or all time). **Maintenance**: lifetime distance, driving time, operating time and battery cycles; a service schedule with a forecast of when each item falls due, and "Mark serviced". **System**: node health, data freshness, people-safety metrics, task manager state. |
+| `/table/<location>` (e.g. `/table/table_3`; `/table` lists them) | customers, phone first: menu with a short description of each dish, order, live tracking with ETA and a mini map, a chime and vibration when the robot arrives, "I've got my order" at the table, cancel while queued, then a 1-5 star rating with an optional comment. The order survives a page reload. Guests can also say or type the order in their own words (see [Voice ordering](#voice-ordering)). English, French or Arabic (right to left), see [Languages](#languages). |
+| `/admin` | staff dashboard. An **alert banner** above every tab lists what needs a person (robot offline, error, empty or low battery, undeliverable orders, stopped robot programs); a short sound plays for each new order and new error (**Sound on/off** in the header). **Overview**: live floor plan (robot, planned route, tracked people, tables, doors), active delivery with its stages, battery with the 20/35/80% policy, queue with cancel, return to dock, battery chart for the last 30 minutes. **Orders**: delivered count, median time to table, confirmation rate, failures, guest rating, full order log with each rating. **Insights**: deliveries per hour or day, revenue, time to table (median and 90th percentile), battery used per delivery and deliveries per charge, popular items, busiest tables, Nav2 goal/failure/retry counters (today, 7 days or all time). **Maintenance**: lifetime distance, driving time, operating time and battery cycles; a service schedule with a forecast of when each item falls due, and "Mark serviced". **System**: node health, data freshness, people-safety metrics, task manager state. |
 | `/qr` | printable QR card per table (staff, linked from the dashboard). Each code opens that table's page. |
 | `/console` | raw API console for development |
 
