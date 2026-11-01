@@ -407,6 +407,7 @@ def test_menu_is_translated_for_the_customer_page(catalog):
     config = catalog.public_config()
     for item in config['menu']:
         assert item['names'].get('fr') and item['names'].get('ar'), item['id']
+        assert set(item['desc']) == {'en', 'fr', 'ar'} and all(item['desc'].values()), item['id']
     for name in {item['category'] for item in config['menu']}:
         assert set(config['categories'][name]) >= {'fr', 'ar'}, name
 

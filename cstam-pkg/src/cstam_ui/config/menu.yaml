@@ -4,20 +4,22 @@
 # English or French; accents, case and plurals do not matter).
 # `names` translate the item for the customer page (fr, ar); the robot's
 # order and the staff dashboard keep `name`.
+# `desc` is a one-line description per language (en, fr, ar), shown
+# under the item on the customer page; it is optional.
 currency: TND
 categories:
   Drinks: {fr: Boissons, ar: مشروبات}
   Food: {fr: Plats, ar: أطباق}
   Dessert: {fr: Desserts, ar: حلويات}
 items:
-  - {id: espresso, name: Espresso, category: Drinks, price: 3.5, aliases: [coffee, cafe, express], names: {fr: "Espresso", ar: إسبريسو}}
-  - {id: cappuccino, name: Cappuccino, category: Drinks, price: 5.0, aliases: [capucin, cafe creme], names: {fr: "Cappuccino", ar: كابتشينو}}
-  - {id: citronnade, name: Citronnade, category: Drinks, price: 4.5, aliases: [lemonade, citron], names: {fr: "Citronnade", ar: عصير ليمون}}
-  - {id: water, name: Mineral water, category: Drinks, price: 2.0, aliases: [water, eau, eau minerale], names: {fr: "Eau minérale", ar: مياه معدنية}}
-  - {id: fresh_juice, name: Orange juice, category: Drinks, price: 6.0, aliases: [juice, jus, jus d'orange, orange], names: {fr: "Jus d'orange", ar: عصير برتقال}}
-  - {id: brik, name: Brik à l'oeuf, category: Food, price: 5.5, aliases: [brik, brick, breek], names: {fr: "Brik à l'œuf", ar: بريك بالبيض}}
-  - {id: lablabi, name: Lablabi, category: Food, price: 7.0, aliases: [lablebi, chickpea soup], names: {fr: "Lablabi", ar: لبلابي}}
-  - {id: couscous, name: Couscous with lamb, category: Food, price: 18.0, aliases: [couscous, kousksi], names: {fr: "Couscous à l'agneau", ar: كسكسي بلحم العلوش}}
-  - {id: salade_mechouia, name: Salade méchouia, category: Food, price: 8.0, aliases: [mechouia, salad, salade], names: {fr: "Salade méchouia", ar: سلطة مشوية}}
-  - {id: makroudh, name: Makroudh, category: Dessert, price: 4.0, aliases: [makrout, makroud], names: {fr: "Makroudh", ar: مقروض}}
-  - {id: bambalouni, name: Bambalouni, category: Dessert, price: 3.0, aliases: [bambaloni, doughnut, donut, beignet], names: {fr: "Bambalouni", ar: بمبلوني}}
+  - {id: espresso, name: Espresso, category: Drinks, price: 3.5, aliases: [coffee, cafe, express], names: {fr: "Espresso", ar: إسبريسو}, desc: {en: "Short, strong coffee.", fr: "Café court et corsé.", ar: "قهوة قصيرة ومركّزة."}}
+  - {id: cappuccino, name: Cappuccino, category: Drinks, price: 5.0, aliases: [capucin, cafe creme], names: {fr: "Cappuccino", ar: كابتشينو}, desc: {en: "Espresso with steamed milk and foam.", fr: "Espresso, lait chaud et mousse de lait.", ar: "إسبريسو مع حليب ساخن ورغوة."}}
+  - {id: citronnade, name: Citronnade, category: Drinks, price: 4.5, aliases: [lemonade, citron], names: {fr: "Citronnade", ar: عصير ليمون}, desc: {en: "Fresh Tunisian lemonade, lightly sweet.", fr: "Citronnade tunisienne fraîche, peu sucrée.", ar: "عصير ليمون تونسي منعش، قليل السكر."}}
+  - {id: water, name: Mineral water, category: Drinks, price: 2.0, aliases: [water, eau, eau minerale], names: {fr: "Eau minérale", ar: مياه معدنية}, desc: {en: "Still mineral water, served cold.", fr: "Eau minérale plate, servie fraîche.", ar: "مياه معدنية باردة."}}
+  - {id: fresh_juice, name: Orange juice, category: Drinks, price: 6.0, aliases: [juice, jus, jus d'orange, orange], names: {fr: "Jus d'orange", ar: عصير برتقال}, desc: {en: "Freshly squeezed oranges.", fr: "Oranges pressées minute.", ar: "برتقال معصور طازجًا."}}
+  - {id: brik, name: Brik à l'oeuf, category: Food, price: 5.5, aliases: [brik, brick, breek], names: {fr: "Brik à l'œuf", ar: بريك بالبيض}, desc: {en: "Crisp pastry with egg, tuna and parsley.", fr: "Feuille croustillante, œuf, thon et persil.", ar: "ورقة مقرمشة بالبيض والتن والمعدنوس."}}
+  - {id: lablabi, name: Lablabi, category: Food, price: 7.0, aliases: [lablebi, chickpea soup], names: {fr: "Lablabi", ar: لبلابي}, desc: {en: "Chickpea soup with cumin, harissa and bread.", fr: "Soupe de pois chiches au cumin, harissa et pain.", ar: "حساء الحمص بالكمون والهريسة والخبز."}}
+  - {id: couscous, name: Couscous with lamb, category: Food, price: 18.0, aliases: [couscous, kousksi], names: {fr: "Couscous à l'agneau", ar: كسكسي بلحم العلوش}, desc: {en: "Lamb, vegetables and spiced broth.", fr: "Agneau, légumes et bouillon épicé.", ar: "لحم علوش وخضر ومرق متبّل."}}
+  - {id: salade_mechouia, name: Salade méchouia, category: Food, price: 8.0, aliases: [mechouia, salad, salade], names: {fr: "Salade méchouia", ar: سلطة مشوية}, desc: {en: "Grilled peppers and tomatoes with olive oil.", fr: "Poivrons et tomates grillés à l'huile d'olive.", ar: "فلفل وطماطم مشوية بزيت الزيتون."}}
+  - {id: makroudh, name: Makroudh, category: Dessert, price: 4.0, aliases: [makrout, makroud], names: {fr: "Makroudh", ar: مقروض}, desc: {en: "Semolina pastry filled with dates.", fr: "Pâtisserie de semoule fourrée aux dattes.", ar: "حلوى سميد محشوة بالتمر."}}
+  - {id: bambalouni, name: Bambalouni, category: Dessert, price: 3.0, aliases: [bambaloni, doughnut, donut, beignet], names: {fr: "Bambalouni", ar: بمبلوني}, desc: {en: "Sidi Bou Said doughnut dusted with sugar.", fr: "Beignet de Sidi Bou Saïd saupoudré de sucre.", ar: "فطيرة سيدي بوسعيد مرشوشة بالسكر."}}

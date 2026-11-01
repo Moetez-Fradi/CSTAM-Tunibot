@@ -4,7 +4,7 @@
 'use strict';
 (() => {
   const { $, el, api, stream, toast, initTheme, storage, orderStep } = CSTAM;
-  const { t, place, itemName } = I18N;
+  const { t, place, itemName, itemDesc } = I18N;
   const app = $('#app');
   const table = decodeURIComponent(location.pathname.split('/')[2] || '').toLowerCase();
   const orderKey = `cstam.order.${table}`;
@@ -121,6 +121,7 @@
         : el('button', { type: 'button', class: 'btn add', onclick: () => change(item, 1) }, t('add'));
       rows.get(item.id).replaceChildren(
         el('div', {}, el('div', { class: 'item-name' }, name),
+          itemDesc(item) ? el('div', { class: 'item-desc' }, itemDesc(item)) : null,
           el('div', { class: 'item-price' }, money(item.price))),
         control);
     };

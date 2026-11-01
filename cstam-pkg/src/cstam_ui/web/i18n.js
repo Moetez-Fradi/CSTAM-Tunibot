@@ -246,7 +246,8 @@ const I18N = (() => {
   }
 
   const itemName = (item) => (item && ((item.names || {})[lang] || item.name)) || '';
+  const itemDesc = (item) => (item && item.desc && (item.desc[lang] || item.desc.en)) || '';
   const server = (message) => (SERVER[lang] || {})[message] || message;
 
-  return { LANGS, t, set, place, itemName, server, lang: () => lang };
+  return { LANGS, t, set, place, itemName, itemDesc, server, lang: () => lang };
 })();

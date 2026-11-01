@@ -59,6 +59,7 @@ class Catalog:
                 'price': round(float(item.get('price', 0.0)), 3),
                 'aliases': [str(a) for a in item.get('aliases') or []],
                 'names': {str(k): str(v) for k, v in (item.get('names') or {}).items()},
+                'desc': {str(k): str(v) for k, v in (item.get('desc') or {}).items()},
             })
         self.categories = {str(k): {str(lang): str(name) for lang, name in (v or {}).items()}
                            for k, v in (menu.get('categories') or {}).items()}
