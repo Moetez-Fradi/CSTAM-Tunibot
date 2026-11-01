@@ -68,6 +68,42 @@ const CSTAM = (() => {
     setTimeout(() => node.remove(), 4000);
   }
 
+  // ----- sounds ----------------------------------------------------------
+  // Short tones generated in the browser (no audio files). Browsers only
+  // allow sound after the person has touched the page, so the audio context
+  // is created on the first tap or key press and sounds before that are skipped.
+  let audio = null;
+  const unlockAudio = () => {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === 'suspended') audio.resume();
+    } catch { audio = null; }
+  };
+  ['pointerdown', 'keydown'].forEach((type) => document.addEventListener(type, unlockAudio, { capture: true }));
+
+  const TONES = {
+    arrival: [[660, 0], [880, 0.16], [1320, 0.32]],   // rising: "your order is here"
+    order: [[880, 0], [1175, 0.14]],                  // two notes: new order
+    alert: [[440, 0], [440, 0.22]],                   // low double beep: needs attention
+  };
+  function chime(kind) {
+    if (!audio || audio.state !== 'running') return false;
+    const now = audio.currentTime;
+    for (const [freq, at] of TONES[kind] || TONES.order) {
+      const osc = audio.createOscillator();
+      const gain = audio.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, now + at);
+      gain.gain.exponentialRampToValueAtTime(0.25, now + at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + at + 0.3);
+      osc.connect(gain).connect(audio.destination);
+      osc.start(now + at);
+      osc.stop(now + at + 0.32);
+    }
+    return true;
+  }
+
   // ----- theme -----------------------------------------------------------
   function initTheme(button) {
     const saved = storage.get('localStorage', 'cstam.theme');
@@ -425,7 +461,7 @@ const CSTAM = (() => {
   const MOVING_STATES = new Set(['NAVIGATING_TO_PICKUP', 'NAVIGATING_TO_CUSTOMER', 'RETURNING_TO_DOCK']);
 
   return {
-    $, el, api, ApiError, stream, toast, initTheme, storage, label, robotSummary, stateBadge,
+    $, el, api, ApiError, stream, toast, chime, initTheme, storage, label, robotSummary, stateBadge,
     orderStatus, orderStep, clock, clockSec, duration, money, itemsText, MapView, MOVING_STATES,
   };
 })();

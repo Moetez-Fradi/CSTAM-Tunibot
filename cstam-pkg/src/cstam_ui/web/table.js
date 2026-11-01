@@ -335,6 +335,14 @@
       return;
     }
 
+    // Chime and vibrate once when the robot reaches the table, so the guest
+    // does not have to watch the screen. Not on a reload of an arrived order.
+    if (track.lastStatus && track.lastStatus !== order.status && order.status === 'awaiting_confirmation') {
+      CSTAM.chime('arrival');
+      try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch { /* unsupported */ }
+    }
+    track.lastStatus = order.status;
+
     const [title, detail] = headline(order, position, robot);
     // Rebuild only on change: the countdown re-renders every second and
     // must not restart the arrival animation.
