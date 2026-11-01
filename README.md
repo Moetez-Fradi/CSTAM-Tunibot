@@ -366,7 +366,7 @@ Floor 2 is mapped with SLAM Toolbox like floor 1:
 `scripts/map_floor2.sh` spawns the robot upstairs, drives the mapping
 patrol round the aisles, saves the map and aligns it into the shared map
 frame (`scripts/align_floor2_map.py`: SLAM's frame starts at the spawn
-pose). FLOOR2_RESULTS
+pose).
 
 `table_4` and `table_5` are upstairs (same west-aisle approach as tables
 1-3). A trip to another floor is planned as legs: that floor's lobby pose,

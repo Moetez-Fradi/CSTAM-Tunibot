@@ -1,5 +1,5 @@
-# Upper dining room (floor 2), drawn by scripts/build_upper_floor.py from
-# the collision walls and the floor-2 furniture of the restaurant mesh.
+# Upper dining room (floor 2), mapped with SLAM Toolbox (scripts/map_floor2.sh)
+# and aligned into the shared map frame by scripts/align_floor2_map.py.
 # Same map frame as restaurant.yaml; the elevator switches between them.
 image: floor2.pgm
 mode: trinary
