@@ -94,7 +94,8 @@ ros2 topic echo /delivery/status std_msgs/msg/String
 ```
 
 The web UI is served on <http://localhost:8080> (`ui:=false` disables it,
-`ui_port:=` moves it). The sequence is kitchen → table 1 → wait at the table
+`ui_port:=` moves it, e.g. `ui_port:=8095` when another program already uses
+8080; the UI then exits with "Address already in use" in the launch log). The sequence is kitchen → table 1 → wait at the table
 for the customer (`AWAITING_CONFIRMATION`, up to `confirmation_timeout:=20`
 s; `0` completes on arrival) → dock → `IDLE`. From the home corridor,
 with the five simulated people walking, a complete headless delivery took
@@ -452,6 +453,7 @@ the browser sends it as `X-Admin-Pin` (or `?pin=` for event streams).
 | `GET /api/events?order=ID` | live public view: robot state, pose, battery, plan, ETA, that order and its queue position |
 | `POST /api/orders` | `{location, items: [{id, qty}], note}`; answers with the accepted order or the robot's reason |
 | `GET /api/orders/ID` | one order and its queue position |
+| `GET /api/wait` | before ordering: orders ahead, robot state, and `estimate_sec` to a new order's table (median of the last 30 deliveries; `null` without history) |
 | `POST /api/orders/ID/cancel`, `/confirm` | customer cancel (only while queued) and confirmation |
 | `POST /api/orders/ID/rate` | `{stars: 1-5, comment}`, once per delivered order; appended to `$ROS_HOME/cstam_ratings.jsonl` |
 | `GET /api/admin/events`, `/api/admin/state` | everything: status, battery history, tracked people, safety metrics, node health |
@@ -463,7 +465,7 @@ the browser sends it as `X-Admin-Pin` (or `?pin=` for event streams).
 | Page | For |
 |---|---|
 | `/` | landing page: customer or staff |
-| `/table/<location>` (e.g. `/table/table_3`; `/table` lists them) | customers, phone first: menu with a short description of each dish, order, live tracking with ETA and a mini map, a chime and vibration when the robot arrives, "I've got my order" at the table, cancel while queued, then a 1-5 star rating with an optional comment. The order survives a page reload. Guests can also say or type the order in their own words (see [Voice ordering](#voice-ordering)). English, French or Arabic (right to left), see [Languages](#languages). |
+| `/table/<location>` (e.g. `/table/table_3`; `/table` lists them) | customers, phone first: how many orders are ahead and about how long to the table, menu with a short description of each dish, order, live tracking with ETA and a mini map, a chime and vibration when the robot arrives, "I've got my order" at the table, cancel while queued, then a 1-5 star rating with an optional comment. The order survives a page reload. Guests can also say or type the order in their own words (see [Voice ordering](#voice-ordering)). English, French or Arabic (right to left), see [Languages](#languages). |
 | `/admin` | staff dashboard. An **alert banner** above every tab lists what needs a person (robot offline, error, empty or low battery, undeliverable orders, stopped robot programs); a short sound plays for each new order and new error (**Sound on/off** in the header). **Overview**: live floor plan (robot, planned route, tracked people, tables, doors), active delivery with its stages, battery with the 20/35/80% policy, queue with cancel, return to dock, battery chart for the last 30 minutes. **Orders**: delivered count, median time to table, confirmation rate, failures, guest rating, full order log with each rating. **Insights**: deliveries per hour or day, revenue, time to table (median and 90th percentile), battery used per delivery and deliveries per charge, popular items, busiest tables, Nav2 goal/failure/retry counters (today, 7 days or all time). **Maintenance**: lifetime distance, driving time, operating time and battery cycles; a service schedule with a forecast of when each item falls due, and "Mark serviced". **System**: node health, data freshness, people-safety metrics, task manager state. |
 | `/qr` | printable QR card per table (staff, linked from the dashboard). Each code opens that table's page. |
 | `/console` | raw API console for development |
@@ -471,6 +473,24 @@ the browser sends it as `X-Admin-Pin` (or `?pin=` for event streams).
 Light and dark themes follow the system setting (toggle top right). The
 Geist fonts are bundled (`web/fonts`, SIL OFL 1.1), so the UI works without
 internet.
+
+#### Phase 3 UX improvements
+
+Changes made after reviewing the pages as a guest and as staff, all in
+`cstam_ui` (no change to the robot, navigation or ROS topics). Screenshots
+use a fixed demo data set, not a recorded run:
+[docs/phase3_ui](docs/phase3_ui).
+
+| Problem seen | Change | Screenshot |
+|---|---|---|
+| Guests had to watch the screen to know the robot had arrived | Chime and vibration on arrival | — |
+| Guests ordered without knowing how busy the robot was | "N orders ahead of you. About M min to your table." on the menu, refreshed every 15 s | `table_wait_voice_en.png`, `_ar.png` |
+| On phones the microphone vanished without explanation | A note says voice is not available on this connection or browser | `table_wait_voice_en.png` |
+| Unfamiliar Tunisian dishes had only a name | One-line description per dish in English, French and Arabic | `table_menu_en.png` |
+| No feedback from guests | 1-5 stars and a comment after delivery; average and comments on the Orders tab | `table_rating_en.png`, `_ar.png`, `admin_orders_ratings.png` |
+| Problems were spread over five tabs | Alert banner above every tab (offline, error, battery, undeliverable orders, stopped programs), with a sound | `admin_alerts.png` |
+| Staff missed new orders when not looking | Sound for each new order; Sound on/off in the header | — |
+| Generic circle logo, upstairs QR cards said "Dining room" | Robot logo and tab icon; QR cards explain how to order and name the zone correctly | `qr_cards.png` |
 
 #### Voice ordering
 
@@ -482,7 +502,8 @@ words, spoken or typed, in English or French: "two cappuccinos and a brik",
 the guest still presses Send. The microphone uses the browser's speech
 recognition, which browsers only allow on HTTPS or `localhost` (and Chrome's
 recognition needs internet). Phones opening the plain-HTTP table page
-therefore get the typed box only; for a spoken demo, use the laptop at
+therefore get the typed box only, with a short note saying why (or that the
+browser has no speech recognition); for a spoken demo, use the laptop at
 `http://localhost:8080/table/table_2`.
 
 #### Languages
