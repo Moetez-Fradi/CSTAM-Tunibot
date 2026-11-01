@@ -19,6 +19,9 @@
   let clockOffset = 0;         // server_time - local time
   let cancelArmed = false;
   let view = null;             // re-renders the current screen (language switch)
+  let waitTimer = null;        // refreshes the wait estimate while the menu is open
+  const WAIT_REFRESH_MS = 15000;
+  const stopWait = () => { clearInterval(waitTimer); waitTimer = null; };
 
   initTheme($('#theme'));
   languagePicker($('#lang'));
@@ -85,6 +88,7 @@
   // ----- choose a table ----------------------------------------------------
   function chooseTable(unknown) {
     view = () => chooseTable(unknown);
+    stopWait();
     setTitle();
     app.replaceChildren(
       el('div', { class: 'hello' },
@@ -101,6 +105,10 @@
     view = () => showMenu(spot);
     setTitle();
     live && live.close(); live = null; track = null;
+    const waitLine = el('p', { class: 'wait', 'aria-live': 'polite' });
+    stopWait();
+    refreshWait(waitLine);
+    waitTimer = setInterval(() => refreshWait(waitLine), WAIT_REFRESH_MS);
     const categories = [...new Set(config.menu.map((m) => m.category))];
     const bar = el('div', { class: 'bar' });
     const noteField = el('textarea', {
@@ -167,7 +175,8 @@
     app.replaceChildren(...[
       el('section', { class: 'hello' },
         el('h1', {}, place(spot.name)),
-        el('p', { class: 'muted' }, t(INTRO_KEYS[spot.zone] || 'intro_room'))),
+        el('p', { class: 'muted' }, t(INTRO_KEYS[spot.zone] || 'intro_room')),
+        waitLine),
       voiceBox(spot, addHeard),
       categories.map((name) => el('section', { class: 'category', 'aria-label': category(name) },
         el('h2', {}, category(name)),
@@ -180,6 +189,19 @@
       bar].flat());
     config.menu.forEach(renderRow);
     renderBar();
+  }
+
+  // Before ordering: how many orders are ahead and roughly how long to the
+  // table, from the robot's recent deliveries (GET /api/wait).
+  async function refreshWait(line) {
+    try {
+      const wait = await api('/api/wait');
+      if (!wait.online) { line.textContent = ''; return; }
+      const parts = [wait.ahead ? t('wait_ahead', { n: wait.ahead }) : t('wait_none')];
+      if (wait.robot_state === 'CHARGING' || wait.robot_state === 'BATTERY_DEPLETED') parts.push(t('charging'));
+      else if (wait.estimate_sec) parts.push(t('wait_eta', { min: Math.max(1, Math.round(wait.estimate_sec / 60)) }));
+      line.textContent = parts.join(' ');
+    } catch { line.textContent = ''; }
   }
 
   // ----- voice / typed order -----------------------------------------------------
@@ -275,6 +297,8 @@
       el('label', { for: 'voice-text' }, canListen ? t('voice_label_speak') : t('voice_label_type')),
       el('form', { class: 'voice-row', onsubmit: (e) => { e.preventDefault(); understand(input.value); } },
         mic, input, canListen ? langButton : null, el('button', { class: 'btn', type: 'submit' }, t('add'))),
+      // Say why there is no microphone instead of hiding it silently.
+      canListen ? null : el('p', { class: 'voice-off' }, t(Recognition ? 'voice_off_connection' : 'voice_off_browser')),
       result);
   }
 
@@ -289,6 +313,7 @@
 
   // ----- tracking --------------------------------------------------------------
   function showTracking(orderId) {
+    stopWait();
     view = () => {
       if (!track) return;
       track.title = null;
